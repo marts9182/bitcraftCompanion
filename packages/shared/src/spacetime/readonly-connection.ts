@@ -84,15 +84,6 @@ export class ReadOnlySpacetime {
       .build();
   }
 
-  onConnect(cb: () => void): void {
-    // convenience for callers that connect() before registering
-    if (this.#connected) cb();
-  }
-
-  onError(_cb: (e: unknown) => void): void {
-    // reserved: error routing is wired in connect(); kept for API symmetry
-  }
-
   /**
    * Subscribe (read-only) to one or more SQL subscription queries and receive
    * inserted/updated rows. Never issues a reducer call.
@@ -106,8 +97,16 @@ export class ReadOnlySpacetime {
       })
       .subscribe(queries);
 
-    // Generic row routing across all tables exposed on conn.db.
-    const db = this.#conn.db as unknown as Record<string, { onInsert?: Function; onUpdate?: Function }>;
+    // Generic row routing: inert until `spacetime generate` populates conn.db
+    // with typed table handles; the subscribe() call above still applies the
+    // subscription.
+    const db = this.#conn.db as unknown as Record<
+      string,
+      {
+        onInsert?: (cb: (ctx: unknown, row: unknown) => void) => void;
+        onUpdate?: (cb: (ctx: unknown, oldRow: unknown, row: unknown) => void) => void;
+      }
+    >;
     for (const [table, handle] of Object.entries(db)) {
       handle.onInsert?.((_ctx: unknown, row: unknown) => onRow(table, row));
       handle.onUpdate?.((_ctx: unknown, _old: unknown, row: unknown) => onRow(table, row));
