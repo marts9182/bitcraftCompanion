@@ -63,15 +63,16 @@ async function main() {
     const outputs = graph.flatMap((g) => g.outputs);
 
     // Idempotent load: replace child tables, upsert entities.
+    // Inserts are chunked to stay well under Postgres's ~65535 bind-parameter limit.
     await db.transaction(async (tx) => {
       await tx.delete(schema.recipeInputs);
       await tx.delete(schema.recipeOutputs);
-      if (itemRows.length) await tx.insert(schema.items).values(itemRows).onConflictDoUpdate({ target: schema.items.id, set: conflictUpdateSet(schema.items) });
-      if (cargoRows.length) await tx.insert(schema.cargo).values(cargoRows).onConflictDoUpdate({ target: schema.cargo.id, set: conflictUpdateSet(schema.cargo) });
-      if (buildingRows.length) await tx.insert(schema.buildings).values(buildingRows).onConflictDoUpdate({ target: schema.buildings.id, set: conflictUpdateSet(schema.buildings) });
-      if (recipeRows.length) await tx.insert(schema.recipes).values(recipeRows).onConflictDoUpdate({ target: schema.recipes.id, set: conflictUpdateSet(schema.recipes) });
-      if (inputs.length) await tx.insert(schema.recipeInputs).values(inputs);
-      if (outputs.length) await tx.insert(schema.recipeOutputs).values(outputs);
+      await inChunks(itemRows, CHUNK, (s) => tx.insert(schema.items).values(s).onConflictDoUpdate({ target: schema.items.id, set: conflictUpdateSet(schema.items) }));
+      await inChunks(cargoRows, CHUNK, (s) => tx.insert(schema.cargo).values(s).onConflictDoUpdate({ target: schema.cargo.id, set: conflictUpdateSet(schema.cargo) }));
+      await inChunks(buildingRows, CHUNK, (s) => tx.insert(schema.buildings).values(s).onConflictDoUpdate({ target: schema.buildings.id, set: conflictUpdateSet(schema.buildings) }));
+      await inChunks(recipeRows, CHUNK, (s) => tx.insert(schema.recipes).values(s).onConflictDoUpdate({ target: schema.recipes.id, set: conflictUpdateSet(schema.recipes) }));
+      await inChunks(inputs, CHUNK, (s) => tx.insert(schema.recipeInputs).values(s));
+      await inChunks(outputs, CHUNK, (s) => tx.insert(schema.recipeOutputs).values(s));
     });
 
     const total = itemRows.length + cargoRows.length + buildingRows.length + recipeRows.length;
@@ -86,6 +87,15 @@ async function main() {
 }
 
 // Local helpers (kept here to avoid premature shared API).
+const CHUNK = 500;
+
+/** Run `fn` over `rows` in slices of `size` (no-op for an empty array). */
+async function inChunks<T>(rows: T[], size: number, fn: (slice: T[]) => Promise<unknown>): Promise<void> {
+  for (let i = 0; i < rows.length; i += size) {
+    await fn(rows.slice(i, i + size));
+  }
+}
+
 function eqRun(id: string) {
   return eq(schema.ingestionRuns.id, id);
 }
