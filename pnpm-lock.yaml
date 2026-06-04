@@ -90,6 +90,9 @@ importers:
       dotenv:
         specifier: ^16.4.0
         version: 16.6.1
+      drizzle-orm:
+        specifier: ^0.36.0
+        version: 0.36.4(@types/react@19.2.16)(postgres@3.4.9)(react@19.2.4)
       ws:
         specifier: ^8.18.0
         version: 8.21.0
