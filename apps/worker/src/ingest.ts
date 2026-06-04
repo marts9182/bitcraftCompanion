@@ -23,9 +23,11 @@ export function startIngestion(env: ServerEnv): ReadOnlySpacetime {
   sky.connect({
     onConnect: () => {
       console.log("[worker] connected (read-only) to SpacetimeDB");
-      // Phase 0 spike: subscribe to a single small table to prove the path.
-      // Phase 1 will replace this with the real compendium tables.
-      sky.subscribe(["SELECT * FROM player LIMIT 1"], async (table, row) => {
+      // Phase 0 spike: subscribe to a real compendium table to prove the path.
+      // NOTE: rows only flow once generated module bindings populate conn.db
+      // (Phase 1). Phase 1 also replaces this with the full compendium tables
+      // and upsert/delete handling.
+      sky.subscribe(["SELECT * FROM item_desc"], async (table, row) => {
         await db.insert(schema.rawSnapshots).values({
           sourceTable: table,
           entityId: String((row as { entity_id?: unknown })?.entity_id ?? "unknown"),

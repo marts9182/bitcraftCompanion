@@ -18,3 +18,6 @@ build/
 .DS_Store
 coverage/
 *.log
+
+# large regenerable game-schema snapshot (recreate via the worker probe)
+docs/reference/bitcraft-schema.json

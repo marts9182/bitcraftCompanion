@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/main.ts",
     "start": "tsx src/main.ts",
+    "probe": "tsx src/probe.ts",
     "typecheck": "tsc --noEmit",
     "lint": "echo \"(no lint configured for worker yet)\"",
     "build": "tsc -p tsconfig.json"
