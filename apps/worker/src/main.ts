@@ -1,4 +1,10 @@
-import "dotenv/config";
+import { config } from "dotenv";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
+// dotenv defaults to .env; the worker runs from apps/worker, so load the
+// monorepo-root .env.local explicitly. Missing file is harmless (prod uses real env vars).
+config({ path: resolve(dirname(fileURLToPath(import.meta.url)), "../../../.env.local") });
+
 import { parseServerEnv } from "@bcc/shared";
 import { shouldRunIngestion, startIngestion, computeBackoffMs } from "./ingest";
 
