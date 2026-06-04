@@ -1,0 +1,12 @@
+title = "BitCraft Companion gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Allow placeholder values in the documented example env file"
+paths = ['''\.env\.example$''']
+regexes = [
+  '''REPLACE_WITH_[A-Z_]+''',
+  '''USER:PASSWORD@HOST''',
+]

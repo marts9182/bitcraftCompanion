@@ -1,0 +1,6 @@
+node scripts/check-no-env-committed.mjs
+
+# Run gitleaks if it is installed locally (CI always runs it regardless)
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks protect --staged --redact --config .gitleaks.toml
+fi
