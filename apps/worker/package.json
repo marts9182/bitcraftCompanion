@@ -13,10 +13,12 @@
   },
   "dependencies": {
     "@bcc/shared": "workspace:*",
-    "dotenv": "^16.4.0"
+    "dotenv": "^16.4.0",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
     "tsx": "^4.19.0",
-    "@types/node": "^22.0.0"
+    "@types/node": "^22.0.0",
+    "@types/ws": "^8.5.12"
   }
 }
