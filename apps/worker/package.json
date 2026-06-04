@@ -1,0 +1,21 @@
+{
+  "name": "@bcc/worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "start": "tsx src/main.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo \"(no lint configured for worker yet)\"",
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@bcc/shared": "workspace:*",
+    "dotenv": "^16.4.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "@types/node": "^22.0.0"
+  }
+}
