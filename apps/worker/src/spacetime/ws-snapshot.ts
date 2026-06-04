@@ -15,16 +15,19 @@ export interface SnapshotConfig {
 export function readSnapshot(
   config: SnapshotConfig,
   queries: string[],
+  expectedTables: string[],
   timeoutMs = 60_000,
 ): Promise<Map<string, RawRow[]>> {
   const url = `${config.uri.replace(/\/+$/, "")}/v1/database/${config.moduleName}/subscribe`;
   return new Promise((resolve, reject) => {
+    const acc = new Map<string, RawRow[]>();
     const ws = new WebSocket(url, ["v1.json.spacetimedb"], {
       headers: { Authorization: `Bearer ${config.token}` },
     });
     const timer = setTimeout(() => {
       ws.terminate();
-      reject(new Error(`Snapshot timed out after ${timeoutMs}ms`));
+      const missing = expectedTables.filter((t) => !acc.has(t));
+      reject(new Error(`Snapshot timed out after ${timeoutMs}ms; missing tables: ${missing.join(", ") || "none"}`));
     }, timeoutMs);
 
     ws.on("open", () => {
@@ -37,11 +40,16 @@ export function readSnapshot(
       } catch {
         return; // ignore non-JSON frames
       }
-      const tables = extractTableInserts(msg as object);
-      if (tables.size > 0) {
+      const tables = extractTableInserts(msg);
+      for (const [name, rows] of tables) {
+        const existing = acc.get(name);
+        if (existing) existing.push(...rows);
+        else acc.set(name, rows);
+      }
+      if (expectedTables.every((t) => acc.has(t))) {
         clearTimeout(timer);
         ws.close();
-        resolve(tables);
+        resolve(acc);
       }
     });
     ws.on("error", (err) => {

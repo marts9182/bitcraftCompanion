@@ -19,6 +19,10 @@ const QUERIES = [
   "SELECT * FROM construction_recipe_desc",
 ];
 
+const EXPECTED_TABLES = [
+  "item_desc", "cargo_desc", "building_desc", "crafting_recipe_desc", "construction_recipe_desc",
+];
+
 async function main() {
   const env = parseServerEnv();
   if (env.INGESTION_ENABLED !== true) {
@@ -32,7 +36,9 @@ async function main() {
     const tables = await readSnapshot(
       { uri: env.SPACETIME_URI, moduleName: env.SPACETIME_MODULE, token: env.SPACETIME_TOKEN },
       QUERIES,
+      EXPECTED_TABLES,
     );
+    for (const t of EXPECTED_TABLES) console.log(`[snapshot] ${t}: ${(tables.get(t) ?? []).length} rows`);
     const norm = (t: string) => (tables.get(t) ?? []).map((r) => normalizeRow(COLUMN_ORDERS[t]!, r));
 
     // Items (+ unique slugs)
