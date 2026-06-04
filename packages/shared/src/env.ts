@@ -9,6 +9,9 @@ export const serverEnvSchema = z.object({
   SPACETIME_URI: z.string().min(1),
   SPACETIME_MODULE: z.string().min(1),
   SPACETIME_TOKEN: z.string().min(1),
+  // Optional: the public identity the token encodes. Not required to connect;
+  // kept for reference and an optional connect-time sanity check.
+  SPACETIME_IDENTITY: z.string().min(1).optional(),
   INGESTION_ENABLED: boolFromString.default(true),
   SPACETIME_APP_IDENTIFIER: z.string().min(1).default("BitCraftCompanion"),
 });
