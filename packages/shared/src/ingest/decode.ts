@@ -28,6 +28,7 @@ export function slugify(name: string): string {
   return name
     .toLowerCase()
     .normalize("NFKD")
+    .replace(/\p{M}/gu, "")
     .replace(/[^\p{L}\p{N}]+/gu, "-")
     .replace(/^-+|-+$/g, "");
 }

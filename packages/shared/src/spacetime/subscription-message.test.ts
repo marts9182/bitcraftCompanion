@@ -27,6 +27,17 @@ describe("extractTableInserts", () => {
     expect(extractTableInserts({ IdentityToken: {} }).size).toBe(0);
   });
 
+  it("skips a malformed insert while keeping valid ones", () => {
+    const msg = {
+      InitialSubscription: {
+        database_update: {
+          tables: [{ table_name: "t", updates: [{ inserts: ['{"id":1}', "not json", '{"id":2}'] }] }],
+        },
+      },
+    };
+    expect(extractTableInserts(msg).get("t")).toEqual([{ id: 1 }, { id: 2 }]);
+  });
+
   it("merges inserts across multiple update groups for one table", () => {
     const msg = {
       InitialSubscription: {

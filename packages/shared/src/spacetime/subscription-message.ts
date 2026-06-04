@@ -14,9 +14,9 @@ interface ServerMessage {
  * table name. Each insert is a JSON string and is parsed here. Non-subscription
  * messages (e.g. IdentityToken) yield an empty map.
  */
-export function extractTableInserts(message: ServerMessage): Map<string, RawRow[]> {
+export function extractTableInserts(message: unknown): Map<string, RawRow[]> {
   const result = new Map<string, RawRow[]>();
-  const tables = message.InitialSubscription?.database_update?.tables;
+  const tables = (message as ServerMessage)?.InitialSubscription?.database_update?.tables;
   if (!tables) return result;
   for (const table of tables) {
     const name = table.table_name;
@@ -24,7 +24,11 @@ export function extractTableInserts(message: ServerMessage): Map<string, RawRow[
     const rows: RawRow[] = result.get(name) ?? [];
     for (const update of table.updates ?? []) {
       for (const raw of update.inserts ?? []) {
-        rows.push(JSON.parse(raw));
+        try {
+          rows.push(JSON.parse(raw));
+        } catch {
+          // skip a single malformed insert rather than failing the whole snapshot
+        }
       }
     }
     result.set(name, rows);

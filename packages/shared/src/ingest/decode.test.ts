@@ -33,6 +33,9 @@ describe("slugify", () => {
     expect(slugify("Iron Ingot")).toBe("iron-ingot");
     expect(slugify("Tier 3 Axe!")).toBe("tier-3-axe");
   });
+  it("strips accents from accented letters", () => {
+    expect(slugify("Crème Brûlée")).toBe("creme-brulee");
+  });
 });
 
 describe("RARITIES", () => {
