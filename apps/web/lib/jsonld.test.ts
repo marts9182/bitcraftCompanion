@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { breadcrumbJsonLd, itemJsonLd, itemListJsonLd, jsonLdScript } from "./jsonld";
+import { breadcrumbJsonLd, itemJsonLd, itemListJsonLd, jsonLdScript, thingJsonLd } from "./jsonld";
 
 describe("jsonld builders", () => {
   it("builds a BreadcrumbList with positions", () => {
@@ -60,5 +60,21 @@ describe("jsonLdScript", () => {
   it("round-trips through JSON.parse unchanged", () => {
     const data = { name: "Iron </script> Ingot", n: 3 };
     expect(JSON.parse(jsonLdScript(data))).toEqual(data);
+  });
+});
+
+describe("thingJsonLd", () => {
+  it("builds a Thing with description", () => {
+    expect(thingJsonLd("Nail", "A small nail.", "https://x.com/items/nail")).toEqual({
+      "@context": "https://schema.org",
+      "@type": "Thing",
+      name: "Nail",
+      description: "A small nail.",
+      url: "https://x.com/items/nail",
+    });
+  });
+
+  it("omits description when empty", () => {
+    expect(thingJsonLd("Nail", "", "https://x.com/items/nail").description).toBeUndefined();
   });
 });

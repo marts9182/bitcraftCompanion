@@ -45,3 +45,15 @@ export function itemListJsonLd(items: Crumb[], listUrl: string) {
 export function jsonLdScript(data: unknown): string {
   return JSON.stringify(data).replace(/</g, "\\u003c");
 }
+
+/** Generic schema.org Thing for any compendium entity detail page. */
+export function thingJsonLd(name: string, description: string, url: string) {
+  const ld: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "Thing",
+    name,
+    url,
+  };
+  if (description) ld.description = description;
+  return ld;
+}
