@@ -23,6 +23,21 @@ describe("extractTableInserts", () => {
     expect(out.get("cargo_desc")).toEqual([{ id: 9, name: "Log" }]);
   });
 
+  it("parses the modern SubscribeMultiApplied reply shape", () => {
+    const msg = {
+      SubscribeMultiApplied: {
+        request_id: 1,
+        query_id: { id: 1 },
+        update: {
+          tables: [
+            { table_name: "item_desc", updates: [{ inserts: ['{"id":1,"name":"Stone"}'] }] },
+          ],
+        },
+      },
+    };
+    expect(extractTableInserts(msg).get("item_desc")).toEqual([{ id: 1, name: "Stone" }]);
+  });
+
   it("returns an empty map for non-subscription messages", () => {
     expect(extractTableInserts({ IdentityToken: {} }).size).toBe(0);
   });
