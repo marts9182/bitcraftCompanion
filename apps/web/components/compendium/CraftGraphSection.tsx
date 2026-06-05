@@ -1,22 +1,25 @@
 import Link from "next/link";
 import type { RecipeView, StackView } from "@/lib/queries/craft-graph";
 
-function StackList({ stacks }: { stacks: StackView[] }) {
+export function StackList({ stacks }: { stacks: StackView[] }) {
   if (stacks.length === 0) return <span className="text-muted-foreground">—</span>;
   return (
     <ul className="flex flex-wrap gap-x-3 gap-y-1">
-      {stacks.map((s, i) => (
-        <li key={`${s.refType}-${s.refId}-${i}`}>
-          <span className="text-muted-foreground">{s.quantity}×</span>{" "}
-          {s.slug && s.refType === "item" ? (
-            <Link href={`/items/${s.slug}`} className="hover:underline">
-              {s.name}
-            </Link>
-          ) : (
-            <span>{s.name}</span>
-          )}
-        </li>
-      ))}
+      {stacks.map((s, i) => {
+        const href = s.slug ? (s.refType === "cargo" ? `/cargo/${s.slug}` : `/items/${s.slug}`) : null;
+        return (
+          <li key={`${s.refType}-${s.refId}-${i}`}>
+            <span className="text-muted-foreground">{s.quantity}×</span>{" "}
+            {href ? (
+              <Link href={href} className="hover:underline">
+                {s.name}
+              </Link>
+            ) : (
+              <span>{s.name}</span>
+            )}
+          </li>
+        );
+      })}
     </ul>
   );
 }
