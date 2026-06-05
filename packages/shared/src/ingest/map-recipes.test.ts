@@ -8,6 +8,11 @@ describe("refTypeOf", () => {
     expect(refTypeOf({ Item: [] })).toBe("item");
     expect(refTypeOf(undefined)).toBe("item");
   });
+
+  it("detects type from a positional sum [tag, payload] (live form)", () => {
+    expect(refTypeOf([0, []])).toBe("item");
+    expect(refTypeOf([1, []])).toBe("cargo");
+  });
 });
 
 describe("mapRecipeRow", () => {
@@ -39,5 +44,15 @@ describe("buildRecipeGraph", () => {
 
   it("returns empty arrays when no stacks present", () => {
     expect(buildRecipeGraph(1, {})).toEqual({ inputs: [], outputs: [] });
+  });
+
+  it("reads live positional stacks (arrays) with positional item_type sums", () => {
+    const raw = {
+      consumed_item_stacks: [[6110021, 2, [0, []], 1, 1]],
+      crafted_item_stacks: [[640492469, 1, [1, []], [0, 0]]],
+    };
+    const { inputs, outputs } = buildRecipeGraph(7, raw);
+    expect(inputs).toEqual([{ recipeId: 7, refType: "item", refId: 6110021, quantity: 2 }]);
+    expect(outputs).toEqual([{ recipeId: 7, refType: "cargo", refId: 640492469, quantity: 1 }]);
   });
 });
