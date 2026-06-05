@@ -1,0 +1,47 @@
+/** Column order per source table, from the resolved RawModuleDefV9 schema. */
+export const COLUMN_ORDERS: Record<string, string[]> = {
+  item_desc: [
+    "id", "name", "description", "volume", "durability", "convert_to_on_durability_zero",
+    "secondary_knowledge_id", "model_asset_name", "icon_asset_name", "tier", "tag",
+    "rarity", "compendium_entry", "item_list_id",
+  ],
+  cargo_desc: [
+    "id", "name", "description", "volume", "secondary_knowledge_id", "model_asset_name",
+    "icon_asset_name", "carried_model_asset_name", "pick_up_animation_start",
+    "pick_up_animation_end", "drop_animation_start", "drop_animation_end", "pick_up_time",
+    "place_time", "animator_state", "movement_modifier", "blocks_path",
+    "on_destroy_yield_cargos", "despawn_time", "tier", "tag", "rarity", "not_pickupable",
+  ],
+  building_desc: [
+    "id", "functions", "name", "description", "rested_buff_duration", "light_radius",
+    "model_asset_name", "icon_asset_name", "unenterable", "wilderness", "footprint",
+    "max_health", "ignore_damage", "defense_level", "decay", "maintenance",
+    "build_permission", "interact_permission", "has_action", "show_in_compendium",
+    "is_ruins", "not_deconstructible",
+  ],
+  crafting_recipe_desc: [
+    "id", "name", "time_requirement", "stamina_requirement", "tool_durability_lost",
+    "building_requirement", "level_requirements", "tool_requirements", "consumed_item_stacks",
+    "discovery_triggers", "required_claim_tech_id", "full_discovery_score",
+    "experience_per_progress", "crafted_item_stacks", "actions_required", "tool_mesh_index",
+    "recipe_performance_id", "required_knowledges", "blocking_knowledges",
+    "hide_without_required_knowledge", "hide_with_blocking_knowledges", "allow_use_hands",
+    "is_passive",
+  ],
+  construction_recipe_desc: [
+    "id", "name", "time_requirement", "stamina_requirement", "consumed_building",
+    "required_interior_tier", "level_requirements", "tool_requirements", "consumed_item_stacks",
+    "consumed_cargo_stacks", "consumed_shards", "experience_per_progress", "discovery_triggers",
+    "required_knowledges", "required_claim_tech_id", "full_discovery_score", "tool_mesh_index",
+    "building_description_id", "required_paving_tier", "actions_required", "instantly_built",
+    "recipe_performance_id",
+  ],
+  food_desc: [
+    "item_id", "hp", "up_to_hp", "stamina", "up_to_stamina", "hunger",
+    "teleportation_energy", "consumable_while_in_combat", "buffs",
+  ],
+  equipment_desc: [
+    "item_id", "slots", "visual_type", "level_requirement", "clothing_visual",
+    "hand_equipment_visual", "stats", "required_achievements", "required_knowledges",
+  ],
+};

@@ -7,16 +7,20 @@
     "dev": "tsx watch src/main.ts",
     "start": "tsx src/main.ts",
     "probe": "tsx src/probe.ts",
+    "snapshot": "tsx src/snapshot.ts",
     "typecheck": "tsc --noEmit",
     "lint": "echo \"(no lint configured for worker yet)\"",
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
     "@bcc/shared": "workspace:*",
-    "dotenv": "^16.4.0"
+    "dotenv": "^16.4.0",
+    "drizzle-orm": "^0.36.0",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
-    "tsx": "^4.19.0",
-    "@types/node": "^22.0.0"
+    "@types/node": "^22.0.0",
+    "@types/ws": "^8.5.12",
+    "tsx": "^4.19.0"
   }
 }

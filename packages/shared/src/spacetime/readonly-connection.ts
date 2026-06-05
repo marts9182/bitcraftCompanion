@@ -36,6 +36,12 @@ type SpacetimeBuilder = DbConnectionBuilder<
 /** Minimal no-op remote module: no tables, no reducers. Replaced by generated
  * bindings once `spacetime generate` is run for the BitCraft module. */
 const EMPTY_REMOTE_MODULE = {
+  // The SDK's `build()` gates on `versionInfo.cliVersion` (must be >= 1.2.0)
+  // before it will even open a connection. Generated bindings normally supply
+  // this; we stub it to the installed SDK version so the wrapper can establish
+  // a (binding-less) connection — enough to receive IdentityToken / diagnose
+  // connectivity. Row decoding still requires real `spacetime generate` tables.
+  versionInfo: { cliVersion: "1.3.3" },
   tables: {},
   reducers: {},
   eventContextConstructor: (imp: DbConnectionImpl, event: unknown) => ({ ...imp, event }),
