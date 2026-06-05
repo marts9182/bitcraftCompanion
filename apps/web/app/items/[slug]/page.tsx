@@ -5,7 +5,7 @@ import { RarityBadge } from "@/components/compendium/RarityBadge";
 import { TierBadge } from "@/components/compendium/TierBadge";
 import { CraftGraphSection } from "@/components/compendium/CraftGraphSection";
 import { getItemBySlug, getItemCraftGraph, listAllItemSlugs } from "@/lib/queries/items";
-import { breadcrumbJsonLd, itemJsonLd } from "@/lib/jsonld";
+import { breadcrumbJsonLd, itemJsonLd, jsonLdScript } from "@/lib/jsonld";
 import { SITE_URL } from "@/lib/seo";
 
 export const revalidate = 86400;
@@ -53,7 +53,7 @@ export default async function ItemDetailPage({ params }: { params: Promise<{ slu
     <main className="mx-auto max-w-3xl px-6 py-12">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(jsonLd) }}
       />
       <nav className="text-sm text-muted-foreground">
         <Link href="/items" className="hover:underline">

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { breadcrumbJsonLd, itemJsonLd, itemListJsonLd } from "./jsonld";
+import { breadcrumbJsonLd, itemJsonLd, itemListJsonLd, jsonLdScript } from "./jsonld";
 
 describe("jsonld builders", () => {
   it("builds a BreadcrumbList with positions", () => {
@@ -47,5 +47,18 @@ describe("jsonld builders", () => {
       name: "Nail",
       url: "https://x.com/items/nail",
     });
+  });
+});
+
+describe("jsonLdScript", () => {
+  it("escapes < so embedded </script> cannot break out of the tag", () => {
+    const out = jsonLdScript({ name: "foo</script><script>alert(1)" });
+    expect(out).not.toContain("</script>");
+    expect(out).toContain("\\u003c");
+  });
+
+  it("round-trips through JSON.parse unchanged", () => {
+    const data = { name: "Iron </script> Ingot", n: 3 };
+    expect(JSON.parse(jsonLdScript(data))).toEqual(data);
   });
 });

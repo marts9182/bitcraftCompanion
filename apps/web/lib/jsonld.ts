@@ -40,3 +40,8 @@ export function itemListJsonLd(items: Crumb[], listUrl: string) {
     })),
   };
 }
+
+/** Serialize data as JSON safe to embed inside an inline <script> tag. */
+export function jsonLdScript(data: unknown): string {
+  return JSON.stringify(data).replace(/</g, "\\u003c");
+}

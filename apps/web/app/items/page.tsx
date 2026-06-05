@@ -4,7 +4,7 @@ import { ItemFilters } from "@/components/compendium/ItemFilters";
 import { Pager } from "@/components/compendium/Pager";
 import { listItems } from "@/lib/queries/items";
 import { parseItemListParams } from "@/lib/queries/item-list-params";
-import { itemListJsonLd, breadcrumbJsonLd } from "@/lib/jsonld";
+import { itemListJsonLd, breadcrumbJsonLd, jsonLdScript } from "@/lib/jsonld";
 import { SITE_URL } from "@/lib/seo";
 
 export const metadata: Metadata = {
@@ -42,7 +42,7 @@ export default async function ItemsPage({ searchParams }: { searchParams: Promis
     <main className="mx-auto max-w-4xl px-6 py-12">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(jsonLd) }}
       />
       <h1 className="text-3xl font-bold tracking-tight">Items</h1>
       <p className="mt-2 text-muted-foreground">{total.toLocaleString()} items</p>
