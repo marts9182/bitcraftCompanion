@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildCraftGraph, type CraftGraphInput } from "./craft-graph";
+import { buildCraftGraph, resolveStackView, type CraftGraphInput } from "./craft-graph";
 
 const base: CraftGraphInput = {
   recipes: [
@@ -60,5 +60,27 @@ describe("buildCraftGraph", () => {
   it("returns empty arrays when the item has no recipes", () => {
     const g = buildCraftGraph(7, { ...base, madeByRecipeIds: [], usedInRecipeIds: [] });
     expect(g).toEqual({ madeBy: [], usedIn: [] });
+  });
+});
+
+describe("resolveStackView", () => {
+  const refs = { "item:1": { name: "Iron Ingot", slug: "iron-ingot" } };
+  it("resolves a known ref", () => {
+    expect(resolveStackView({ refType: "item", refId: 1, quantity: 2 }, refs)).toEqual({
+      refType: "item",
+      refId: 1,
+      name: "Iron Ingot",
+      slug: "iron-ingot",
+      quantity: 2,
+    });
+  });
+  it("falls back to a placeholder for an unknown ref", () => {
+    expect(resolveStackView({ refType: "cargo", refId: 9, quantity: 1 }, refs)).toEqual({
+      refType: "cargo",
+      refId: 9,
+      name: "cargo #9",
+      slug: null,
+      quantity: 1,
+    });
   });
 });

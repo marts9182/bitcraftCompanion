@@ -51,7 +51,11 @@ export interface CraftGraph {
   usedIn: RecipeView[];
 }
 
-function resolveStack(s: StackRow, refs: Record<string, RefInfo>): StackView {
+/** Resolve a single stack reference to its display view (pure). */
+export function resolveStackView(
+  s: { refType: RefType; refId: number; quantity: number },
+  refs: Record<string, RefInfo>,
+): StackView {
   const info = refs[`${s.refType}:${s.refId}`];
   return {
     refType: s.refType,
@@ -60,6 +64,10 @@ function resolveStack(s: StackRow, refs: Record<string, RefInfo>): StackView {
     slug: info?.slug ?? null,
     quantity: s.quantity,
   };
+}
+
+function resolveStack(s: StackRow, refs: Record<string, RefInfo>): StackView {
+  return resolveStackView(s, refs);
 }
 
 function toRecipeView(recipe: RecipeRow, stacks: StackRow[], refs: Record<string, RefInfo>): RecipeView {
