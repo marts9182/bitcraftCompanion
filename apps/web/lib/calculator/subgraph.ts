@@ -38,7 +38,6 @@ export function assembleSubgraph(args: {
     const calc: CalcRecipe = {
       id: r.id,
       name: r.name,
-      type: r.type,
       timeRequirement: r.timeRequirement ?? 0,
       staminaRequirement: r.staminaRequirement ?? 0,
       outputQty: out.quantity || 1, // guard bad data (0 → division by zero in expand)

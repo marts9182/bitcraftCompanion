@@ -65,8 +65,10 @@ Mirrors the existing split between `craft-graph.ts` (pure) and `craft-graph-db.t
   - `recipesByRef: Map<RefKey, CalcRecipe[]>` — for each reachable ref, the recipes
     that produce it. `RefKey = "${refType}:${refId}"`.
   - `refInfo: Map<RefKey, { name; slug; iconAssetName? }>` — display info.
-  - A `CalcRecipe` carries: `id`, `type`, `timeRequirement`, `staminaRequirement`,
+  - A `CalcRecipe` carries: `id`, `name`, `timeRequirement`, `staminaRequirement`,
     `inputs: { refType; refId; quantity }[]`, and the `outputQty` of the target ref.
+    (Implementation note: the recipe `type` is filtered to crafting at the DB layer and
+    is not carried on `CalcRecipe`, since the client never needs it.)
 - **Target:** `{ refType; refId; quantity }`.
 - **Selections:** `Map<RefKey, recipeId>` — which recipe to use at each multi-recipe
   node. Missing entries are filled with the default heuristic.
@@ -75,7 +77,9 @@ Mirrors the existing split between `craft-graph.ts` (pure) and `craft-graph-db.t
 - `tree`: nested craft nodes (ref, chosen recipe, craft count, surplus, children).
 - `shoppingList`: flattened raw-material lines `{ refType; refId; name; slug; icon?; quantity }`.
 - `totals`: `{ timeRequirement; staminaRequirement }` summed across all crafts.
-- `nodesWithAlternatives`: refs that have >1 producing recipe (drives the swap UI).
+- Each tree node carries a `hasAlternatives` boolean (true when >1 recipe produces that
+  ref) which drives the per-node swap UI. (The engine surfaces this per-node rather than
+  as a separate top-level `nodesWithAlternatives` list.)
 
 ### Rules
 - **Leaf / raw material:** a ref with no producing recipe is a shopping-list line;
@@ -163,3 +167,11 @@ item contains the expected refs and recipes.
   if a real target proves pathological (YAGNI until observed).
 - Default-recipe heuristic is intentionally simple; "cheapest tree" selection is a
   future enhancement once a cost metric (e.g. market price) exists.
+- **Per-branch crafting (totals are an upper bound).** The engine expands a tree, not a
+  DAG: when an intermediate feeds two parents, it is crafted independently in each branch
+  (`crafts = ceil(needed / outputQty)` per node). The raw-material **shopping list is
+  aggregated correctly** across branches, but **time/stamina totals and surplus reflect
+  un-batched crafting** and can exceed an optimal batched plan for diamond-shaped recipe
+  graphs. This matches the per-node quantity math above and is intentional for v1; true
+  DAG batching (combine shared-intermediate demand before dividing) is a future
+  enhancement.

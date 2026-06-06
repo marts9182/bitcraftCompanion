@@ -5,7 +5,6 @@ import type { CalcRecipe } from "./types";
 const r = (id: number, inputs: number): CalcRecipe => ({
   id,
   name: `Recipe ${id}`,
-  type: "crafting",
   timeRequirement: 0,
   staminaRequirement: 0,
   outputQty: 1,
@@ -29,11 +28,11 @@ import type { Subgraph } from "./types";
 const sg: Subgraph = {
   recipesByRef: {
     "item:1": [
-      { id: 10, name: "Smelt Iron", type: "crafting", timeRequirement: 5, staminaRequirement: 2, outputQty: 2, inputs: [{ refType: "cargo", refId: 99, quantity: 5 }] },
+      { id: 10, name: "Smelt Iron", timeRequirement: 5, staminaRequirement: 2, outputQty: 2, inputs: [{ refType: "cargo", refId: 99, quantity: 5 }] },
     ],
     "item:2": [
-      { id: 20, name: "Forge Nail", type: "crafting", timeRequirement: 3, staminaRequirement: 1, outputQty: 1, inputs: [{ refType: "item", refId: 1, quantity: 3 }] },
-      { id: 21, name: "Forge Nail (slow)", type: "crafting", timeRequirement: 9, staminaRequirement: 4, outputQty: 1, inputs: [{ refType: "item", refId: 1, quantity: 5 }] },
+      { id: 20, name: "Forge Nail", timeRequirement: 3, staminaRequirement: 1, outputQty: 1, inputs: [{ refType: "item", refId: 1, quantity: 3 }] },
+      { id: 21, name: "Forge Nail (slow)", timeRequirement: 9, staminaRequirement: 4, outputQty: 1, inputs: [{ refType: "item", refId: 1, quantity: 5 }] },
     ],
   },
   refInfo: {
@@ -88,8 +87,8 @@ describe("expand", () => {
   it("breaks cycles by treating the repeated ref as raw", () => {
     const cyclic: Subgraph = {
       recipesByRef: {
-        "item:1": [{ id: 1, name: "A", type: "crafting", timeRequirement: 0, staminaRequirement: 0, outputQty: 1, inputs: [{ refType: "item", refId: 2, quantity: 1 }] }],
-        "item:2": [{ id: 2, name: "B", type: "crafting", timeRequirement: 0, staminaRequirement: 0, outputQty: 1, inputs: [{ refType: "item", refId: 1, quantity: 1 }] }],
+        "item:1": [{ id: 1, name: "A", timeRequirement: 0, staminaRequirement: 0, outputQty: 1, inputs: [{ refType: "item", refId: 2, quantity: 1 }] }],
+        "item:2": [{ id: 2, name: "B", timeRequirement: 0, staminaRequirement: 0, outputQty: 1, inputs: [{ refType: "item", refId: 1, quantity: 1 }] }],
       },
       refInfo: { "item:1": { name: "A", slug: "a" }, "item:2": { name: "B", slug: "b" } },
     };

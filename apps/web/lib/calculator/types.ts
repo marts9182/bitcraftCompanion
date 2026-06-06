@@ -21,7 +21,6 @@ export interface CalcStack {
 export interface CalcRecipe {
   id: number;
   name: string;
-  type: string;
   timeRequirement: number; // seconds; 0 if unknown
   staminaRequirement: number; // 0 if unknown
   outputQty: number; // qty of THIS ref produced per craft

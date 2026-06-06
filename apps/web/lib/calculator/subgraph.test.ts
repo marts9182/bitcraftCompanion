@@ -13,7 +13,6 @@ describe("assembleSubgraph", () => {
       {
         id: 10,
         name: "Smelt Iron",
-        type: "crafting",
         timeRequirement: 5,
         staminaRequirement: 0,
         outputQty: 2,
