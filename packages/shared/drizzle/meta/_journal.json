@@ -15,6 +15,13 @@
       "when": 1780598129392,
       "tag": "0001_slippery_nicolaos",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780747845615,
+      "tag": "0002_slippery_rafael_vega",
+      "breakpoints": true
     }
   ]
 }

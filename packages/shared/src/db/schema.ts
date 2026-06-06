@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, integer, jsonb, boolean, real, uniqueIndex, index } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, timestamp, integer, bigint, jsonb, boolean, real, uniqueIndex, index, primaryKey } from "drizzle-orm/pg-core";
 
 /** Audit row written by the worker for each ingestion run. */
 export const ingestionRuns = pgTable("ingestion_runs", {
@@ -140,6 +140,96 @@ export const recipeOutputs = pgTable(
   (t) => ({
     byRecipe: index("recipe_outputs_recipe_idx").on(t.recipeId),
     byRef: index("recipe_outputs_ref_idx").on(t.refType, t.refId),
+  }),
+);
+
+export const regions = pgTable("regions", {
+  region: text("region").primaryKey(),
+  module: text("module").notNull(),
+  name: text("name").notNull(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const players = pgTable(
+  "players",
+  {
+    entityId: text("entity_id").primaryKey(),
+    region: text("region").notNull(),
+    username: text("username").notNull(),
+    timePlayed: integer("time_played").notNull().default(0),
+    signedIn: boolean("signed_in").notNull().default(false),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    byRegion: index("players_region_idx").on(t.region),
+    byName: index("players_username_idx").on(t.username),
+  }),
+);
+
+export const skills = pgTable("skills", {
+  id: integer("id").primaryKey(),
+  name: text("name").notNull(),
+  category: text("category"),
+  maxLevel: integer("max_level").notNull().default(0),
+});
+
+export const playerSkills = pgTable(
+  "player_skills",
+  {
+    playerEntityId: text("player_entity_id").notNull(),
+    skillId: integer("skill_id").notNull(),
+    region: text("region").notNull(),
+    xp: bigint("xp", { mode: "number" }).notNull().default(0),
+    level: integer("level").notNull().default(1),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.playerEntityId, t.skillId] }),
+    bySkill: index("player_skills_rank_idx").on(t.region, t.skillId, t.xp),
+    byPlayer: index("player_skills_player_idx").on(t.playerEntityId),
+  }),
+);
+
+export const empires = pgTable(
+  "empires",
+  {
+    entityId: text("entity_id").primaryKey(),
+    region: text("region").notNull(),
+    name: text("name").notNull(),
+    numClaims: integer("num_claims").notNull().default(0),
+    treasury: bigint("treasury", { mode: "number" }).notNull().default(0),
+    leaderPlayerEntityId: text("leader_player_entity_id"),
+    memberCount: integer("member_count").notNull().default(0),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => ({ byRegion: index("empires_region_idx").on(t.region) }),
+);
+
+export const empireMembers = pgTable(
+  "empire_members",
+  {
+    empireEntityId: text("empire_entity_id").notNull(),
+    playerEntityId: text("player_entity_id").notNull(),
+    region: text("region").notNull(),
+    rank: integer("rank").notNull().default(0),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.empireEntityId, t.playerEntityId] }),
+    byEmpire: index("empire_members_empire_idx").on(t.empireEntityId),
+    byPlayer: index("empire_members_player_idx").on(t.playerEntityId),
+  }),
+);
+
+export const claims = pgTable(
+  "claims",
+  {
+    entityId: text("entity_id").primaryKey(),
+    region: text("region").notNull(),
+    name: text("name").notNull(),
+    ownerPlayerEntityId: text("owner_player_entity_id"),
+  },
+  (t) => ({
+    byRegion: index("claims_region_idx").on(t.region),
+    byOwner: index("claims_owner_idx").on(t.ownerPlayerEntityId),
   }),
 );
 
