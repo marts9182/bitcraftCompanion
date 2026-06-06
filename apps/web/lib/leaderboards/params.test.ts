@@ -15,6 +15,10 @@ describe("parseLeaderboardParams", () => {
   it("falls back to the default sort for an unknown sort and floors page at 1", () => {
     expect(parseLeaderboardParams({ sort: "bogus", page: "0" })).toEqual({ region: "all", sort: "totalXp", page: 1 });
   });
+  it("floors negative and non-numeric pages to 1", () => {
+    expect(parseLeaderboardParams({ page: "-5" }).page).toBe(1);
+    expect(parseLeaderboardParams({ page: "abc" }).page).toBe(1);
+  });
   it("exposes the page size and sort whitelist", () => {
     expect(LB_PAGE_SIZE).toBe(100);
     expect(SKILL_SORTS).toContain("highestLevel");

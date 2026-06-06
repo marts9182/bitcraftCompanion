@@ -42,7 +42,8 @@ export async function getSkillLeaderboard(skillId: number, params: LeaderboardPa
     .from(playerSkills)
     .innerJoin(players, eq(players.entityId, playerSkills.playerEntityId))
     .where(where)
-    .orderBy(desc(playerSkills.xp))
+    // Secondary key makes ties deterministic → stable pagination across pages/ISR.
+    .orderBy(desc(playerSkills.xp), playerSkills.playerEntityId)
     .limit(LB_PAGE_SIZE)
     .offset((params.page - 1) * LB_PAGE_SIZE);
 
@@ -93,7 +94,7 @@ export async function getTotalLeaderboard(params: LeaderboardParams): Promise<{ 
     })
     .from(agg)
     .innerJoin(players, eq(players.entityId, agg.playerEntityId))
-    .orderBy(desc(orderCol))
+    .orderBy(desc(orderCol), agg.playerEntityId)
     .limit(LB_PAGE_SIZE)
     .offset((params.page - 1) * LB_PAGE_SIZE);
 
@@ -113,7 +114,7 @@ export async function getEmpireLeaderboard(params: LeaderboardParams) {
     .select()
     .from(empires)
     .where(where)
-    .orderBy(desc(orderCol))
+    .orderBy(desc(orderCol), empires.entityId)
     .limit(LB_PAGE_SIZE)
     .offset((params.page - 1) * LB_PAGE_SIZE);
   return { rows, total: Number(total) };
@@ -131,7 +132,7 @@ export async function getActivityLeaderboard(params: LeaderboardParams) {
     .select({ entityId: players.entityId, username: players.username, region: players.region, timePlayed: players.timePlayed, signedIn: players.signedIn })
     .from(players)
     .where(where)
-    .orderBy(desc(players.timePlayed))
+    .orderBy(desc(players.timePlayed), players.entityId)
     .limit(LB_PAGE_SIZE)
     .offset((params.page - 1) * LB_PAGE_SIZE);
   return { rows, total: Number(total), online: Number(online) };
