@@ -321,6 +321,57 @@ async function main() {
     });
     console.log(`[lb-snapshot] map: chunks=${chunkRows.length} regions=${allRegions.size}`);
 
+    // ── Market: global per-item summary + price-history slice (after all regions) ──
+    const MARKET_WINDOW_MS = 24 * 60 * 60 * 1000;
+    const marketCutoffTs = (Date.now() - MARKET_WINDOW_MS) * 1000; // micros since epoch (SpacetimeDB Timestamp)
+    await db.execute(sql`TRUNCATE market_item_summary`);
+    await db.execute(sql`
+      WITH agg AS (
+        SELECT item_id, item_type,
+          min(price) FILTER (WHERE side = 'sell' AND price < ${PRICE_SENTINEL_CEILING}) AS lowest_ask,
+          max(price) FILTER (WHERE side = 'buy'  AND price < ${PRICE_SENTINEL_CEILING}) AS highest_bid,
+          COALESCE(sum(quantity) FILTER (WHERE side = 'sell' AND price < ${PRICE_SENTINEL_CEILING}), 0)::int AS ask_qty,
+          COALESCE(sum(quantity) FILTER (WHERE side = 'buy'  AND price < ${PRICE_SENTINEL_CEILING}), 0)::int AS bid_qty,
+          count(*) FILTER (WHERE side = 'sell')::int AS ask_orders,
+          count(*) FILTER (WHERE side = 'buy')::int  AS bid_orders,
+          count(DISTINCT region)::int AS region_count,
+          count(DISTINCT claim_entity_id)::int AS marketplace_count
+        FROM market_orders
+        GROUP BY item_id, item_type
+      ),
+      sales AS (
+        SELECT item_id, item_type, sum(quantity)::int AS sold_qty, max(timestamp) AS last_sold
+        FROM market_sales
+        WHERE timestamp >= ${marketCutoffTs}
+        GROUP BY item_id, item_type
+      )
+      INSERT INTO market_item_summary (
+        item_id, item_type, item_name, item_slug, icon_asset_name, tier, rarity,
+        lowest_ask, highest_bid, ask_qty, bid_qty, ask_order_count, bid_order_count,
+        region_count, marketplace_count, sold_qty_recent, last_sold_at, updated_at
+      )
+      SELECT a.item_id, a.item_type,
+        COALESCE(i.name, c.name, ''), COALESCE(i.slug, c.slug, ''),
+        COALESCE(i.icon_asset_name, c.icon_asset_name),
+        COALESCE(i.tier, c.tier), COALESCE(i.rarity, c.rarity, 'Default'),
+        a.lowest_ask, a.highest_bid, a.ask_qty, a.bid_qty, a.ask_orders, a.bid_orders,
+        a.region_count, a.marketplace_count,
+        COALESCE(s.sold_qty, 0), s.last_sold, now()
+      FROM agg a
+      LEFT JOIN items i ON a.item_type = 0 AND i.id = a.item_id
+      LEFT JOIN cargo c ON a.item_type = 1 AND c.id = a.item_id
+      LEFT JOIN sales s ON s.item_id = a.item_id AND s.item_type = a.item_type
+    `);
+    await db.execute(sql`
+      INSERT INTO market_price_history (item_id, item_type, snapshot_at, lowest_ask, highest_bid, ask_qty, bid_qty, sold_qty_recent)
+      SELECT item_id, item_type, ${run!.startedAt}, lowest_ask, highest_bid, ask_qty, bid_qty, sold_qty_recent
+      FROM market_item_summary
+      ON CONFLICT (item_id, item_type, snapshot_at) DO NOTHING
+    `);
+    const marketRes = await db.execute(sql`SELECT count(*)::int AS count FROM market_item_summary`);
+    const marketSummaryCount = (marketRes as unknown as { count: number }[])[0]?.count ?? 0;
+    console.log(`[lb-snapshot] market: ${marketSummaryCount} traded items summarized + price-history slice appended`);
+
     await db.update(schema.ingestionRuns).set({ status: "ok", finishedAt: new Date(), rowsUpserted: totalPlayers }).where(eq(schema.ingestionRuns.id, run!.id));
     await triggerRevalidate({ url: env.REVALIDATE_URL, secret: env.REVALIDATE_SECRET });
     console.log(`[lb-snapshot] OK — ${modules.length} player region(s) + ${emptyGridded}/${emptyModules.length} empty region(s) gridded (${discovered.length} discovered), ${totalPlayers} players${skillsLoaded ? "" : " (no skill_desc seen)"}`);
