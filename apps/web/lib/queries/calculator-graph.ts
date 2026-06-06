@@ -3,7 +3,7 @@ import { and, eq, ilike, inArray, or } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { assembleSubgraph, type RawStackRow } from "@/lib/calculator/subgraph";
 import { resolveRefs } from "./craft-graph-db";
-import type { RefKey, RefType, Subgraph } from "@/lib/calculator/types";
+import type { RefInfo, RefKey, RefType, Subgraph } from "@/lib/calculator/types";
 import { refKey } from "@/lib/calculator/types";
 
 const CRAFTING = "crafting";
@@ -34,6 +34,8 @@ export async function getCalculatorSubgraph(refType: RefType, refId: number): Pr
     const craftingIds = new Set(recs.map((r) => r.id));
     for (const r of recs) recipeRows.set(r.id, r);
 
+    // Only output rows matching the frontier are recorded — byproducts of a recipe
+    // (refs not in the demand chain) are intentionally not keyed in recipesByRef.
     for (const o of outs) {
       if (craftingIds.has(o.recipeId)) {
         outputRows.push({ recipeId: o.recipeId, refType: o.refType as RefType, refId: o.refId, quantity: o.quantity });
@@ -59,7 +61,7 @@ export async function getCalculatorSubgraph(refType: RefType, refId: number): Pr
   }
 
   const allStacks = [...outputRows, ...inputRows];
-  const refInfo = (await resolveRefs(allStacks.map((s) => ({ refType: s.refType, refId: s.refId })))) as Record<RefKey, { name: string; slug: string; iconAssetName?: string | null }>;
+  const refInfo = (await resolveRefs(allStacks.map((s) => ({ refType: s.refType, refId: s.refId })))) as Record<RefKey, RefInfo>;
 
   return assembleSubgraph({
     recipes: [...recipeRows.values()].map((r) => ({
