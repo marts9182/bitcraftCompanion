@@ -9,6 +9,8 @@ import {
   onlineEntityIds,
   activeRegionIds,
   buildRegionPlayerRows,
+  mapEmpireNodes,
+  mapClaimMembers,
 } from "./map-leaderboards";
 
 describe("activeRegionIds", () => {
@@ -22,14 +24,14 @@ describe("activeRegionIds", () => {
 describe("buildRegionPlayerRows", () => {
   it("builds region players from player_state, enriched with global username + online", () => {
     const rows = buildRegionPlayerRows(
-      [{ entity_id: "100", time_played: 7483 }, { entity_id: "200", time_played: 0 }],
+      [{ entity_id: "100", time_played: 7483, time_signed_in: 500, sign_in_timestamp: 42 }, { entity_id: "200", time_played: 0 }],
       "14",
       usernamesById([{ entity_id: "100", username: "Alessandro" }]),
       onlineEntityIds([{ entity_id: "100" }]),
     );
     expect(rows).toEqual([
-      { entityId: "100", region: "14", username: "Alessandro", timePlayed: 7483, signedIn: true },
-      { entityId: "200", region: "14", username: "Player 200", timePlayed: 0, signedIn: false },
+      { entityId: "100", region: "14", username: "Alessandro", timePlayed: 7483, timeSignedIn: 500, signInTimestamp: 42, signedIn: true },
+      { entityId: "200", region: "14", username: "Player 200", timePlayed: 0, timeSignedIn: 0, signInTimestamp: 0, signedIn: false },
     ]);
   });
 });
@@ -63,28 +65,30 @@ describe("buildPlayerRows", () => {
   it("merges username + state + online presence by entity id", () => {
     const rows = buildPlayerRows(
       [{ entity_id: "1", username: "Alice" }, { entity_id: "2", username: "Bob" }],
-      [{ entity_id: "1", time_played: 3600, signed_in: true }],
+      [{ entity_id: "1", time_played: 3600, time_signed_in: 1200, sign_in_timestamp: 99, signed_in: true }],
       [{ entity_id: "1" }],
       "1",
     );
     expect(rows).toEqual([
-      { entityId: "1", region: "1", username: "Alice", timePlayed: 3600, signedIn: true },
-      { entityId: "2", region: "1", username: "Bob", timePlayed: 0, signedIn: false },
+      { entityId: "1", region: "1", username: "Alice", timePlayed: 3600, timeSignedIn: 1200, signInTimestamp: 99, signedIn: true },
+      { entityId: "2", region: "1", username: "Bob", timePlayed: 0, timeSignedIn: 0, signInTimestamp: 0, signedIn: false },
     ]);
   });
 });
 
 describe("mapEmpireData", () => {
-  it("derives member count and leader (lowest rank)", () => {
+  it("derives member count, leader (lowest rank), currency + member donations", () => {
     const { empires, members } = mapEmpireData(
-      [{ entity_id: "100", name: "Vanguard", num_claims: 4, shard_treasury: 999 }],
+      [{ entity_id: "100", name: "Vanguard", num_claims: 4, shard_treasury: 999, empire_currency_treasury: 5000, nobility_threshold: 100, owner_type: 1 }],
       [
-        { entity_id: "1", empire_entity_id: "100", rank: 2 },
-        { entity_id: "2", empire_entity_id: "100", rank: 0 },
+        { entity_id: "1", empire_entity_id: "100", rank: 2, donated_shards: 10, donated_empire_currency: 20, noble: false },
+        { entity_id: "2", empire_entity_id: "100", rank: 0, noble: true, donated_shards: 50, donated_empire_currency: 0 },
       ],
       "1",
     );
     expect(members).toHaveLength(2);
+    expect(members[0]).toMatchObject({ donatedShards: 10, donatedCurrency: 20, noble: false });
+    expect(members[1]).toMatchObject({ noble: true, donatedShards: 50 });
     expect(empires).toEqual([
       {
         entityId: "100",
@@ -92,9 +96,42 @@ describe("mapEmpireData", () => {
         name: "Vanguard",
         numClaims: 4,
         treasury: 999,
+        currencyTreasury: 5000,
+        nobilityThreshold: 100,
+        ownerType: 1,
         leaderPlayerEntityId: "2",
         memberCount: 2,
       },
+    ]);
+  });
+});
+
+describe("mapEmpireNodes", () => {
+  it("maps towers and aggregates count/energy/upkeep per empire", () => {
+    const { towers, agg } = mapEmpireNodes(
+      [
+        { entity_id: "t1", empire_entity_id: "100", chunk_index: "5", energy: 30, upkeep: 2, active: true },
+        { entity_id: "t2", empire_entity_id: "100", chunk_index: "6", energy: 70, upkeep: 3, active: false },
+        { entity_id: "t3", empire_entity_id: "200", chunk_index: "7", energy: 10, upkeep: 1, active: true },
+      ],
+      "14",
+    );
+    expect(towers).toHaveLength(3);
+    expect(towers[0]).toMatchObject({ entityId: "t1", empireEntityId: "100", region: "14", energy: 30, active: true });
+    expect(agg.get("100")).toEqual({ count: 2, energy: 100, upkeep: 5 });
+    expect(agg.get("200")).toEqual({ count: 1, energy: 10, upkeep: 1 });
+  });
+});
+
+describe("mapClaimMembers", () => {
+  it("maps player↔claim memberships with permission flags + claim name from the map", () => {
+    const rows = mapClaimMembers(
+      [{ claim_entity_id: "9", player_entity_id: "1", co_owner_permission: true, officer_permission: false, build_permission: true, inventory_permission: false }],
+      "14",
+      new Map([["9", "Far Horizon"]]),
+    );
+    expect(rows).toEqual([
+      { claimEntityId: "9", playerEntityId: "1", region: "14", claimName: "Far Horizon", coOwner: true, officer: false, build: true, inventory: false },
     ]);
   });
 });

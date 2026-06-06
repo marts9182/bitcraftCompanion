@@ -58,8 +58,11 @@ export interface PlayerRow {
   region: string;
   username: string;
   timePlayed: number;
+  timeSignedIn: number;
+  signInTimestamp: number;
   signedIn: boolean;
 }
+const bool = (v: unknown): boolean => v === true || v === 1 || v === "true";
 export function buildPlayerRows(usernameRows: Raw[], stateRows: Raw[], signedInRows: Raw[], region: string): PlayerRow[] {
   const online = new Set(signedInRows.map((r) => idStr(r.entity_id)));
   const state = new Map(stateRows.map((r) => [idStr(r.entity_id), r] as const));
@@ -71,6 +74,8 @@ export function buildPlayerRows(usernameRows: Raw[], stateRows: Raw[], signedInR
       region,
       username: str(u.username),
       timePlayed: toInt(st?.time_played) ?? 0,
+      timeSignedIn: toInt(st?.time_signed_in) ?? 0,
+      signInTimestamp: toInt(st?.sign_in_timestamp) ?? 0,
       signedIn: online.has(id),
     };
   });
@@ -118,6 +123,8 @@ export function buildRegionPlayerRows(
       region,
       username: usernameById.get(id) ?? `Player ${id}`,
       timePlayed: toInt(s.time_played) ?? 0,
+      timeSignedIn: toInt(s.time_signed_in) ?? 0,
+      signInTimestamp: toInt(s.sign_in_timestamp) ?? 0,
       signedIn: onlineIds.has(id),
     };
   });
@@ -130,6 +137,12 @@ export interface EmpireRow {
   color?: string | null;
   numClaims: number;
   treasury: number;
+  currencyTreasury: number;
+  nobilityThreshold: number;
+  ownerType: number | null;
+  towerCount?: number;
+  towerEnergy?: number;
+  towerUpkeep?: number;
   leaderPlayerEntityId: string | null;
   memberCount: number;
 }
@@ -138,6 +151,9 @@ export interface EmpireMemberRow {
   playerEntityId: string;
   region: string;
   rank: number;
+  noble: boolean;
+  donatedShards: number;
+  donatedCurrency: number;
 }
 export function mapEmpireData(empireRows: Raw[], memberRows: Raw[], region: string): { empires: EmpireRow[]; members: EmpireMemberRow[] } {
   const members: EmpireMemberRow[] = memberRows.map((m) => ({
@@ -145,6 +161,9 @@ export function mapEmpireData(empireRows: Raw[], memberRows: Raw[], region: stri
     playerEntityId: idStr(m.entity_id),
     region,
     rank: toInt(m.rank) ?? 0,
+    noble: bool(m.noble),
+    donatedShards: toInt(m.donated_shards) ?? 0,
+    donatedCurrency: toInt(m.donated_empire_currency) ?? 0,
   }));
   const byEmpire = new Map<string, EmpireMemberRow[]>();
   for (const m of members) {
@@ -162,11 +181,71 @@ export function mapEmpireData(empireRows: Raw[], memberRows: Raw[], region: stri
       name: str(e.name),
       numClaims: toInt(e.num_claims) ?? 0,
       treasury: toInt(e.shard_treasury) ?? 0,
+      currencyTreasury: toInt(e.empire_currency_treasury) ?? 0,
+      nobilityThreshold: toInt(e.nobility_threshold) ?? 0,
+      ownerType: toInt(e.owner_type),
       leaderPlayerEntityId: leader?.playerEntityId ?? null,
       memberCount: mem.length,
     };
   });
   return { empires, members };
+}
+
+export interface EmpireTowerRow {
+  entityId: string;
+  empireEntityId: string;
+  region: string;
+  chunkIndex: string;
+  energy: number;
+  upkeep: number;
+  active: boolean;
+}
+export interface EmpireTowerAgg { count: number; energy: number; upkeep: number; }
+/** Map empire_node_state rows to tower rows + per-empire aggregates (count/energy/upkeep). */
+export function mapEmpireNodes(rows: Raw[], region: string): { towers: EmpireTowerRow[]; agg: Map<string, EmpireTowerAgg> } {
+  const towers: EmpireTowerRow[] = rows.map((r) => ({
+    entityId: idStr(r.entity_id),
+    empireEntityId: idStr(r.empire_entity_id),
+    region,
+    chunkIndex: idStr(r.chunk_index),
+    energy: toInt(r.energy) ?? 0,
+    upkeep: toInt(r.upkeep) ?? 0,
+    active: bool(r.active),
+  }));
+  const agg = new Map<string, EmpireTowerAgg>();
+  for (const t of towers) {
+    const a = agg.get(t.empireEntityId) ?? { count: 0, energy: 0, upkeep: 0 };
+    a.count += 1; a.energy += t.energy; a.upkeep += t.upkeep;
+    agg.set(t.empireEntityId, a);
+  }
+  return { towers, agg };
+}
+
+export interface ClaimMemberRow {
+  claimEntityId: string;
+  playerEntityId: string;
+  region: string;
+  claimName: string;
+  coOwner: boolean;
+  officer: boolean;
+  build: boolean;
+  inventory: boolean;
+}
+/** Map claim_member_state rows to player↔claim membership rows with permission flags. */
+export function mapClaimMembers(rows: Raw[], region: string, claimNameById?: Map<string, string>): ClaimMemberRow[] {
+  return rows.map((r) => {
+    const claimId = idStr(r.claim_entity_id);
+    return {
+      claimEntityId: claimId,
+      playerEntityId: idStr(r.player_entity_id),
+      region,
+      claimName: claimNameById?.get(claimId) ?? "",
+      coOwner: bool(r.co_owner_permission),
+      officer: bool(r.officer_permission),
+      build: bool(r.build_permission),
+      inventory: bool(r.inventory_permission),
+    };
+  });
 }
 
 export interface ClaimRow {

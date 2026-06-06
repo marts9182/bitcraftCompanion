@@ -5,7 +5,7 @@ config({ path: resolve(dirname(fileURLToPath(import.meta.url)), "../../../.env.l
 
 import {
   parseServerEnv, createDb, schema, COLUMN_ORDERS, normalizeRow,
-  mapSkillRow, mapExperienceRows, mapEmpireData, mapClaimRows,
+  mapSkillRow, mapExperienceRows, mapEmpireData, mapClaimRows, mapEmpireNodes, mapClaimMembers,
   usernamesById, onlineEntityIds, activeRegionIds, buildRegionPlayerRows,
   mapClaimLocalRows, mapChunkRows, mapRegionRows, buildEmpireColors, regionNamesById, type MapChunkRow, type MapRegionRow,
 } from "@bcc/shared";
@@ -33,7 +33,9 @@ const REGION_QUERIES = [
   "SELECT * FROM player_state",
   "SELECT * FROM empire_state",
   "SELECT * FROM empire_player_data_state",
+  "SELECT * FROM empire_node_state",
   "SELECT * FROM claim_state",
+  "SELECT * FROM claim_member_state",
   // Map layers:
   "SELECT * FROM claim_local_state",
   "SELECT * FROM empire_chunk_state",
@@ -125,13 +127,19 @@ async function main() {
       const playerRows = dedupeBy(buildRegionPlayerRows(norm(r, "player_state"), region, usernameMap, onlineSet), (p) => p.entityId);
       const playerSkillRows = dedupeBy(mapExperienceRows(norm(r, "experience_state"), region, maxBySkill), (s) => `${s.playerEntityId}:${s.skillId}`);
       const raw = mapEmpireData(norm(r, "empire_state"), norm(r, "empire_player_data_state"), region);
-      const empires = dedupeBy(raw.empires, (e) => e.entityId).map((e) => ({ ...e, color: empireColors.get(e.entityId) ?? null }));
+      const { towers, agg } = mapEmpireNodes(norm(r, "empire_node_state"), region);
+      const empires = dedupeBy(raw.empires, (e) => e.entityId).map((e) => {
+        const a = agg.get(e.entityId);
+        return { ...e, color: empireColors.get(e.entityId) ?? null, towerCount: a?.count ?? 0, towerEnergy: a?.energy ?? 0, towerUpkeep: a?.upkeep ?? 0 };
+      });
       const members = dedupeBy(raw.members, (m) => `${m.empireEntityId}:${m.playerEntityId}`);
+      const towerRows = dedupeBy(towers, (t) => t.entityId);
       const claimRows = dedupeBy(mapClaimRows(norm(r, "claim_state"), region), (c) => c.entityId);
       totalPlayers += playerRows.length;
 
       // Map layers: claims (per-region, with names from claim_state), chunks + regions (replicated).
       const claimNameMap = new Map(norm(r, "claim_state").map((c) => [String(c.entity_id), String(c.name ?? "")] as const));
+      const claimMemberRows = dedupeBy(mapClaimMembers(norm(r, "claim_member_state"), region, claimNameMap), (m) => `${m.claimEntityId}:${m.playerEntityId}`);
       const mapClaimData = dedupeBy(mapClaimLocalRows(norm(r, "claim_local_state"), claimNameMap), (c) => c.entityId);
       for (const c of mapChunkRows(norm(r, "empire_chunk_state"))) allChunks.set(c.chunkIndex, c);
       for (const g of mapRegionRows(norm(r, "world_region_state"), new Map())) {
@@ -150,6 +158,8 @@ async function main() {
         // Clear this region's rows first so departed entities don't linger.
         await tx.delete(schema.playerSkills).where(eq(schema.playerSkills.region, region));
         await tx.delete(schema.empireMembers).where(eq(schema.empireMembers.region, region));
+        await tx.delete(schema.empireTowers).where(eq(schema.empireTowers.region, region));
+        await tx.delete(schema.claimMembers).where(eq(schema.claimMembers.region, region));
         await tx.delete(schema.claims).where(eq(schema.claims.region, region));
         await tx.delete(schema.players).where(eq(schema.players.region, region));
         await tx.delete(schema.empires).where(eq(schema.empires.region, region));
@@ -173,6 +183,15 @@ async function main() {
         );
         await inChunks(claimRows, CHUNK, (s) =>
           tx.insert(schema.claims).values(s).onConflictDoUpdate({ target: schema.claims.entityId, set: conflictUpdateSet(schema.claims, ["entityId"]) }),
+        );
+        await inChunks(towerRows, CHUNK, (s) =>
+          tx.insert(schema.empireTowers).values(s).onConflictDoUpdate({ target: schema.empireTowers.entityId, set: conflictUpdateSet(schema.empireTowers, ["entityId"]) }),
+        );
+        await inChunks(claimMemberRows, CHUNK, (s) =>
+          tx.insert(schema.claimMembers).values(s).onConflictDoUpdate({
+            target: [schema.claimMembers.claimEntityId, schema.claimMembers.playerEntityId],
+            set: conflictUpdateSet(schema.claimMembers, ["claimEntityId", "playerEntityId"]),
+          }),
         );
         await inChunks(mapClaimData, CHUNK, (s) =>
           tx.insert(schema.mapClaims).values(s).onConflictDoUpdate({ target: schema.mapClaims.entityId, set: conflictUpdateSet(schema.mapClaims, ["entityId"]) }),

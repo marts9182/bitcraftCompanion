@@ -157,6 +157,8 @@ export const players = pgTable(
     region: text("region").notNull(),
     username: text("username").notNull(),
     timePlayed: integer("time_played").notNull().default(0),
+    timeSignedIn: integer("time_signed_in").notNull().default(0),
+    signInTimestamp: bigint("sign_in_timestamp", { mode: "number" }).notNull().default(0),
     signedIn: boolean("signed_in").notNull().default(false),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
@@ -198,6 +200,12 @@ export const empires = pgTable(
     color: text("color"),
     numClaims: integer("num_claims").notNull().default(0),
     treasury: bigint("treasury", { mode: "number" }).notNull().default(0),
+    currencyTreasury: bigint("currency_treasury", { mode: "number" }).notNull().default(0),
+    nobilityThreshold: bigint("nobility_threshold", { mode: "number" }).notNull().default(0),
+    ownerType: integer("owner_type"),
+    towerCount: integer("tower_count").notNull().default(0),
+    towerEnergy: bigint("tower_energy", { mode: "number" }).notNull().default(0),
+    towerUpkeep: bigint("tower_upkeep", { mode: "number" }).notNull().default(0),
     leaderPlayerEntityId: text("leader_player_entity_id"),
     memberCount: integer("member_count").notNull().default(0),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -212,6 +220,9 @@ export const empireMembers = pgTable(
     playerEntityId: text("player_entity_id").notNull(),
     region: text("region").notNull(),
     rank: integer("rank").notNull().default(0),
+    noble: boolean("noble").notNull().default(false),
+    donatedShards: bigint("donated_shards", { mode: "number" }).notNull().default(0),
+    donatedCurrency: bigint("donated_currency", { mode: "number" }).notNull().default(0),
   },
   (t) => ({
     pk: primaryKey({ columns: [t.empireEntityId, t.playerEntityId] }),
@@ -231,6 +242,44 @@ export const claims = pgTable(
   (t) => ({
     byRegion: index("claims_region_idx").on(t.region),
     byOwner: index("claims_owner_idx").on(t.ownerPlayerEntityId),
+  }),
+);
+
+/** Empire towers/nodes (empire_node_state): one row per node with its energy/upkeep. */
+export const empireTowers = pgTable(
+  "empire_towers",
+  {
+    entityId: text("entity_id").primaryKey(),
+    empireEntityId: text("empire_entity_id").notNull(),
+    region: text("region").notNull(),
+    chunkIndex: text("chunk_index").notNull(),
+    energy: bigint("energy", { mode: "number" }).notNull().default(0),
+    upkeep: bigint("upkeep", { mode: "number" }).notNull().default(0),
+    active: boolean("active").notNull().default(false),
+  },
+  (t) => ({
+    byEmpire: index("empire_towers_empire_idx").on(t.empireEntityId),
+    byRegion: index("empire_towers_region_idx").on(t.region),
+  }),
+);
+
+/** Player ↔ claim memberships (claim_member_state) with per-claim permission flags. */
+export const claimMembers = pgTable(
+  "claim_members",
+  {
+    claimEntityId: text("claim_entity_id").notNull(),
+    playerEntityId: text("player_entity_id").notNull(),
+    region: text("region").notNull(),
+    claimName: text("claim_name").notNull().default(""),
+    coOwner: boolean("co_owner").notNull().default(false),
+    officer: boolean("officer").notNull().default(false),
+    build: boolean("build").notNull().default(false),
+    inventory: boolean("inventory").notNull().default(false),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.claimEntityId, t.playerEntityId] }),
+    byPlayer: index("claim_members_player_idx").on(t.playerEntityId),
+    byRegion: index("claim_members_region_idx").on(t.region),
   }),
 );
 
