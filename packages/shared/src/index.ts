@@ -41,3 +41,4 @@ export type { Bounds } from "./world/coords";
 export { watchtowerCentroids } from "./world/watchtowers";
 export type { Watchtower, WatchtowerChunkRow } from "./world/watchtowers";
 export { dominantBiome, BIOME_NAMES } from "./world/biomes";
+export { vividTerritoryColor } from "./world/empire-colors";

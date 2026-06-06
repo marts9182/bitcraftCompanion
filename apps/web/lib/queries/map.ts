@@ -1,6 +1,6 @@
 import "server-only";
 import { getDb, schema } from "@/lib/db";
-import { smallHexToChunk, regionBounds, chunkIndexToBounds, watchtowerCentroids } from "@bcc/shared";
+import { smallHexToChunk, regionBounds, chunkIndexToBounds, watchtowerCentroids, vividTerritoryColor } from "@bcc/shared";
 import type { Watchtower } from "@bcc/shared";
 import { eq, isNotNull } from "drizzle-orm";
 
@@ -32,7 +32,7 @@ export async function getTerritoryCells(): Promise<TerritoryCell[]> {
     .leftJoin(schema.empires, eq(schema.mapChunks.empireEntityId, schema.empires.entityId));
   return rows.map((row) => {
     const b = chunkIndexToBounds(row.chunkIndex);
-    return { x0: b.x0, z0: b.z0, color: row.color ?? "#888888" };
+    return { x0: b.x0, z0: b.z0, color: row.color ? vividTerritoryColor(row.color) : "#888888" };
   });
 }
 
