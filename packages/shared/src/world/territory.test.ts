@@ -4,11 +4,11 @@ import { empireTerritoryOutlines } from "./territory";
 describe("empireTerritoryOutlines", () => {
   it("outlines a single chunk with its 4 edges", () => {
     const [o] = empireTerritoryOutlines([{ x: 5, z: 7, empire: "A" }]);
-    expect(o.empire).toBe("A");
-    expect(o.chunks).toBe(1);
-    expect(o.segments).toHaveLength(4);
-    expect(o.centroidX).toBe(5);
-    expect(o.centroidZ).toBe(7);
+    expect(o!.empire).toBe("A");
+    expect(o!.chunks).toBe(1);
+    expect(o!.segments).toHaveLength(4);
+    expect(o!.centroidX).toBe(5);
+    expect(o!.centroidZ).toBe(7);
   });
 
   it("drops the shared edge between two same-empire chunks (perimeter only)", () => {
