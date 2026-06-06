@@ -8,6 +8,7 @@ import {
   mapSkillRow, mapExperienceRows, mapEmpireData, mapClaimRows, mapEmpireNodes, mapClaimMembers, aggregateEmpireFoundries, aggregateReserveCapsules,
   usernamesById, onlineEntityIds, activeRegionIds, buildRegionPlayerRows,
   mapClaimLocalRows, mapChunkRows, mapRegionRows, buildEmpireColors, regionNamesById, type MapChunkRow, type MapRegionRow,
+  mapMarketOrders, mapMarketplaces, mapClosedListings, PRICE_SENTINEL_CEILING,
 } from "@bcc/shared";
 import { readSnapshot } from "./spacetime/ws-snapshot";
 import { discoverRegionModules } from "./spacetime/discover-regions";
@@ -46,6 +47,11 @@ const REGION_QUERIES = [
   "SELECT inventory_state.* FROM inventory_state JOIN building_state ON inventory_state.owner_entity_id = building_state.entity_id WHERE building_state.building_description_id = 90001",
   "SELECT * FROM building_state WHERE building_description_id = 90001",
   "SELECT * FROM empire_settlement_state",
+  // Market: live order book + marketplaces + closed (sold) listings.
+  "SELECT * FROM sell_order_state",
+  "SELECT * FROM buy_order_state",
+  "SELECT * FROM marketplace_state",
+  "SELECT * FROM closed_listing_state",
 ];
 const REGION_EXPECTED = ["experience_state", "player_state"];
 
@@ -162,6 +168,9 @@ async function main() {
       const members = dedupeBy(raw.members, (m) => `${m.empireEntityId}:${m.playerEntityId}`);
       const towerRows = dedupeBy(towers, (t) => t.entityId);
       const claimRows = dedupeBy(mapClaimRows(norm(r, "claim_state"), region), (c) => c.entityId);
+      const marketOrderRows = dedupeBy(mapMarketOrders(norm(r, "sell_order_state"), norm(r, "buy_order_state"), region), (o) => o.entityId);
+      const marketplaceRows = dedupeBy(mapMarketplaces(norm(r, "marketplace_state"), region), (m) => m.buildingEntityId);
+      const marketSaleRows = dedupeBy(mapClosedListings(norm(r, "closed_listing_state"), region), (s) => s.entityId);
       totalPlayers += playerRows.length;
 
       // Map layers: claims (per-region, with names from claim_state), chunks + regions (replicated).
@@ -193,6 +202,9 @@ async function main() {
         await tx.delete(schema.claims).where(eq(schema.claims.region, region));
         await tx.delete(schema.players).where(eq(schema.players.region, region));
         await tx.delete(schema.empires).where(eq(schema.empires.region, region));
+        await tx.delete(schema.marketOrders).where(eq(schema.marketOrders.region, region));
+        await tx.delete(schema.marketplaces).where(eq(schema.marketplaces.region, region));
+        await tx.delete(schema.marketSales).where(eq(schema.marketSales.region, region));
         await inChunks(playerRows, CHUNK, (s) =>
           tx.insert(schema.players).values(s).onConflictDoUpdate({ target: schema.players.entityId, set: conflictUpdateSet(schema.players, ["entityId"]) }),
         );
@@ -223,12 +235,21 @@ async function main() {
             set: conflictUpdateSet(schema.claimMembers, ["claimEntityId", "playerEntityId"]),
           }),
         );
+        await inChunks(marketOrderRows, CHUNK, (s) =>
+          tx.insert(schema.marketOrders).values(s).onConflictDoUpdate({ target: schema.marketOrders.entityId, set: conflictUpdateSet(schema.marketOrders, ["entityId"]) }),
+        );
+        await inChunks(marketplaceRows, CHUNK, (s) =>
+          tx.insert(schema.marketplaces).values(s).onConflictDoUpdate({ target: schema.marketplaces.buildingEntityId, set: conflictUpdateSet(schema.marketplaces, ["buildingEntityId"]) }),
+        );
+        await inChunks(marketSaleRows, CHUNK, (s) =>
+          tx.insert(schema.marketSales).values(s).onConflictDoUpdate({ target: schema.marketSales.entityId, set: conflictUpdateSet(schema.marketSales, ["entityId"]) }),
+        );
         await tx
           .insert(schema.regions)
           .values({ region, module: moduleName, name: `Region ${region}` })
           .onConflictDoUpdate({ target: schema.regions.region, set: { module: moduleName, updatedAt: new Date() } });
       });
-      console.log(`[lb-snapshot]   region ${region}: players=${playerRows.length} skills=${playerSkillRows.length} empires=${empires.length} claims=${claimRows.length} mapClaims=${mapClaimData.length}`);
+      console.log(`[lb-snapshot]   region ${region}: players=${playerRows.length} skills=${playerSkillRows.length} empires=${empires.length} claims=${claimRows.length} mapClaims=${mapClaimData.length} orders=${marketOrderRows.length} sales=${marketSaleRows.length}`);
     }
 
     // ── 2b. Roster fill: every player in the GLOBAL username roster that isn't a
