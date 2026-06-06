@@ -30,7 +30,10 @@ export default async function EmpirePage({ params }: { params: Promise<{ id: str
 
   return (
     <main className="mx-auto max-w-2xl px-6 py-12">
-      <h1 className="text-3xl font-bold tracking-tight">{empire.name}</h1>
+      <nav className="text-sm text-muted-foreground">
+        <Link href="/leaderboards/empires" className="hover:underline">Empires</Link> / <span>{empire.name}</span>
+      </nav>
+      <h1 className="mt-4 text-3xl font-bold tracking-tight">{empire.name}</h1>
       <p className="mt-1 text-sm text-muted-foreground">
         Region {empire.region} · {empire.memberCount} members · {empire.numClaims} claims · treasury {Number(empire.treasury).toLocaleString()}
       </p>

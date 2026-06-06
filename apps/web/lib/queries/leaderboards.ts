@@ -172,8 +172,9 @@ export async function listTopPlayerIds(limit = 200): Promise<string[]> {
   return rows.map((r) => r.id);
 }
 
-export async function listEmpireIds(): Promise<string[]> {
+export async function listEmpireIds(limit = 500): Promise<string[]> {
   const db = getDb();
-  const rows = await db.select({ id: empires.entityId }).from(empires);
+  // Seed the top empires for SSG; the long tail renders on-demand via dynamicParams.
+  const rows = await db.select({ id: empires.entityId }).from(empires).orderBy(desc(empires.numClaims)).limit(limit);
   return rows.map((r) => r.id);
 }

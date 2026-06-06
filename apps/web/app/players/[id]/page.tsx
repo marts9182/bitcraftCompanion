@@ -31,7 +31,10 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
 
   return (
     <main className="mx-auto max-w-2xl px-6 py-12">
-      <h1 className="text-3xl font-bold tracking-tight">{player.username}</h1>
+      <nav className="text-sm text-muted-foreground">
+        <Link href="/leaderboards/skills" className="hover:underline">Leaderboards</Link> / <span>{player.username}</span>
+      </nav>
+      <h1 className="mt-4 text-3xl font-bold tracking-tight">{player.username}</h1>
       <p className="mt-1 text-sm text-muted-foreground">
         Region {player.region} · total level {totalLevel} · {Math.round(player.timePlayed / 3600).toLocaleString()}h played ·{" "}
         {player.signedIn ? <span className="text-green-500">online</span> : "offline"}
