@@ -41,7 +41,7 @@ export function assembleSubgraph(args: {
       type: r.type,
       timeRequirement: r.timeRequirement ?? 0,
       staminaRequirement: r.staminaRequirement ?? 0,
-      outputQty: out.quantity,
+      outputQty: out.quantity || 1, // guard bad data (0 → division by zero in expand)
       inputs: (inputsByRecipe.get(r.id) ?? []).map((i) => ({ refType: i.refType, refId: i.refId, quantity: i.quantity })),
     };
     const key = refKey(out.refType, out.refId);
