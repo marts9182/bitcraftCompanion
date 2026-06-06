@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getMapClaims, getMapRegions, getTerritoryCells } from "@/lib/queries/map";
+import { getMapClaims, getMapRegions, getTerritoryCells, getWatchtowers } from "@/lib/queries/map";
 import { MapClient } from "@/components/map/MapClient";
 
 export const revalidate = 300;
@@ -11,16 +11,16 @@ export const metadata: Metadata = {
 };
 
 export default async function MapPage() {
-  const [claims, regions, territory] = await Promise.all([getMapClaims(), getMapRegions(), getTerritoryCells()]);
+  const [claims, regions, territory, watchtowers] = await Promise.all([getMapClaims(), getMapRegions(), getTerritoryCells(), getWatchtowers()]);
   return (
     <main className="px-0 py-0">
       <div className="mx-auto max-w-6xl px-6 pt-8">
         <h1 className="text-3xl font-bold tracking-tight">World Map</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{regions.length} regions · {claims.length.toLocaleString()} claims · {territory.length.toLocaleString()} controlled chunks</p>
+        <p className="mt-1 text-sm text-muted-foreground">{regions.length} regions · {claims.length.toLocaleString()} claims · {territory.length.toLocaleString()} controlled chunks · {watchtowers.length.toLocaleString()} watchtowers</p>
         <ul className="sr-only">{regions.map((r) => <li key={r.id}>{r.name}</li>)}</ul>
       </div>
       <div className="mx-auto mt-4 max-w-6xl px-6 pb-12">
-        <MapClient claims={claims} regions={regions} territory={territory} />
+        <MapClient claims={claims} regions={regions} territory={territory} watchtowers={watchtowers} />
       </div>
     </main>
   );

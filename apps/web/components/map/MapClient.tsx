@@ -1,6 +1,6 @@
 "use client";
 import dynamic from "next/dynamic";
-import type { ClaimPoint, RegionRect, TerritoryCell } from "@/lib/queries/map";
+import type { ClaimPoint, RegionRect, TerritoryCell, Watchtower } from "@/lib/queries/map";
 
 // Leaflet touches `window` at import time, so the map must never render on the
 // server. `ssr: false` is only permitted inside a Client Component in Next 16,
@@ -17,6 +17,6 @@ const WorldMap = dynamic(() => import("./WorldMap").then((m) => m.WorldMap), {
   ),
 });
 
-export function MapClient(props: { claims: ClaimPoint[]; regions: RegionRect[]; territory: TerritoryCell[] }) {
+export function MapClient(props: { claims: ClaimPoint[]; regions: RegionRect[]; territory: TerritoryCell[]; watchtowers: Watchtower[] }) {
   return <WorldMap {...props} />;
 }

@@ -1,14 +1,16 @@
 "use client";
-import { MapContainer, LayersControl, LayerGroup, CircleMarker, Rectangle, Popup, Tooltip } from "react-leaflet";
-import { CRS } from "leaflet";
+import { MapContainer, LayersControl, LayerGroup, CircleMarker, Marker, Rectangle, Popup, Tooltip } from "react-leaflet";
+import { CRS, Icon } from "leaflet";
 import "leaflet/dist/leaflet.css";
-import type { ClaimPoint, RegionRect, TerritoryCell } from "@/lib/queries/map";
+import type { ClaimPoint, RegionRect, TerritoryCell, Watchtower } from "@/lib/queries/map";
 
 // CHUNK coordinates. CRS.Simple uses [y,x]; map game (x,z) -> [z, x].
 const pt = (x: number, z: number): [number, number] => [z, x];
 
-export function WorldMap({ claims, regions, territory }: {
-  claims: ClaimPoint[]; regions: RegionRect[]; territory: TerritoryCell[];
+const watchtowerIcon = new Icon({ iconUrl: "/map/watchtower.webp", iconSize: [28, 28], iconAnchor: [14, 28], popupAnchor: [0, -28] });
+
+export function WorldMap({ claims, regions, territory, watchtowers }: {
+  claims: ClaimPoint[]; regions: RegionRect[]; territory: TerritoryCell[]; watchtowers: Watchtower[];
 }) {
   // Fit bounds to the region extent (chunk coords). Fallback to a default if empty.
   const xs = regions.flatMap((r) => [r.x0, r.x1]);
@@ -55,6 +57,14 @@ export function WorldMap({ claims, regions, territory }: {
                   {c.tiles} tiles · treasury {c.treasury.toLocaleString()}
                 </Popup>
               </CircleMarker>
+            ))}
+          </LayerGroup>
+        </LayersControl.Overlay>
+
+        <LayersControl.Overlay name={`Watchtowers (${watchtowers.length.toLocaleString()})`} checked>
+          <LayerGroup>
+            {watchtowers.map((w) => (
+              <Marker key={w.id} position={pt(w.x, w.z)} icon={watchtowerIcon} />
             ))}
           </LayerGroup>
         </LayersControl.Overlay>
