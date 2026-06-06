@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, desc, eq, ilike, sql, count } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, ne, sql, count } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { LB_PAGE_SIZE, type LeaderboardParams } from "@/lib/leaderboards/params";
 
@@ -226,7 +226,8 @@ export async function getPlayerDetail(id: string) {
     .select({ skillId: playerSkills.skillId, name: skills.name, level: playerSkills.level, xp: playerSkills.xp })
     .from(playerSkills)
     .innerJoin(skills, eq(skills.id, playerSkills.skillId))
-    .where(eq(playerSkills.playerEntityId, id))
+    // skill_id 1 = the "ANY" sentinel skill — not a real skill, exclude it.
+    .where(and(eq(playerSkills.playerEntityId, id), ne(playerSkills.skillId, 1)))
     .orderBy(desc(playerSkills.level), desc(playerSkills.xp));
 
   const [empire] = await db
