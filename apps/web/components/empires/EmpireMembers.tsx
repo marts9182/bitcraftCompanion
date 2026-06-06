@@ -11,7 +11,7 @@ export interface MemberRow {
   donatedCurrency: number;
 }
 
-type Sort = "rank" | "shards" | "energy" | "name";
+type Sort = "rank" | "energy" | "name";
 
 export function EmpireMembers({ members }: { members: MemberRow[] }) {
   const [q, setQ] = useState("");
@@ -22,7 +22,6 @@ export function EmpireMembers({ members }: { members: MemberRow[] }) {
     const needle = q.trim().toLowerCase();
     let r = members.filter((m) => (!needle || (m.username ?? "").toLowerCase().includes(needle)) && (!noblesOnly || m.noble));
     r = [...r].sort((a, b) =>
-      sort === "shards" ? b.donatedShards - a.donatedShards :
       sort === "energy" ? b.donatedCurrency - a.donatedCurrency :
       sort === "name" ? (a.username ?? "").localeCompare(b.username ?? "") :
       a.rank - b.rank,
@@ -64,7 +63,6 @@ export function EmpireMembers({ members }: { members: MemberRow[] }) {
             <tr>
               <Th s="rank" label="#" />
               <Th s="name" label="Player" />
-              <Th s="shards" label="Donated shards" align="right" />
               <Th s="energy" label="Donated energy" align="right" />
             </tr>
           </thead>
@@ -84,7 +82,6 @@ export function EmpireMembers({ members }: { members: MemberRow[] }) {
                     )}
                   </span>
                 </td>
-                <td className="py-2 pr-3 text-right font-mono">{m.donatedShards.toLocaleString()}</td>
                 <td className="py-2 text-right font-mono">{m.donatedCurrency.toLocaleString()}</td>
               </tr>
             ))}
