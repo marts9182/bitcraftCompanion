@@ -158,8 +158,13 @@ export async function readTerrain(
           }
         }
       }
+      // The applied-subscription reply is the terminal frame for a one-shot read
+      // and CONTAINS the terrain (processed just above). Resolve on it even with
+      // no terrain rows — zero-player regions have no terrain and would otherwise
+      // hang until timeout. `seenTerrainFrame` only gates the log/diagnostics.
+      void seenTerrainFrame;
       const m = msg as { SubscribeMultiApplied?: unknown; InitialSubscription?: unknown };
-      if (seenTerrainFrame && (m.SubscribeMultiApplied || m.InitialSubscription)) {
+      if (m.SubscribeMultiApplied || m.InitialSubscription) {
         finish(() => {
           ws.close();
           resolve(out);

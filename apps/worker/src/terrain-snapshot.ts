@@ -22,7 +22,7 @@ import { readTerrain, TILES_PER_CHUNK_SIDE, type TerrainChunkTiles } from "./spa
 // to disk, and freed before the next so peak memory stays ~one region.
 
 const OUT_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "../.terrain-cache");
-const PER_REGION_TIMEOUT = 600_000; // 10 min — terrain frames are large/slow
+const PER_REGION_TIMEOUT = 120_000; // 2 min backstop (real regions reply in seconds; empty ones resolve on the applied frame)
 const TILES = TILES_PER_CHUNK_SIDE * TILES_PER_CHUNK_SIDE; // 1024
 const REC_BYTES = 8 + TILES + TILES + TILES * 2; // cx,cz int32 + biome + water + elev(int16)
 

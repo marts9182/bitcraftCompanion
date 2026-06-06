@@ -48,8 +48,12 @@ WATER_PALETTE = {
     4: (44, 66, 90),     # ocean
 }
 
-# Build LUTs (index 0..255) for fast vectorised lookup.
-_biome_lut = np.zeros((256, 3), np.uint8)
+# Build LUTs (index 0..255) for fast vectorised lookup. biome_desc only defines
+# 0-14; the near-empty border regions (3/11/15/23) carry undefined biome types
+# 15-18 (placeholder/wilderness terrain) — give those a muted land colour rather
+# than black so they read as generic wilderness under the water/river overlay.
+WILDERNESS = (96, 108, 84)
+_biome_lut = np.tile(np.array(WILDERNESS, np.uint8), (256, 1))
 for i, c in BIOME_PALETTE.items():
     _biome_lut[i] = c
 _water_lut = np.zeros((256, 3), np.float64)
