@@ -2,6 +2,7 @@ import Link from "next/link";
 import { RarityBadge } from "./RarityBadge";
 import { TierBadge } from "./TierBadge";
 import { RecipeTypeBadge } from "./RecipeTypeBadge";
+import { EntityIcon } from "./EntityIcon";
 
 export type EntityColumn = "tier" | "rarity" | "tag" | "type";
 
@@ -13,6 +14,7 @@ export interface EntityRow {
   rarity?: string | null;
   tag?: string | null;
   type?: string | null;
+  iconAssetName?: string | null;
 }
 
 const HEADER: Record<EntityColumn, string> = { tier: "Tier", rarity: "Rarity", tag: "Tag", type: "Type" };
@@ -45,7 +47,8 @@ export function EntityTable({
         {rows.map((r) => (
           <tr key={r.id} className="border-b border-border/50 hover:bg-muted/40">
             <td className="py-2 pr-4">
-              <Link href={`${basePath}/${r.slug}`} className="font-medium hover:underline">
+              <Link href={`${basePath}/${r.slug}`} className="flex items-center gap-2 font-medium hover:underline">
+                <EntityIcon assetName={r.iconAssetName ?? null} name={r.name} rarity={r.rarity ?? null} size={24} />
                 {r.name}
               </Link>
             </td>

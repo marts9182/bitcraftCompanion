@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { EntityIcon } from "@/components/compendium/EntityIcon";
 import { getBuildingBySlug, listAllBuildingSlugs } from "@/lib/queries/buildings";
 import { breadcrumbJsonLd, thingJsonLd, jsonLdScript } from "@/lib/jsonld";
 import { SITE_URL } from "@/lib/seo";
@@ -48,7 +49,10 @@ export default async function BuildingDetailPage({ params }: { params: Promise<{
         </Link>{" "}
         / <span>{b.name}</span>
       </nav>
-      <h1 className="mt-4 text-3xl font-bold tracking-tight">{b.name}</h1>
+      <div className="mt-4 flex items-center gap-3">
+        <EntityIcon assetName={b.iconAssetName} name={b.name} size={56} />
+        <h1 className="text-3xl font-bold tracking-tight">{b.name}</h1>
+      </div>
       {b.description && <p className="mt-4 text-muted-foreground">{b.description}</p>}
     </main>
   );

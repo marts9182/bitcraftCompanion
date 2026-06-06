@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { RarityBadge } from "@/components/compendium/RarityBadge";
 import { TierBadge } from "@/components/compendium/TierBadge";
+import { EntityIcon } from "@/components/compendium/EntityIcon";
 import { CraftGraphSection } from "@/components/compendium/CraftGraphSection";
 import { getCargoBySlug, getCargoCraftGraph, listAllCargoSlugs } from "@/lib/queries/cargo";
 import { breadcrumbJsonLd, thingJsonLd, jsonLdScript } from "@/lib/jsonld";
@@ -52,7 +53,10 @@ export default async function CargoDetailPage({ params }: { params: Promise<{ sl
         </Link>{" "}
         / <span>{c.name}</span>
       </nav>
-      <h1 className="mt-4 text-3xl font-bold tracking-tight">{c.name}</h1>
+      <div className="mt-4 flex items-center gap-3">
+        <EntityIcon assetName={c.iconAssetName} name={c.name} rarity={c.rarity} size={56} />
+        <h1 className="text-3xl font-bold tracking-tight">{c.name}</h1>
+      </div>
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <TierBadge tier={c.tier} />
         <RarityBadge rarity={c.rarity} />

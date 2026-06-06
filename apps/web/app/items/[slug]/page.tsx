@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { RarityBadge } from "@/components/compendium/RarityBadge";
 import { TierBadge } from "@/components/compendium/TierBadge";
+import { EntityIcon } from "@/components/compendium/EntityIcon";
 import { CraftGraphSection } from "@/components/compendium/CraftGraphSection";
 import { getItemBySlug, getItemCraftGraph, listAllItemSlugs } from "@/lib/queries/items";
 import { breadcrumbJsonLd, itemJsonLd, jsonLdScript } from "@/lib/jsonld";
@@ -62,7 +63,8 @@ export default async function ItemDetailPage({ params }: { params: Promise<{ slu
         / <span>{item.name}</span>
       </nav>
 
-      <div className="mt-4 flex items-center gap-2">
+      <div className="mt-4 flex items-center gap-3">
+        <EntityIcon assetName={item.iconAssetName} name={item.name} rarity={item.rarity} size={56} />
         <h1 className="text-3xl font-bold tracking-tight">{item.name}</h1>
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-2">

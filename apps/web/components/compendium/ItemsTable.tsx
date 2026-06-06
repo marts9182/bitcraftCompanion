@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { RarityBadge } from "./RarityBadge";
 import { TierBadge } from "./TierBadge";
+import { EntityIcon } from "./EntityIcon";
 import type { ItemRow } from "@/lib/queries/items";
 
 export function ItemsTable({ items }: { items: ItemRow[] }) {
@@ -21,7 +22,8 @@ export function ItemsTable({ items }: { items: ItemRow[] }) {
         {items.map((it) => (
           <tr key={it.id} className="border-b border-border/50 hover:bg-muted/40">
             <td className="py-2 pr-4">
-              <Link href={`/items/${it.slug}`} className="font-medium hover:underline">
+              <Link href={`/items/${it.slug}`} className="flex items-center gap-2 font-medium hover:underline">
+                <EntityIcon assetName={it.iconAssetName} name={it.name} rarity={it.rarity} size={24} />
                 {it.name}
               </Link>
             </td>
