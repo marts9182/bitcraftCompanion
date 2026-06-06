@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { vividTerritoryColor } from "@bcc/shared";
 import { getEmpireDetail, listEmpireIds } from "@/lib/queries/leaderboards";
+import { EmpireMembers } from "@/components/empires/EmpireMembers";
 
 export const revalidate = 300;
 export const dynamicParams = true;
@@ -93,43 +94,11 @@ export default async function EmpirePage({ params }: { params: Promise<{ id: str
       </section>
 
       <section className="mt-10">
-        <h2 className="text-xl font-semibold">Members</h2>
+        <h2 className="text-xl font-semibold">Members ({members.length.toLocaleString()})</h2>
         {members.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">No members.</p>
         ) : (
-          <table className="mt-3 w-full text-sm">
-            <thead className="text-left text-muted-foreground">
-              <tr>
-                <th className="py-2 pr-3">#</th>
-                <th className="py-2 pr-3">Player</th>
-                <th className="py-2 pr-3 text-right">Donated shards</th>
-                <th className="py-2 text-right">Donated energy</th>
-              </tr>
-            </thead>
-            <tbody>
-              {members.map((m) => (
-                <tr key={m.playerEntityId} className="border-t border-border">
-                  <td className="py-2 pr-3 font-mono text-xs text-muted-foreground">#{m.rank}</td>
-                  <td className="py-2 pr-3">
-                    <span className="inline-flex items-center gap-2">
-                      {m.username ? (
-                        <Link href={`/players/${m.playerEntityId}`} className="hover:underline">{m.username}</Link>
-                      ) : (
-                        <span className="text-muted-foreground">player {m.playerEntityId}</span>
-                      )}
-                      {m.noble && (
-                        <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">
-                          Noble
-                        </span>
-                      )}
-                    </span>
-                  </td>
-                  <td className="py-2 pr-3 text-right font-mono">{m.donatedShards.toLocaleString()}</td>
-                  <td className="py-2 text-right font-mono">{m.donatedCurrency.toLocaleString()}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <EmpireMembers members={members} />
         )}
       </section>
     </main>
