@@ -11,6 +11,7 @@ import {
   buildRegionPlayerRows,
   mapEmpireNodes,
   mapClaimMembers,
+  aggregateEmpireFoundries,
 } from "./map-leaderboards";
 
 describe("activeRegionIds", () => {
@@ -120,6 +121,18 @@ describe("mapEmpireNodes", () => {
     expect(towers[0]).toMatchObject({ entityId: "t1", empireEntityId: "100", region: "14", energy: 30, active: true });
     expect(agg.get("100")).toEqual({ count: 2, energy: 100, upkeep: 5 });
     expect(agg.get("200")).toEqual({ count: 1, energy: 10, upkeep: 1 });
+  });
+});
+
+describe("aggregateEmpireFoundries", () => {
+  it("sums hexite_capsules + queued and counts foundries per empire", () => {
+    const m = aggregateEmpireFoundries([
+      { entity_id: "f1", empire_entity_id: "100", hexite_capsules: 201, queued: 0 },
+      { entity_id: "f2", empire_entity_id: "100", hexite_capsules: 50, queued: 3 },
+      { entity_id: "f3", empire_entity_id: "200", hexite_capsules: 0, queued: 1 },
+    ]);
+    expect(m.get("100")).toEqual({ capsules: 251, queued: 3, count: 2 });
+    expect(m.get("200")).toEqual({ capsules: 0, queued: 1, count: 1 });
   });
 });
 

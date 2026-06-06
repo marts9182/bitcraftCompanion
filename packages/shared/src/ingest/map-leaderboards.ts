@@ -143,6 +143,9 @@ export interface EmpireRow {
   towerCount?: number;
   towerEnergy?: number;
   towerUpkeep?: number;
+  foundryCapsules?: number;
+  foundryQueued?: number;
+  foundryCount?: number;
   leaderPlayerEntityId: string | null;
   memberCount: number;
 }
@@ -219,6 +222,25 @@ export function mapEmpireNodes(rows: Raw[], region: string): { towers: EmpireTow
     agg.set(t.empireEntityId, a);
   }
   return { towers, agg };
+}
+
+export interface EmpireFoundryAgg { capsules: number; queued: number; count: number; }
+/**
+ * Aggregate empire_foundry_state (GLOBAL module) per empire: total Hexite Capsules
+ * crafted-and-waiting (`hexite_capsules`), total currently crafting (`queued`), and
+ * foundry count. An empire can have several foundries; sum across them.
+ */
+export function aggregateEmpireFoundries(rows: Raw[]): Map<string, EmpireFoundryAgg> {
+  const m = new Map<string, EmpireFoundryAgg>();
+  for (const r of rows) {
+    const id = idStr(r.empire_entity_id);
+    const a = m.get(id) ?? { capsules: 0, queued: 0, count: 0 };
+    a.capsules += toInt(r.hexite_capsules) ?? 0;
+    a.queued += toInt(r.queued) ?? 0;
+    a.count += 1;
+    m.set(id, a);
+  }
+  return m;
 }
 
 export interface ClaimMemberRow {

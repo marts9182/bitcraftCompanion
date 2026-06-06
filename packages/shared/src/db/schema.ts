@@ -211,6 +211,10 @@ export const empires = pgTable(
     towerCount: integer("tower_count").notNull().default(0),
     towerEnergy: bigint("tower_energy", { mode: "number" }).notNull().default(0),
     towerUpkeep: bigint("tower_upkeep", { mode: "number" }).notNull().default(0),
+    // Empire Foundry (empire_foundry_state, global module): Hexite Capsules crafted
+    // and waiting to collect, plus currently-crafting (queued), summed across foundries.
+    foundryCapsules: bigint("foundry_capsules", { mode: "number" }).notNull().default(0),
+    foundryQueued: bigint("foundry_queued", { mode: "number" }).notNull().default(0),
     leaderPlayerEntityId: text("leader_player_entity_id"),
     memberCount: integer("member_count").notNull().default(0),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),

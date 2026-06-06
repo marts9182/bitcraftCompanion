@@ -57,6 +57,7 @@ export default async function EmpirePage({ params }: { params: Promise<{ id: str
 
       <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         <Stat label="Hexite energy" value={empire.currencyTreasury} />
+        <Stat label="Hexite capsules" value={empire.foundryCapsules} />
         <Stat label="Claims" value={empire.numClaims} />
         <Stat label="Members" value={empire.memberCount} />
         <Stat label="Nobility threshold" value={empire.nobilityThreshold} />

@@ -50,6 +50,13 @@
       "when": 1780771873949,
       "tag": "0006_even_mastermind",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1780777679535,
+      "tag": "0007_old_annihilus",
+      "breakpoints": true
     }
   ]
 }

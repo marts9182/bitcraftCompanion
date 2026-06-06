@@ -5,7 +5,7 @@ config({ path: resolve(dirname(fileURLToPath(import.meta.url)), "../../../.env.l
 
 import {
   parseServerEnv, createDb, schema, COLUMN_ORDERS, normalizeRow,
-  mapSkillRow, mapExperienceRows, mapEmpireData, mapClaimRows, mapEmpireNodes, mapClaimMembers,
+  mapSkillRow, mapExperienceRows, mapEmpireData, mapClaimRows, mapEmpireNodes, mapClaimMembers, aggregateEmpireFoundries,
   usernamesById, onlineEntityIds, activeRegionIds, buildRegionPlayerRows,
   mapClaimLocalRows, mapChunkRows, mapRegionRows, buildEmpireColors, regionNamesById, type MapChunkRow, type MapRegionRow,
 } from "@bcc/shared";
@@ -22,6 +22,7 @@ const GLOBAL_QUERIES = [
   "SELECT * FROM user_region_state",
   "SELECT * FROM empire_color_desc",
   "SELECT * FROM empire_emblem_state",
+  "SELECT * FROM empire_foundry_state",
   "SELECT * FROM world_region_name_state",
 ];
 const GLOBAL_EXPECTED = ["player_username_state", "user_region_state"];
@@ -96,6 +97,7 @@ async function main() {
     const onlineSet = onlineEntityIds(norm(g, "signed_in_player_state"));
     const regionList = activeRegionIds(norm(g, "user_region_state"));
     const empireColors = buildEmpireColors(norm(g, "empire_color_desc"), norm(g, "empire_emblem_state"));
+    const empireFoundries = aggregateEmpireFoundries(norm(g, "empire_foundry_state"));
     const regionNameMap = regionNamesById(norm(g, "world_region_name_state"));
     console.log(`[lb-snapshot] global: usernames=${usernameMap.size} online=${onlineSet.size} active regions=[${regionList.join(",")}] empireColors=${empireColors.size} regionNames=${regionNameMap.size}`);
 
@@ -144,7 +146,12 @@ async function main() {
       const { towers, agg } = mapEmpireNodes(norm(r, "empire_node_state"), region);
       const empires = dedupeBy(raw.empires, (e) => e.entityId).map((e) => {
         const a = agg.get(e.entityId);
-        return { ...e, color: empireColors.get(e.entityId) ?? null, towerCount: a?.count ?? 0, towerEnergy: a?.energy ?? 0, towerUpkeep: a?.upkeep ?? 0 };
+        const f = empireFoundries.get(e.entityId);
+        return {
+          ...e, color: empireColors.get(e.entityId) ?? null,
+          towerCount: a?.count ?? 0, towerEnergy: a?.energy ?? 0, towerUpkeep: a?.upkeep ?? 0,
+          foundryCapsules: f?.capsules ?? 0, foundryQueued: f?.queued ?? 0,
+        };
       });
       const members = dedupeBy(raw.members, (m) => `${m.empireEntityId}:${m.playerEntityId}`);
       const towerRows = dedupeBy(towers, (t) => t.entityId);
