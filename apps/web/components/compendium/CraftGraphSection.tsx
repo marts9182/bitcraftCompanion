@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { EntityIcon } from "./EntityIcon";
 import type { RecipeView, StackView } from "@/lib/queries/craft-graph";
 
 export function StackList({ stacks }: { stacks: StackView[] }) {
@@ -7,15 +8,21 @@ export function StackList({ stacks }: { stacks: StackView[] }) {
     <ul className="flex flex-wrap gap-x-3 gap-y-1">
       {stacks.map((s, i) => {
         const href = s.slug ? (s.refType === "cargo" ? `/cargo/${s.slug}` : `/items/${s.slug}`) : null;
+        const label = (
+          <span className="inline-flex items-center gap-1">
+            <EntityIcon assetName={s.iconAssetName ?? null} name={s.name} size={18} />
+            {s.name}
+          </span>
+        );
         return (
           <li key={`${s.refType}-${s.refId}-${i}`}>
             <span className="text-muted-foreground">{s.quantity}×</span>{" "}
             {href ? (
               <Link href={href} className="hover:underline">
-                {s.name}
+                {label}
               </Link>
             ) : (
-              <span>{s.name}</span>
+              label
             )}
           </li>
         );

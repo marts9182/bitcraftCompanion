@@ -20,10 +20,10 @@ export function ItemFilters() {
 
   return (
     <form onSubmit={onSubmit} className="mb-6 flex flex-wrap gap-2">
-      <Input name="q" placeholder="Search items…" defaultValue={sp.get("q") ?? ""} className="max-w-xs" />
-      <Input name="tier" placeholder="Tier" defaultValue={sp.get("tier") ?? ""} className="w-24" />
-      <Input name="rarity" placeholder="Rarity" defaultValue={sp.get("rarity") ?? ""} className="w-36" />
-      <Input name="tag" placeholder="Tag" defaultValue={sp.get("tag") ?? ""} className="w-40" />
+      <Input name="q" aria-label="Search items" placeholder="Search items…" defaultValue={sp.get("q") ?? ""} className="max-w-xs" />
+      <Input name="tier" aria-label="Tier" placeholder="Tier" defaultValue={sp.get("tier") ?? ""} className="w-24" />
+      <Input name="rarity" aria-label="Rarity" placeholder="Rarity" defaultValue={sp.get("rarity") ?? ""} className="w-36" />
+      <Input name="tag" aria-label="Tag" placeholder="Tag" defaultValue={sp.get("tag") ?? ""} className="w-40" />
       <button
         type="submit"
         className="rounded-md bg-primary px-3 py-1 text-sm font-medium text-primary-foreground hover:opacity-90"

@@ -18,6 +18,7 @@ export interface StackRow {
 export interface RefInfo {
   name: string;
   slug: string;
+  iconAssetName?: string | null;
 }
 
 export interface CraftGraphInput {
@@ -35,6 +36,7 @@ export interface StackView {
   name: string;
   slug: string | null;
   quantity: number;
+  iconAssetName?: string | null;
 }
 
 export interface RecipeView {
@@ -63,6 +65,7 @@ export function resolveStackView(
     name: info?.name ?? `${s.refType} #${s.refId}`,
     slug: info?.slug ?? null,
     quantity: s.quantity,
+    ...(info?.iconAssetName ? { iconAssetName: info.iconAssetName } : {}),
   };
 }
 

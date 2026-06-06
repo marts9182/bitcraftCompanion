@@ -19,17 +19,17 @@ export async function resolveRefs(stacks: { refType: RefType; refId: number }[])
   const refs: Record<string, RefInfo> = {};
   if (itemIds.length) {
     const r = await db
-      .select({ id: schema.items.id, name: schema.items.name, slug: schema.items.slug })
+      .select({ id: schema.items.id, name: schema.items.name, slug: schema.items.slug, icon: schema.items.iconAssetName })
       .from(schema.items)
       .where(inArray(schema.items.id, itemIds));
-    for (const x of r) refs[`item:${x.id}`] = { name: x.name, slug: x.slug };
+    for (const x of r) refs[`item:${x.id}`] = { name: x.name, slug: x.slug, iconAssetName: x.icon };
   }
   if (cargoIds.length) {
     const r = await db
-      .select({ id: schema.cargo.id, name: schema.cargo.name, slug: schema.cargo.slug })
+      .select({ id: schema.cargo.id, name: schema.cargo.name, slug: schema.cargo.slug, icon: schema.cargo.iconAssetName })
       .from(schema.cargo)
       .where(inArray(schema.cargo.id, cargoIds));
-    for (const x of r) refs[`cargo:${x.id}`] = { name: x.name, slug: x.slug };
+    for (const x of r) refs[`cargo:${x.id}`] = { name: x.name, slug: x.slug, iconAssetName: x.icon };
   }
   return refs;
 }

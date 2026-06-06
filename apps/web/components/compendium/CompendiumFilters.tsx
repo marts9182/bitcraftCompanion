@@ -33,6 +33,7 @@ export function CompendiumFilters({ basePath, fields }: { basePath: string; fiel
           <select
             key={f.name}
             name={f.name}
+            aria-label={f.placeholder}
             defaultValue={sp.get(f.name) ?? ""}
             className={`h-9 rounded-md border border-input bg-transparent px-3 text-sm ${f.className ?? ""}`}
           >
@@ -47,6 +48,7 @@ export function CompendiumFilters({ basePath, fields }: { basePath: string; fiel
           <Input
             key={f.name}
             name={f.name}
+            aria-label={f.placeholder}
             placeholder={f.placeholder}
             defaultValue={sp.get(f.name) ?? ""}
             className={f.className ?? "max-w-xs"}
