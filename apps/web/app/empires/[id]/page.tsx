@@ -64,7 +64,6 @@ export default async function EmpirePage({ params }: { params: Promise<{ id: str
         <Stat label="Towers" value={empire.towerCount} />
         <Stat label="Tower energy" value={empire.towerEnergy} />
         <Stat label="Tower upkeep" value={empire.towerUpkeep} />
-        <Stat label="Region" value={empire.region} />
       </div>
 
       <section className="mt-10">
