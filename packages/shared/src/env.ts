@@ -14,6 +14,11 @@ export const serverEnvSchema = z.object({
   SPACETIME_IDENTITY: z.string().min(1).optional(),
   INGESTION_ENABLED: boolFromString.default(true),
   SPACETIME_APP_IDENTIFIER: z.string().min(1).default("BitCraftCompanion"),
+  // Optional: after a successful snapshot the worker POSTs here to refresh the
+  // web app's ISR pages. Both must be set to enable it; the secret must match
+  // the web app's REVALIDATE_SECRET.
+  REVALIDATE_URL: z.string().url().optional(),
+  REVALIDATE_SECRET: z.string().min(1).optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;

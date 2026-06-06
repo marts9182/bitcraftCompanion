@@ -8,6 +8,7 @@ import {
   mapItemRow, mapCargoRow, mapBuildingRow, mapRecipeRow, buildRecipeGraph, makeUniqueSlug,
 } from "@bcc/shared";
 import { readSnapshot } from "./spacetime/ws-snapshot";
+import { triggerRevalidate } from "./revalidate";
 import { eq, sql, getTableColumns, type SQL } from "drizzle-orm";
 import type { PgTable } from "drizzle-orm/pg-core";
 
@@ -78,6 +79,7 @@ async function main() {
     const total = itemRows.length + cargoRows.length + buildingRows.length + recipeRows.length;
     await db.update(schema.ingestionRuns).set({ status: "ok", finishedAt: new Date(), rowsUpserted: total }).where(eqRun(run!.id));
     console.log(`[snapshot] OK — items=${itemRows.length} cargo=${cargoRows.length} buildings=${buildingRows.length} recipes=${recipeRows.length}`);
+    await triggerRevalidate({ url: env.REVALIDATE_URL, secret: env.REVALIDATE_SECRET });
     process.exit(0);
   } catch (err) {
     await db.update(schema.ingestionRuns).set({ status: "error", finishedAt: new Date(), error: String(err) }).where(eqRun(run!.id));
