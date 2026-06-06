@@ -20,6 +20,9 @@ export function GET() {
 - Empires: ${SITE_URL}/leaderboards/empires
 - Activity: ${SITE_URL}/leaderboards/activity
 
+## Map
+- World map: ${SITE_URL}/map
+
 ## Blog & Guides
 - Blog: ${SITE_URL}/blog
 - RSS: ${SITE_URL}/feed.xml
