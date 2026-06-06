@@ -14,11 +14,14 @@ export function CalculatorResult({
   subgraph: Subgraph;
   target: { refType: RefType; refId: number };
 }) {
-  const [qty, setQty] = useState(1);
+  // Store the raw field text so the user can clear/retype freely; the engine
+  // always receives a valid floored number via `qty`.
+  const [qtyText, setQtyText] = useState("1");
+  const qty = Math.max(1, Number(qtyText) || 1);
   const [selections, setSelections] = useState<Selections>({});
 
   const result = useMemo(
-    () => expand(subgraph, { refType: target.refType, refId: target.refId, quantity: Math.max(1, qty) }, selections),
+    () => expand(subgraph, { refType: target.refType, refId: target.refId, quantity: qty }, selections),
     [subgraph, target.refType, target.refId, qty, selections],
   );
 
@@ -29,8 +32,8 @@ export function CalculatorResult({
         <Input
           type="number"
           min={1}
-          value={qty}
-          onChange={(e) => setQty(Number(e.target.value) || 1)}
+          value={qtyText}
+          onChange={(e) => setQtyText(e.target.value)}
           className="w-24"
           aria-label="Quantity to craft"
         />
