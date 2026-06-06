@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { MapContainer, LayersControl, LayerGroup, CircleMarker, Marker, Rectangle, Popup, Tooltip, useMap } from "react-leaflet";
 import { CRS, Icon } from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -37,7 +37,12 @@ export function WorldMap({ claims, regions, territory, watchtowers }: {
   const zs = regions.flatMap((r) => [r.z0, r.z1]);
   const minX = xs.length ? Math.min(...xs) : 0, maxX = xs.length ? Math.max(...xs) : 1000;
   const minZ = zs.length ? Math.min(...zs) : 0, maxZ = zs.length ? Math.max(...zs) : 1000;
-  const worldBounds: [[number, number], [number, number]] = [pt(minX, minZ), pt(maxX, maxZ)];
+  // Memoized so it's stable across renders — FlyToRegion's effect deps on it and
+  // an unmemoized array would re-fire (yank the camera) on any future re-render.
+  const worldBounds = useMemo<[[number, number], [number, number]]>(
+    () => [pt(minX, minZ), pt(maxX, maxZ)],
+    [minX, minZ, maxX, maxZ],
+  );
 
   const sorted = sortRegions(regions);
   const selected = regions.find((r) => r.id === selectedId) ?? null;
@@ -148,6 +153,7 @@ function RegionLegend({ regions, selectedId, onSelect, onClear }: {
             <button
               key={r.id}
               type="button"
+              aria-pressed={isSel}
               onClick={() => onSelect(r.id)}
               style={{
                 cursor: "pointer", textAlign: "left", width: "100%",
