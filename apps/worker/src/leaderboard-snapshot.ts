@@ -7,6 +7,7 @@ import {
   parseServerEnv, createDb, schema, COLUMN_ORDERS, normalizeRow,
   mapSkillRow, mapExperienceRows, mapEmpireData, mapClaimRows,
   usernamesById, onlineEntityIds, activeRegionIds, buildRegionPlayerRows,
+  mapClaimLocalRows, mapChunkRows, mapRegionRows, type MapChunkRow, type MapRegionRow,
 } from "@bcc/shared";
 import { readSnapshot } from "./spacetime/ws-snapshot";
 import { triggerRevalidate } from "./revalidate";
@@ -29,6 +30,11 @@ const REGION_QUERIES = [
   "SELECT * FROM empire_state",
   "SELECT * FROM empire_player_data_state",
   "SELECT * FROM claim_state",
+  // Map layers:
+  "SELECT * FROM claim_local_state",
+  "SELECT * FROM empire_chunk_state",
+  "SELECT * FROM world_region_state",
+  "SELECT * FROM world_region_name_state",
 ];
 const REGION_EXPECTED = ["experience_state", "player_state"];
 
@@ -89,6 +95,10 @@ async function main() {
     // ── 2. Per-region pass: XP, playtime, empires, claims ─────────────────────
     let totalPlayers = 0;
     let skillsLoaded = false;
+    // empire_chunk_state / world_region_state are replicated across region modules; accumulate
+    // (dedup) across the loop and write once after.
+    const allChunks = new Map<string, MapChunkRow>();
+    const allRegions = new Map<number, MapRegionRow>();
     for (const moduleName of modules) {
       const region = (moduleName.match(/(\d+)$/)?.[1]) ?? moduleName;
       console.log(`[lb-snapshot] region ${region} (${moduleName}) …`);
@@ -103,6 +113,17 @@ async function main() {
       const members = dedupeBy(raw.members, (m) => `${m.empireEntityId}:${m.playerEntityId}`);
       const claimRows = dedupeBy(mapClaimRows(norm(r, "claim_state"), region), (c) => c.entityId);
       totalPlayers += playerRows.length;
+
+      // Map layers: claims (per-region, with names from claim_state), chunks + regions (replicated).
+      const claimNameMap = new Map(norm(r, "claim_state").map((c) => [String(c.entity_id), String(c.name ?? "")] as const));
+      const mapClaimData = dedupeBy(mapClaimLocalRows(norm(r, "claim_local_state"), claimNameMap), (c) => c.entityId);
+      const regionNameMap = new Map(norm(r, "world_region_name_state").map((n) => [Number(n.id), String(n.player_facing_name ?? "")] as const));
+      for (const c of mapChunkRows(norm(r, "empire_chunk_state"))) allChunks.set(c.chunkIndex, c);
+      for (const g of mapRegionRows(norm(r, "world_region_state"), new Map())) {
+        // Each module reports its OWN region; key by the global region number (module suffix),
+        // not the local world_region_state.id (which is 0 per module).
+        allRegions.set(Number(region), { ...g, id: Number(region), name: regionNameMap.get(g.regionIndex) ?? regionNameMap.get(g.id) ?? `Region ${region}` });
+      }
 
       await db.transaction(async (tx) => {
         if (skillRows.length) {
@@ -138,13 +159,27 @@ async function main() {
         await inChunks(claimRows, CHUNK, (s) =>
           tx.insert(schema.claims).values(s).onConflictDoUpdate({ target: schema.claims.entityId, set: conflictUpdateSet(schema.claims, ["entityId"]) }),
         );
+        await inChunks(mapClaimData, CHUNK, (s) =>
+          tx.insert(schema.mapClaims).values(s).onConflictDoUpdate({ target: schema.mapClaims.entityId, set: conflictUpdateSet(schema.mapClaims, ["entityId"]) }),
+        );
         await tx
           .insert(schema.regions)
           .values({ region, module: moduleName, name: `Region ${region}` })
           .onConflictDoUpdate({ target: schema.regions.region, set: { module: moduleName, updatedAt: new Date() } });
       });
-      console.log(`[lb-snapshot]   region ${region}: players=${playerRows.length} skills=${playerSkillRows.length} empires=${empires.length} claims=${claimRows.length}`);
+      console.log(`[lb-snapshot]   region ${region}: players=${playerRows.length} skills=${playerSkillRows.length} empires=${empires.length} claims=${claimRows.length} mapClaims=${mapClaimData.length}`);
     }
+
+    // Map chunks + regions: write once (replicated data accumulated across the loop).
+    const chunkRows = [...allChunks.values()];
+    await db.transaction(async (tx) => {
+      await tx.delete(schema.mapChunks); // full replace: empire_chunk_state is the complete current set
+      await inChunks(chunkRows, CHUNK, (s) => tx.insert(schema.mapChunks).values(s));
+      for (const g of allRegions.values()) {
+        await tx.insert(schema.mapRegions).values(g).onConflictDoUpdate({ target: schema.mapRegions.id, set: conflictUpdateSet(schema.mapRegions, ["id"]) });
+      }
+    });
+    console.log(`[lb-snapshot] map: chunks=${chunkRows.length} regions=${allRegions.size}`);
 
     await db.update(schema.ingestionRuns).set({ status: "ok", finishedAt: new Date(), rowsUpserted: totalPlayers }).where(eq(schema.ingestionRuns.id, run!.id));
     await triggerRevalidate({ url: env.REVALIDATE_URL, secret: env.REVALIDATE_SECRET });
