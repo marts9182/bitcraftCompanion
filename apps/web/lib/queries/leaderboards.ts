@@ -3,7 +3,7 @@ import { and, asc, desc, eq, ilike, sql, count } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { LB_PAGE_SIZE, type LeaderboardParams } from "@/lib/leaderboards/params";
 
-const { players, playerSkills, skills, empires, empireMembers, empireTowers, regions } = schema;
+const { players, playerSkills, skills, empires, empireMembers, empireTowers, claimMembers, regions } = schema;
 
 export async function listRegions() {
   const db = getDb();
@@ -151,6 +151,111 @@ export async function getPlayer(entityId: string) {
     .where(eq(playerSkills.playerEntityId, entityId))
     .orderBy(desc(playerSkills.xp));
   return { player, skills: sk };
+}
+
+export type PlayerSort = "level" | "playtime" | "name";
+
+export interface PlayersListParams {
+  q?: string;
+  sort?: PlayerSort;
+  region: string;
+  page: number;
+}
+
+export interface PlayerListRow {
+  entityId: string;
+  username: string;
+  region: string;
+  totalLevel: number;
+  timePlayed: number;
+  signedIn: boolean;
+}
+
+export async function getPlayersList(params: PlayersListParams): Promise<{ rows: PlayerListRow[]; total: number }> {
+  const db = getDb();
+  const conds = [];
+  if (params.region !== "all") conds.push(eq(players.region, params.region));
+  const q = params.q?.trim();
+  if (q) conds.push(ilike(players.username, `%${q}%`));
+  const where = conds.length ? and(...conds) : undefined;
+
+  // Sum skill levels per player in SQL (group by) so total-level sort is not N+1.
+  const agg = db
+    .select({
+      playerEntityId: playerSkills.playerEntityId,
+      totalLevel: sql<number>`sum(${playerSkills.level})`.as("total_level"),
+    })
+    .from(playerSkills)
+    .groupBy(playerSkills.playerEntityId)
+    .as("agg");
+
+  // Players with no skills → COALESCE the left-joined sum to 0.
+  const totalLevelExpr = sql<number>`coalesce(${agg.totalLevel}, 0)`;
+
+  const orderBy =
+    params.sort === "playtime" ? [desc(players.timePlayed), players.entityId] :
+    params.sort === "name" ? [asc(players.username), players.entityId] :
+    [desc(totalLevelExpr), players.entityId];
+
+  const [{ total }] = await db.select({ total: count() }).from(players).where(where);
+  const rows = await db
+    .select({
+      entityId: players.entityId,
+      username: players.username,
+      region: players.region,
+      totalLevel: totalLevelExpr,
+      timePlayed: players.timePlayed,
+      signedIn: players.signedIn,
+    })
+    .from(players)
+    .leftJoin(agg, eq(agg.playerEntityId, players.entityId))
+    .where(where)
+    .orderBy(...orderBy)
+    .limit(LB_PAGE_SIZE)
+    .offset((params.page - 1) * LB_PAGE_SIZE);
+
+  return { rows: rows.map((r) => ({ ...r, totalLevel: Number(r.totalLevel) })), total: Number(total) };
+}
+
+export async function getPlayerDetail(id: string) {
+  const db = getDb();
+  const [player] = await db.select().from(players).where(eq(players.entityId, id)).limit(1);
+  if (!player) return null;
+
+  const skills_ = await db
+    .select({ skillId: playerSkills.skillId, name: skills.name, level: playerSkills.level, xp: playerSkills.xp })
+    .from(playerSkills)
+    .innerJoin(skills, eq(skills.id, playerSkills.skillId))
+    .where(eq(playerSkills.playerEntityId, id))
+    .orderBy(desc(playerSkills.level), desc(playerSkills.xp));
+
+  const [empire] = await db
+    .select({
+      entityId: empires.entityId,
+      name: empires.name,
+      color: empires.color,
+      rank: empireMembers.rank,
+      noble: empireMembers.noble,
+    })
+    .from(empireMembers)
+    .innerJoin(empires, eq(empires.entityId, empireMembers.empireEntityId))
+    .where(eq(empireMembers.playerEntityId, id))
+    .limit(1);
+
+  const claims = await db
+    .select({
+      claimEntityId: claimMembers.claimEntityId,
+      claimName: claimMembers.claimName,
+      coOwner: claimMembers.coOwner,
+      officer: claimMembers.officer,
+      build: claimMembers.build,
+      inventory: claimMembers.inventory,
+    })
+    .from(claimMembers)
+    .where(eq(claimMembers.playerEntityId, id))
+    .orderBy(asc(claimMembers.claimName));
+
+  return { player, skills: skills_, empire: empire ?? null, claims };
 }
 
 export async function getEmpire(entityId: string) {
