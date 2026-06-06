@@ -7,7 +7,9 @@ const { players, playerSkills, skills, empires, regions } = schema;
 
 export async function listRegions() {
   const db = getDb();
-  return db.select().from(regions).orderBy(regions.region);
+  // Project only what the (client) RegionSwitcher needs — avoids shipping a Date
+  // (updatedAt) + unused module field across the server→client boundary.
+  return db.select({ region: regions.region, name: regions.name }).from(regions).orderBy(regions.region);
 }
 
 export async function listSkills() {

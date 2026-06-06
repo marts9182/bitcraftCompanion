@@ -44,6 +44,7 @@ export default async function SkillsLeaderboard({ searchParams }: { searchParams
               <Link
                 key={s}
                 href={`/leaderboards/skills?${sp.toString()}`}
+                aria-current={params.sort === s ? "true" : undefined}
                 className={`rounded-md border px-3 py-1 ${params.sort === s ? "border-primary bg-primary/10" : "border-border"}`}
               >
                 {SORT_LABEL[s]}
@@ -73,7 +74,7 @@ export default async function SkillsLeaderboard({ searchParams }: { searchParams
               </td>
               <td className="py-2 pr-3 text-muted-foreground">{r.region}</td>
               <td className="py-2 pr-3 text-right">{r.highestLevel}</td>
-              <td className="py-2 pr-3 text-right">{r.totalLevel}</td>
+              <td className="py-2 pr-3 text-right">{Number(r.totalLevel).toLocaleString()}</td>
               <td className="py-2 text-right font-mono">{Number(r.totalXp).toLocaleString()}</td>
             </tr>
           ))}
