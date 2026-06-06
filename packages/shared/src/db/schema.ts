@@ -334,3 +334,116 @@ export const mapChunks = pgTable(
 export type Item = typeof items.$inferSelect;
 export type NewItem = typeof items.$inferInsert;
 export type Recipe = typeof recipes.$inferSelect;
+
+/** Live player order book — asks (side='sell') + bids (side='buy'). Region-scoped clean-rebuild. */
+export const marketOrders = pgTable(
+  "market_orders",
+  {
+    entityId: text("entity_id").primaryKey(),
+    region: text("region").notNull(),
+    side: text("side").notNull(), // 'sell' | 'buy'
+    itemId: integer("item_id").notNull(),
+    itemType: integer("item_type").notNull().default(0), // 0=item, 1=cargo
+    claimEntityId: text("claim_entity_id"),
+    ownerEntityId: text("owner_entity_id"),
+    price: bigint("price", { mode: "number" }).notNull().default(0), // Hex Coins per unit
+    quantity: integer("quantity").notNull().default(0),
+    storedCoins: bigint("stored_coins", { mode: "number" }).notNull().default(0),
+    timestamp: bigint("timestamp", { mode: "number" }).notNull().default(0),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    byItem: index("market_orders_item_idx").on(t.itemId, t.itemType, t.side, t.price),
+    byRegion: index("market_orders_region_idx").on(t.region),
+    byClaim: index("market_orders_claim_idx").on(t.claimEntityId),
+  }),
+);
+
+/** Marketplace buildings (region-scoped clean-rebuild). Coordinates deferred (v1). */
+export const marketplaces = pgTable(
+  "marketplaces",
+  {
+    buildingEntityId: text("building_entity_id").primaryKey(),
+    claimEntityId: text("claim_entity_id"),
+    region: text("region").notNull(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    byRegion: index("marketplaces_region_idx").on(t.region),
+    byClaim: index("marketplaces_claim_idx").on(t.claimEntityId),
+  }),
+);
+
+/** Closed/sold listings — volume + recency only (NO price in source). Region-scoped clean-rebuild. */
+export const marketSales = pgTable(
+  "market_sales",
+  {
+    entityId: text("entity_id").primaryKey(),
+    region: text("region").notNull(),
+    itemId: integer("item_id").notNull(),
+    itemType: integer("item_type").notNull().default(0),
+    quantity: integer("quantity").notNull().default(0),
+    ownerEntityId: text("owner_entity_id"),
+    claimEntityId: text("claim_entity_id"),
+    timestamp: bigint("timestamp", { mode: "number" }).notNull().default(0),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    byItem: index("market_sales_item_idx").on(t.itemId, t.itemType),
+    byRegion: index("market_sales_region_idx").on(t.region),
+    byTime: index("market_sales_time_idx").on(t.timestamp),
+  }),
+);
+
+/** Global per-item rollup (full-replace each snapshot). Denormalized name/icon/tier/rarity
+ *  so the list page is a single fast scan. */
+export const marketItemSummary = pgTable(
+  "market_item_summary",
+  {
+    itemId: integer("item_id").notNull(),
+    itemType: integer("item_type").notNull(),
+    itemName: text("item_name").notNull().default(""),
+    itemSlug: text("item_slug").notNull().default(""),
+    iconAssetName: text("icon_asset_name"),
+    tier: integer("tier"),
+    rarity: text("rarity").notNull().default("Default"),
+    lowestAsk: bigint("lowest_ask", { mode: "number" }),
+    highestBid: bigint("highest_bid", { mode: "number" }),
+    askQty: integer("ask_qty").notNull().default(0),
+    bidQty: integer("bid_qty").notNull().default(0),
+    askOrderCount: integer("ask_order_count").notNull().default(0),
+    bidOrderCount: integer("bid_order_count").notNull().default(0),
+    regionCount: integer("region_count").notNull().default(0),
+    marketplaceCount: integer("marketplace_count").notNull().default(0),
+    soldQtyRecent: integer("sold_qty_recent").notNull().default(0),
+    lastSoldAt: bigint("last_sold_at", { mode: "number" }),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.itemId, t.itemType] }),
+    byAsk: index("market_summary_ask_idx").on(t.lowestAsk),
+    bySold: index("market_summary_sold_idx").on(t.soldQtyRecent),
+    byTier: index("market_summary_tier_idx").on(t.tier),
+    byRarity: index("market_summary_rarity_idx").on(t.rarity),
+    byName: index("market_summary_name_idx").on(t.itemName),
+  }),
+);
+
+/** Append-only price-history time series (one row per traded item per snapshot). */
+export const marketPriceHistory = pgTable(
+  "market_price_history",
+  {
+    itemId: integer("item_id").notNull(),
+    itemType: integer("item_type").notNull(),
+    snapshotAt: timestamp("snapshot_at").notNull(),
+    lowestAsk: bigint("lowest_ask", { mode: "number" }),
+    highestBid: bigint("highest_bid", { mode: "number" }),
+    askQty: integer("ask_qty").notNull().default(0),
+    bidQty: integer("bid_qty").notNull().default(0),
+    soldQtyRecent: integer("sold_qty_recent").notNull().default(0),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.itemId, t.itemType, t.snapshotAt] }),
+    byItem: index("market_history_item_idx").on(t.itemId, t.itemType, t.snapshotAt),
+  }),
+);
