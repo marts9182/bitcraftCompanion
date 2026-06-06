@@ -21,6 +21,19 @@ interface ServerMessage {
  * legacy `InitialSubscription` reply and the modern `SubscribeMultiApplied`
  * reply. Non-subscription messages (e.g. IdentityToken) yield an empty map.
  */
+/**
+ * Quote bare integer literals of 16+ digits so JSON.parse keeps them as strings.
+ * Entity ids are u64 snowflakes (~1.4e18) far above 2^53, so a plain JSON.parse
+ * rounds them and DISTINCT ids collide onto the same JS number — silently merging
+ * rows (e.g. two players sharing a rounded id, one overwriting the other). Keeping
+ * them as exact strings preserves identity; every consumer reads ids via String()/
+ * toInt(), both of which accept numeric strings. Uses lookbehind/lookahead so it
+ * never consumes the surrounding `[ , : ] }` delimiters (handles adjacent values).
+ */
+function preserveBigIntIds(raw: string): string {
+  return raw.replace(/(?<=[:,[]\s*)\d{16,}(?=\s*[,\]}])/g, (m) => `"${m}"`);
+}
+
 export function extractTableInserts(message: unknown): Map<string, RawRow[]> {
   const result = new Map<string, RawRow[]>();
   const msg = message as ServerMessage;
@@ -34,7 +47,7 @@ export function extractTableInserts(message: unknown): Map<string, RawRow[]> {
     for (const update of table.updates ?? []) {
       for (const raw of update.inserts ?? []) {
         try {
-          rows.push(JSON.parse(raw));
+          rows.push(JSON.parse(preserveBigIntIds(raw)));
         } catch {
           // skip a single malformed insert rather than failing the whole snapshot
         }
