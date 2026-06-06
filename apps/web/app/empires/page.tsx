@@ -9,11 +9,11 @@ export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: "Empires",
-  description: "BitCraft Online empires — searchable and sortable by claims, treasury, hexcoin, members, and towers.",
+  description: "BitCraft Online empires — searchable and sortable by claims, Hexite energy, members, and towers.",
   alternates: { canonical: "/empires" },
 };
 
-const SORTS: readonly EmpireSort[] = ["claims", "treasury", "hexcoin", "members", "towers"];
+const SORTS: readonly EmpireSort[] = ["claims", "hexcoin", "members", "towers"];
 
 function one(v: string | string[] | undefined): string | undefined {
   return Array.isArray(v) ? v[0] : v;
@@ -25,8 +25,7 @@ const COLS: Col[] = [
   { label: "Empire" },
   { key: "members", label: "Members", align: "right" },
   { key: "claims", label: "Claims", align: "right" },
-  { key: "hexcoin", label: "Hexcoin", align: "right" },
-  { key: "treasury", label: "Shard treasury", align: "right" },
+  { key: "hexcoin", label: "Hexite energy", align: "right" },
   { key: "towers", label: "Towers", align: "right" },
 ];
 
@@ -110,7 +109,6 @@ export default async function EmpiresPage({ searchParams }: { searchParams: Prom
               <td className="py-2 pr-3 text-right font-mono">{e.memberCount.toLocaleString()}</td>
               <td className="py-2 pr-3 text-right font-mono">{e.numClaims.toLocaleString()}</td>
               <td className="py-2 pr-3 text-right font-mono">{e.currencyTreasury.toLocaleString()}</td>
-              <td className="py-2 pr-3 text-right font-mono">{e.treasury.toLocaleString()}</td>
               <td className="py-2 text-right font-mono">{e.towerCount.toLocaleString()}</td>
             </tr>
           ))}

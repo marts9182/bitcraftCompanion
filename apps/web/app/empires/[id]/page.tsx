@@ -55,12 +55,10 @@ export default async function EmpirePage({ params }: { params: Promise<{ id: str
       </h1>
 
       <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-        <Stat label="Hexcoin" value={empire.currencyTreasury} />
-        <Stat label="Shard treasury" value={empire.treasury} />
+        <Stat label="Hexite energy" value={empire.currencyTreasury} />
         <Stat label="Claims" value={empire.numClaims} />
         <Stat label="Members" value={empire.memberCount} />
         <Stat label="Nobility threshold" value={empire.nobilityThreshold} />
-        <Stat label="Owner type" value={empire.ownerType ?? "—"} />
         <Stat label="Towers" value={empire.towerCount} />
         <Stat label="Tower energy" value={empire.towerEnergy} />
         <Stat label="Tower upkeep" value={empire.towerUpkeep} />
@@ -105,7 +103,7 @@ export default async function EmpirePage({ params }: { params: Promise<{ id: str
                 <th className="py-2 pr-3">#</th>
                 <th className="py-2 pr-3">Player</th>
                 <th className="py-2 pr-3 text-right">Donated shards</th>
-                <th className="py-2 text-right">Donated hexcoin</th>
+                <th className="py-2 text-right">Donated energy</th>
               </tr>
             </thead>
             <tbody>
