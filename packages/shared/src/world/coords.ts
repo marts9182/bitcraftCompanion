@@ -10,7 +10,9 @@
 //   - territory cells are 1×1 chunk cells at (cx, cz)
 //   - claim positions are "small hex" (~90 small-hex units per chunk) → divide to chunk coords
 export const CHUNK_STRIDE = 1000;
-export const SMALL_HEX_PER_CHUNK = 90; // calibrated; fine-tune at the visual-review step
+// Calibrated against region 14: its claims (small-hex x[23503..30197] z[15592..22613])
+// must fall inside its chunk bounds [240,320)×[160,240), which pins ~96 small-hex per chunk.
+export const SMALL_HEX_PER_CHUNK = 96;
 
 export interface Bounds {
   x0: number;

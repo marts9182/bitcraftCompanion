@@ -37,10 +37,13 @@ describe("regionBounds", () => {
 describe("smallHexToChunk", () => {
   it("converts a small-hex claim position into chunk coords inside its region", () => {
     const c = smallHexToChunk(24594, 15592); // a region-14 small-hex position
-    expect(c.x).toBeCloseTo(273.3, 0);
-    expect(c.z).toBeCloseTo(173.2, 0);
+    expect(c.x).toBeCloseTo(256.2, 0);
+    expect(c.z).toBeCloseTo(162.4, 0);
+    // Must land inside region 14's chunk bounds [240,320) x [160,240).
     expect(c.x).toBeGreaterThanOrEqual(240);
     expect(c.x).toBeLessThan(320);
+    expect(c.z).toBeGreaterThanOrEqual(160);
+    expect(c.z).toBeLessThan(240);
   });
 });
 
