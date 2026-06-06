@@ -104,7 +104,7 @@ export default async function PlayersPage({ searchParams }: { searchParams: Prom
               <td className="py-2 pr-3">
                 <Link href={`/players/${p.entityId}`} className="hover:underline">{p.username}</Link>
               </td>
-              <td className="py-2 pr-3 text-muted-foreground">{p.region}</td>
+              <td className="py-2 pr-3 text-muted-foreground">{p.region || "—"}</td>
               <td className="py-2 pr-3 text-right font-mono">{p.totalLevel.toLocaleString()}</td>
               <td className="py-2 pr-3 text-right font-mono">{Math.round(p.timePlayed / 3600).toLocaleString()}</td>
               <td className="py-2 text-right">

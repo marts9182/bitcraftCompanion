@@ -217,6 +217,19 @@ async function main() {
       console.log(`[lb-snapshot]   region ${region}: players=${playerRows.length} skills=${playerSkillRows.length} empires=${empires.length} claims=${claimRows.length} mapClaims=${mapClaimData.length}`);
     }
 
+    // ── 2b. Roster fill: every player in the GLOBAL username roster that isn't a
+    // resident of an ingested region (region "") so the players list is complete
+    // (e.g. claim co-owners who live in a region we don't snapshot). Residents were
+    // already inserted with real stats above; onConflictDoNothing keeps those.
+    const rosterRows = [...usernameMap.entries()].map(([id, username]) => ({
+      entityId: id, username, region: "", timePlayed: 0, timeSignedIn: 0, signInTimestamp: 0,
+      signedIn: onlineSet.has(id), totalLevel: 0, totalXp: 0,
+    }));
+    await db.transaction(async (tx) => {
+      await inChunks(rosterRows, CHUNK, (s) => tx.insert(schema.players).values(s).onConflictDoNothing({ target: schema.players.entityId }));
+    });
+    console.log(`[lb-snapshot] roster fill: ${rosterRows.length} roster players (non-residents inserted with region="")`);
+
     // ── 3. Grid-only pass for empty (zero-player) regions ─────────────────────
     // These modules have a world_region_state grid but no residents. Subscribe
     // SEQUENTIALLY (one WS at a time) and tolerate failures: a module with no
