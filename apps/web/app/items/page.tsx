@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { ItemsTable } from "@/components/compendium/ItemsTable";
-import { ItemFilters } from "@/components/compendium/ItemFilters";
+import { CompendiumFilters } from "@/components/compendium/CompendiumFilters";
 import { Pager } from "@/components/compendium/Pager";
 import { listItems } from "@/lib/queries/items";
 import { parseItemListParams } from "@/lib/queries/item-list-params";
@@ -47,7 +47,15 @@ export default async function ItemsPage({ searchParams }: { searchParams: Promis
       <h1 className="text-3xl font-bold tracking-tight">Items</h1>
       <p className="mt-2 text-muted-foreground">{total.toLocaleString()} items</p>
       <div className="mt-6">
-        <ItemFilters />
+        <CompendiumFilters
+          basePath="/items"
+          fields={[
+            { name: "q", placeholder: "Search items…", className: "max-w-xs" },
+            { name: "tier", placeholder: "Tier", className: "w-24" },
+            { name: "rarity", placeholder: "Rarity", className: "w-36" },
+            { name: "tag", placeholder: "Tag", className: "w-40" },
+          ]}
+        />
         <ItemsTable items={rows} />
         <Pager page={page} total={total} pageSize={pageSize} searchParams={flat} />
       </div>
