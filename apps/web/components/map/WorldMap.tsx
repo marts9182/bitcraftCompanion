@@ -65,7 +65,7 @@ export function WorldMap({ claims, regions, territory, watchtowers, terrain }: {
             after the first real render (flip handled in the Python renderer if needed). */}
         {terrain && <ImageOverlay url={terrain.url} bounds={terrain.bounds} opacity={1} zIndex={1} />}
         <LayersControl position="topright">
-          <LayersControl.Overlay name={`Empire territory (${territory.length.toLocaleString()})`}>
+          <LayersControl.Overlay name={`Empire territory (${territory.length.toLocaleString()})`} checked>
             <LayerGroup>
               {territory.map((c, i) => (
                 <Rectangle key={i} bounds={[pt(c.x0, c.z0), pt(c.x0 + 1, c.z0 + 1)]} pathOptions={{ stroke: false, fillColor: c.color, fillOpacity: 0.55 }} />
