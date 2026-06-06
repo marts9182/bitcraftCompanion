@@ -15,6 +15,11 @@ export function GET() {
 - Recipes: ${SITE_URL}/recipes
 - Calculator: ${SITE_URL}/calculator
 
+## Leaderboards
+- Skills: ${SITE_URL}/leaderboards/skills
+- Empires: ${SITE_URL}/leaderboards/empires
+- Activity: ${SITE_URL}/leaderboards/activity
+
 ## Blog & Guides
 - Blog: ${SITE_URL}/blog
 - RSS: ${SITE_URL}/feed.xml
