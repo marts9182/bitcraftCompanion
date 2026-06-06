@@ -117,6 +117,7 @@ async function main() {
     // (dedup) across the loop and write once after.
     const allChunks = new Map<string, MapChunkRow>();
     const allRegions = new Map<number, MapRegionRow>();
+    const allMapClaims = new Map<string, ReturnType<typeof mapClaimLocalRows>[number]>();
     for (const moduleName of modules) {
       const region = (moduleName.match(/(\d+)$/)?.[1]) ?? moduleName;
       console.log(`[lb-snapshot] region ${region} (${moduleName}) …`);
@@ -154,6 +155,7 @@ async function main() {
       const claimNameMap = new Map(norm(r, "claim_state").map((c) => [String(c.entity_id), String(c.name ?? "")] as const));
       const claimMemberRows = dedupeBy(mapClaimMembers(norm(r, "claim_member_state"), region, claimNameMap), (m) => `${m.claimEntityId}:${m.playerEntityId}`);
       const mapClaimData = dedupeBy(mapClaimLocalRows(norm(r, "claim_local_state"), claimNameMap), (c) => c.entityId);
+      for (const c of mapClaimData) allMapClaims.set(c.entityId, c);
       for (const c of mapChunkRows(norm(r, "empire_chunk_state"))) allChunks.set(c.chunkIndex, c);
       for (const g of mapRegionRows(norm(r, "world_region_state"), new Map())) {
         // Each module reports its OWN region; key by the global region number (module suffix),
@@ -206,9 +208,6 @@ async function main() {
             set: conflictUpdateSet(schema.claimMembers, ["claimEntityId", "playerEntityId"]),
           }),
         );
-        await inChunks(mapClaimData, CHUNK, (s) =>
-          tx.insert(schema.mapClaims).values(s).onConflictDoUpdate({ target: schema.mapClaims.entityId, set: conflictUpdateSet(schema.mapClaims, ["entityId"]) }),
-        );
         await tx
           .insert(schema.regions)
           .values({ region, module: moduleName, name: `Region ${region}` })
@@ -226,6 +225,9 @@ async function main() {
       signedIn: onlineSet.has(id), totalLevel: 0, totalXp: 0,
     }));
     await db.transaction(async (tx) => {
+      // Clear last run's roster-only rows (region "") so departed/renamed players
+      // don't linger, then (re)insert; residents keep their real region/stats.
+      await tx.delete(schema.players).where(eq(schema.players.region, ""));
       await inChunks(rosterRows, CHUNK, (s) => tx.insert(schema.players).values(s).onConflictDoNothing({ target: schema.players.entityId }));
     });
     console.log(`[lb-snapshot] roster fill: ${rosterRows.length} roster players (non-residents inserted with region="")`);
@@ -266,6 +268,8 @@ async function main() {
     await db.transaction(async (tx) => {
       await tx.delete(schema.mapChunks); // full replace: empire_chunk_state is the complete current set
       await inChunks(chunkRows, CHUNK, (s) => tx.insert(schema.mapChunks).values(s));
+      await tx.delete(schema.mapClaims); // full replace too (no region column to scope a per-region delete)
+      await inChunks([...allMapClaims.values()], CHUNK, (s) => tx.insert(schema.mapClaims).values(s));
       for (const g of allRegions.values()) {
         await tx.insert(schema.mapRegions).values(g).onConflictDoUpdate({ target: schema.mapRegions.id, set: conflictUpdateSet(schema.mapRegions, ["id"]) });
       }
