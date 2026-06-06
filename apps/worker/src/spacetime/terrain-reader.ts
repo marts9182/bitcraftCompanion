@@ -1,5 +1,6 @@
 import { gunzipSync } from "node:zlib";
 import WebSocket from "ws";
+import { dominantBiome } from "@bcc/shared";
 
 // Focused, streaming terrain reader. This intentionally COPIES the proven connect
 // recipe from ./ws-snapshot.ts (token exchange → v1.json WS → SubscribeMulti →
@@ -37,21 +38,8 @@ export interface TerrainChunk {
   biome: number;
 }
 
-/** Most frequent biome id in a tile array; ties → smallest id; empty → -1. */
-function dominantBiome(biomes: number[]): number {
-  if (biomes.length === 0) return -1;
-  const counts = new Map<number, number>();
-  for (const b of biomes) counts.set(b, (counts.get(b) ?? 0) + 1);
-  let best = -1;
-  let bestCount = 0;
-  for (const [biome, count] of counts) {
-    if (count > bestCount || (count === bestCount && biome < best)) {
-      best = biome;
-      bestCount = count;
-    }
-  }
-  return best;
-}
+// dominantBiome is imported from @bcc/shared (pure + unit-tested there) so the
+// reduction logic can't drift between the pull script and its tests.
 
 async function exchangeToken(config: TerrainReaderConfig): Promise<string> {
   const base = config.uri.replace(/\/+$/, "").replace(/^ws/, "http");
