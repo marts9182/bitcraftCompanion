@@ -5,7 +5,34 @@ import {
   buildPlayerRows,
   mapEmpireData,
   mapClaimRows,
+  usernamesById,
+  onlineEntityIds,
+  activeRegionIds,
+  buildRegionPlayerRows,
 } from "./map-leaderboards";
+
+describe("activeRegionIds", () => {
+  it("returns the distinct, sorted region ids that have players", () => {
+    expect(
+      activeRegionIds([{ region_id: 14 }, { region_id: 7 }, { region_id: 14 }, { region_id: 9 }]),
+    ).toEqual([7, 9, 14]);
+  });
+});
+
+describe("buildRegionPlayerRows", () => {
+  it("builds region players from player_state, enriched with global username + online", () => {
+    const rows = buildRegionPlayerRows(
+      [{ entity_id: "100", time_played: 7483 }, { entity_id: "200", time_played: 0 }],
+      "14",
+      usernamesById([{ entity_id: "100", username: "Alessandro" }]),
+      onlineEntityIds([{ entity_id: "100" }]),
+    );
+    expect(rows).toEqual([
+      { entityId: "100", region: "14", username: "Alessandro", timePlayed: 7483, signedIn: true },
+      { entityId: "200", region: "14", username: "Player 200", timePlayed: 0, signedIn: false },
+    ]);
+  });
+});
 
 describe("mapSkillRow", () => {
   it("maps id/name/maxLevel", () => {

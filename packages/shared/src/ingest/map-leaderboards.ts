@@ -76,6 +76,53 @@ export function buildPlayerRows(usernameRows: Raw[], stateRows: Raw[], signedInR
   });
 }
 
+/** entity_id → username map, from the GLOBAL module's player_username_state. */
+export function usernamesById(usernameRows: Raw[]): Map<string, string> {
+  return new Map(usernameRows.map((u) => [idStr(u.entity_id), str(u.username)] as const));
+}
+
+/** Set of currently-online entity ids, from the GLOBAL module's signed_in_player_state. */
+export function onlineEntityIds(signedInRows: Raw[]): Set<string> {
+  return new Set(signedInRows.map((r) => idStr(r.entity_id)));
+}
+
+/**
+ * Distinct region ids that currently have players, from the GLOBAL module's
+ * user_region_state (`{ identity, region_id }`). Drives dynamic region discovery
+ * so the snapshot adapts as game state changes — no hardcoded region list.
+ */
+export function activeRegionIds(userRegionRows: Raw[]): number[] {
+  const ids = new Set<number>();
+  for (const r of userRegionRows) {
+    const rid = toInt(r.region_id);
+    if (rid != null) ids.add(rid);
+  }
+  return [...ids].sort((a, b) => a - b);
+}
+
+/**
+ * Build player rows for one region from that region module's player_state
+ * (the resident roster, carrying time_played), enriched with the global
+ * username map + online set. Players with no global username get a placeholder.
+ */
+export function buildRegionPlayerRows(
+  stateRows: Raw[],
+  region: string,
+  usernameById: Map<string, string>,
+  onlineIds: Set<string>,
+): PlayerRow[] {
+  return stateRows.map((s) => {
+    const id = idStr(s.entity_id);
+    return {
+      entityId: id,
+      region,
+      username: usernameById.get(id) ?? `Player ${id}`,
+      timePlayed: toInt(s.time_played) ?? 0,
+      signedIn: onlineIds.has(id),
+    };
+  });
+}
+
 export interface EmpireRow {
   entityId: string;
   region: string;

@@ -49,6 +49,7 @@ export const COLUMN_ORDERS: Record<string, string[]> = {
   player_username_state: ["entity_id", "username"],
   player_state: ["teleport_location", "entity_id", "time_played", "session_start_timestamp", "time_signed_in", "sign_in_timestamp", "signed_in", "traveler_tasks_expiration"],
   signed_in_player_state: ["entity_id"],
+  user_region_state: ["identity", "region_id"],
   empire_state: ["entity_id", "capital_building_entity_id", "name", "shard_treasury", "nobility_threshold", "num_claims", "location"],
   empire_player_data_state: ["entity_id", "empire_entity_id", "rank", "donated_shards", "noble"],
   claim_state: ["entity_id", "owner_player_entity_id", "owner_building_entity_id", "name", "neutral"],

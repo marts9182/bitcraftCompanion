@@ -20,5 +20,9 @@ export {
   buildPlayerRows,
   mapEmpireData,
   mapClaimRows,
+  usernamesById,
+  onlineEntityIds,
+  activeRegionIds,
+  buildRegionPlayerRows,
 } from "./ingest/map-leaderboards";
 export type { SkillRow, PlayerSkillRow, PlayerRow, EmpireRow, EmpireMemberRow, ClaimRow } from "./ingest/map-leaderboards";

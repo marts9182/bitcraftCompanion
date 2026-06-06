@@ -8,8 +8,11 @@ export const serverEnvSchema = z.object({
   DATABASE_URL: z.string().url().or(z.string().startsWith("postgres")),
   SPACETIME_URI: z.string().min(1),
   SPACETIME_MODULE: z.string().min(1),
-  // Comma-separated live region module names for the leaderboard snapshot,
-  // e.g. "bitcraft-live-1,bitcraft-live-14". Falls back to SPACETIME_MODULE.
+  // The GLOBAL module holding the player roster (usernames, online, region map).
+  SPACETIME_GLOBAL_MODULE: z.string().min(1).default("bitcraft-live-global"),
+  // Optional override of the active region module list for the leaderboard snapshot,
+  // e.g. "bitcraft-live-14". When unset, active regions are auto-discovered from the
+  // global module's user_region_state (so it adapts as game state changes).
   SPACETIME_REGIONS: z.string().min(1).optional(),
   SPACETIME_TOKEN: z.string().min(1),
   // Optional: the public identity the token encodes. Not required to connect;

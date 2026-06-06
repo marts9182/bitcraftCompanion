@@ -5,43 +5,51 @@ config({ path: resolve(dirname(fileURLToPath(import.meta.url)), "../../../.env.l
 
 import {
   parseServerEnv, createDb, schema, COLUMN_ORDERS, normalizeRow,
-  mapSkillRow, mapExperienceRows, buildPlayerRows, mapEmpireData, mapClaimRows,
+  mapSkillRow, mapExperienceRows, mapEmpireData, mapClaimRows,
+  usernamesById, onlineEntityIds, activeRegionIds, buildRegionPlayerRows,
 } from "@bcc/shared";
 import { readSnapshot } from "./spacetime/ws-snapshot";
 import { triggerRevalidate } from "./revalidate";
 import { eq, sql, getTableColumns, type SQL } from "drizzle-orm";
 import type { PgTable } from "drizzle-orm/pg-core";
 
-const QUERIES = [
-  "SELECT * FROM skill_desc",
+// GLOBAL module: the player roster (usernames, online presence, player→region map).
+const GLOBAL_QUERIES = [
   "SELECT * FROM player_username_state",
-  "SELECT * FROM player_state",
   "SELECT * FROM signed_in_player_state",
+  "SELECT * FROM user_region_state",
+];
+const GLOBAL_EXPECTED = ["player_username_state", "user_region_state"];
+
+// REGION modules: per-region resident data (XP, playtime, empires, claims) + skill defs.
+const REGION_QUERIES = [
+  "SELECT * FROM skill_desc",
   "SELECT * FROM experience_state",
+  "SELECT * FROM player_state",
   "SELECT * FROM empire_state",
   "SELECT * FROM empire_player_data_state",
   "SELECT * FROM claim_state",
 ];
-const EXPECTED = ["player_username_state", "experience_state", "empire_state"];
+const REGION_EXPECTED = ["experience_state", "player_state"];
 
 const CHUNK = 500;
-
-function moduleList(env: ReturnType<typeof parseServerEnv>): string[] {
-  const raw = env.SPACETIME_REGIONS?.trim();
-  if (raw) return raw.split(",").map((s) => s.trim()).filter(Boolean);
-  return [env.SPACETIME_MODULE];
-}
-
-function regionKey(moduleName: string): string {
-  const m = moduleName.match(/(\d+)$/);
-  return m ? m[1]! : moduleName;
-}
 
 async function inChunks<T>(rows: T[], size: number, fn: (slice: T[]) => Promise<unknown>): Promise<void> {
   for (let i = 0; i < rows.length; i += size) await fn(rows.slice(i, i + size));
 }
 
-function conflictUpdateSet(table: PgTable, skip: string[] = ["entityId", "id"]): Record<string, SQL> {
+/**
+ * Keep one row per conflict key (last wins). Postgres rejects an ON CONFLICT
+ * upsert that would touch the same row twice in one statement, and the live data
+ * can carry duplicate keys (e.g. a repeated skill stack), so dedupe before insert.
+ */
+function dedupeBy<T>(rows: T[], key: (r: T) => string): T[] {
+  const m = new Map<string, T>();
+  for (const r of rows) m.set(key(r), r);
+  return [...m.values()];
+}
+
+function conflictUpdateSet(table: PgTable, skip: string[]): Record<string, SQL> {
   const columns = getTableColumns(table) as Record<string, { name: string }>;
   const set: Record<string, SQL> = {};
   for (const [key, col] of Object.entries(columns)) {
@@ -51,6 +59,9 @@ function conflictUpdateSet(table: PgTable, skip: string[] = ["entityId", "id"]):
   return set;
 }
 
+const norm = (tables: Map<string, unknown[]>, t: string) =>
+  (tables.get(t) ?? []).map((r) => normalizeRow(COLUMN_ORDERS[t] ?? [], r) as Record<string, unknown>);
+
 async function main() {
   const env = parseServerEnv();
   if (env.INGESTION_ENABLED !== true) {
@@ -58,28 +69,39 @@ async function main() {
     process.exit(0);
   }
   const db = createDb(env.DATABASE_URL);
-  const modules = moduleList(env);
+  const conn = { uri: env.SPACETIME_URI, token: env.SPACETIME_TOKEN };
   const [run] = await db.insert(schema.ingestionRuns).values({ status: "running" }).returning();
 
   try {
-    let totalPlayers = 0;
-    for (const moduleName of modules) {
-      const region = regionKey(moduleName);
-      console.log(`[lb-snapshot] region ${region} (${moduleName}) …`);
-      const tables = await readSnapshot(
-        { uri: env.SPACETIME_URI, moduleName, token: env.SPACETIME_TOKEN },
-        QUERIES,
-        EXPECTED,
-        120_000,
-      );
-      const norm = (t: string) => (tables.get(t) ?? []).map((r) => normalizeRow(COLUMN_ORDERS[t]!, r));
+    // ── 1. Global pass: roster + online + region map ──────────────────────────
+    console.log(`[lb-snapshot] global module ${env.SPACETIME_GLOBAL_MODULE} …`);
+    const g = await readSnapshot({ ...conn, moduleName: env.SPACETIME_GLOBAL_MODULE }, GLOBAL_QUERIES, GLOBAL_EXPECTED, 120_000);
+    const usernameMap = usernamesById(norm(g, "player_username_state"));
+    const onlineSet = onlineEntityIds(norm(g, "signed_in_player_state"));
+    const regionList = activeRegionIds(norm(g, "user_region_state"));
+    console.log(`[lb-snapshot] global: usernames=${usernameMap.size} online=${onlineSet.size} active regions=[${regionList.join(",")}]`);
 
-      const skillRows = norm("skill_desc").map(mapSkillRow);
+    // Active region modules: explicit override, else auto-discovered from user_region_state.
+    const modules = env.SPACETIME_REGIONS
+      ? env.SPACETIME_REGIONS.split(",").map((s) => s.trim()).filter(Boolean)
+      : regionList.map((id) => `bitcraft-live-${id}`);
+
+    // ── 2. Per-region pass: XP, playtime, empires, claims ─────────────────────
+    let totalPlayers = 0;
+    let skillsLoaded = false;
+    for (const moduleName of modules) {
+      const region = (moduleName.match(/(\d+)$/)?.[1]) ?? moduleName;
+      console.log(`[lb-snapshot] region ${region} (${moduleName}) …`);
+      const r = await readSnapshot({ ...conn, moduleName }, REGION_QUERIES, REGION_EXPECTED, 120_000);
+
+      const skillRows = dedupeBy(norm(r, "skill_desc").map(mapSkillRow), (s) => String(s.id));
       const maxBySkill = new Map(skillRows.map((s) => [s.id, s.maxLevel] as const));
-      const playerRows = buildPlayerRows(norm("player_username_state"), norm("player_state"), norm("signed_in_player_state"), region);
-      const playerSkillRows = mapExperienceRows(norm("experience_state"), region, maxBySkill);
-      const { empires, members } = mapEmpireData(norm("empire_state"), norm("empire_player_data_state"), region);
-      const claimRows = mapClaimRows(norm("claim_state"), region);
+      const playerRows = dedupeBy(buildRegionPlayerRows(norm(r, "player_state"), region, usernameMap, onlineSet), (p) => p.entityId);
+      const playerSkillRows = dedupeBy(mapExperienceRows(norm(r, "experience_state"), region, maxBySkill), (s) => `${s.playerEntityId}:${s.skillId}`);
+      const raw = mapEmpireData(norm(r, "empire_state"), norm(r, "empire_player_data_state"), region);
+      const empires = dedupeBy(raw.empires, (e) => e.entityId);
+      const members = dedupeBy(raw.members, (m) => `${m.empireEntityId}:${m.playerEntityId}`);
+      const claimRows = dedupeBy(mapClaimRows(norm(r, "claim_state"), region), (c) => c.entityId);
       totalPlayers += playerRows.length;
 
       await db.transaction(async (tx) => {
@@ -87,47 +109,34 @@ async function main() {
           await inChunks(skillRows, CHUNK, (s) =>
             tx.insert(schema.skills).values(s).onConflictDoUpdate({ target: schema.skills.id, set: conflictUpdateSet(schema.skills, ["id"]) }),
           );
+          skillsLoaded = true;
         }
-        // Clear this region's rows first so entities that disappeared from the live
-        // snapshot (deleted players, disbanded empires) don't linger as ghosts. The
-        // upserts below then re-insert fresh; onConflict keeps cross-region collisions safe.
+        // Clear this region's rows first so departed entities don't linger.
         await tx.delete(schema.playerSkills).where(eq(schema.playerSkills.region, region));
         await tx.delete(schema.empireMembers).where(eq(schema.empireMembers.region, region));
         await tx.delete(schema.claims).where(eq(schema.claims.region, region));
         await tx.delete(schema.players).where(eq(schema.players.region, region));
         await tx.delete(schema.empires).where(eq(schema.empires.region, region));
         await inChunks(playerRows, CHUNK, (s) =>
-          tx.insert(schema.players).values(s).onConflictDoUpdate({ target: schema.players.entityId, set: conflictUpdateSet(schema.players) }),
+          tx.insert(schema.players).values(s).onConflictDoUpdate({ target: schema.players.entityId, set: conflictUpdateSet(schema.players, ["entityId"]) }),
         );
         await inChunks(empires, CHUNK, (s) =>
-          tx.insert(schema.empires).values(s).onConflictDoUpdate({ target: schema.empires.entityId, set: conflictUpdateSet(schema.empires) }),
+          tx.insert(schema.empires).values(s).onConflictDoUpdate({ target: schema.empires.entityId, set: conflictUpdateSet(schema.empires, ["entityId"]) }),
         );
-        // Upsert (not plain insert) so a cross-region entity-id collision — SpacetimeDB
-        // ids may only be unique per region module — updates rather than throwing a PK
-        // violation that would abort the run. Region-delete above keeps each region fresh.
         await inChunks(playerSkillRows, CHUNK, (s) =>
-          tx
-            .insert(schema.playerSkills)
-            .values(s)
-            .onConflictDoUpdate({
-              target: [schema.playerSkills.playerEntityId, schema.playerSkills.skillId],
-              set: conflictUpdateSet(schema.playerSkills, ["playerEntityId", "skillId"]),
-            }),
+          tx.insert(schema.playerSkills).values(s).onConflictDoUpdate({
+            target: [schema.playerSkills.playerEntityId, schema.playerSkills.skillId],
+            set: conflictUpdateSet(schema.playerSkills, ["playerEntityId", "skillId"]),
+          }),
         );
         await inChunks(members, CHUNK, (s) =>
-          tx
-            .insert(schema.empireMembers)
-            .values(s)
-            .onConflictDoUpdate({
-              target: [schema.empireMembers.empireEntityId, schema.empireMembers.playerEntityId],
-              set: conflictUpdateSet(schema.empireMembers, ["empireEntityId", "playerEntityId"]),
-            }),
+          tx.insert(schema.empireMembers).values(s).onConflictDoUpdate({
+            target: [schema.empireMembers.empireEntityId, schema.empireMembers.playerEntityId],
+            set: conflictUpdateSet(schema.empireMembers, ["empireEntityId", "playerEntityId"]),
+          }),
         );
         await inChunks(claimRows, CHUNK, (s) =>
-          tx
-            .insert(schema.claims)
-            .values(s)
-            .onConflictDoUpdate({ target: schema.claims.entityId, set: conflictUpdateSet(schema.claims, ["entityId"]) }),
+          tx.insert(schema.claims).values(s).onConflictDoUpdate({ target: schema.claims.entityId, set: conflictUpdateSet(schema.claims, ["entityId"]) }),
         );
         await tx
           .insert(schema.regions)
@@ -139,7 +148,7 @@ async function main() {
 
     await db.update(schema.ingestionRuns).set({ status: "ok", finishedAt: new Date(), rowsUpserted: totalPlayers }).where(eq(schema.ingestionRuns.id, run!.id));
     await triggerRevalidate({ url: env.REVALIDATE_URL, secret: env.REVALIDATE_SECRET });
-    console.log(`[lb-snapshot] OK — ${modules.length} region(s), ${totalPlayers} players`);
+    console.log(`[lb-snapshot] OK — ${modules.length} region(s), ${totalPlayers} players${skillsLoaded ? "" : " (no skill_desc seen)"}`);
     process.exit(0);
   } catch (err) {
     await db.update(schema.ingestionRuns).set({ status: "error", finishedAt: new Date(), error: String(err) }).where(eq(schema.ingestionRuns.id, run!.id));
