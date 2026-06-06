@@ -7,7 +7,7 @@ import {
   parseServerEnv, createDb, schema, COLUMN_ORDERS, normalizeRow,
   mapSkillRow, mapExperienceRows, mapEmpireData, mapClaimRows,
   usernamesById, onlineEntityIds, activeRegionIds, buildRegionPlayerRows,
-  mapClaimLocalRows, mapChunkRows, mapRegionRows, type MapChunkRow, type MapRegionRow,
+  mapClaimLocalRows, mapChunkRows, mapRegionRows, buildEmpireColors, type MapChunkRow, type MapRegionRow,
 } from "@bcc/shared";
 import { readSnapshot } from "./spacetime/ws-snapshot";
 import { triggerRevalidate } from "./revalidate";
@@ -19,6 +19,8 @@ const GLOBAL_QUERIES = [
   "SELECT * FROM player_username_state",
   "SELECT * FROM signed_in_player_state",
   "SELECT * FROM user_region_state",
+  "SELECT * FROM empire_color_desc",
+  "SELECT * FROM empire_emblem_state",
 ];
 const GLOBAL_EXPECTED = ["player_username_state", "user_region_state"];
 
@@ -85,7 +87,8 @@ async function main() {
     const usernameMap = usernamesById(norm(g, "player_username_state"));
     const onlineSet = onlineEntityIds(norm(g, "signed_in_player_state"));
     const regionList = activeRegionIds(norm(g, "user_region_state"));
-    console.log(`[lb-snapshot] global: usernames=${usernameMap.size} online=${onlineSet.size} active regions=[${regionList.join(",")}]`);
+    const empireColors = buildEmpireColors(norm(g, "empire_color_desc"), norm(g, "empire_emblem_state"));
+    console.log(`[lb-snapshot] global: usernames=${usernameMap.size} online=${onlineSet.size} active regions=[${regionList.join(",")}] empireColors=${empireColors.size}`);
 
     // Active region modules: explicit override, else auto-discovered from user_region_state.
     const modules = env.SPACETIME_REGIONS
@@ -109,7 +112,7 @@ async function main() {
       const playerRows = dedupeBy(buildRegionPlayerRows(norm(r, "player_state"), region, usernameMap, onlineSet), (p) => p.entityId);
       const playerSkillRows = dedupeBy(mapExperienceRows(norm(r, "experience_state"), region, maxBySkill), (s) => `${s.playerEntityId}:${s.skillId}`);
       const raw = mapEmpireData(norm(r, "empire_state"), norm(r, "empire_player_data_state"), region);
-      const empires = dedupeBy(raw.empires, (e) => e.entityId);
+      const empires = dedupeBy(raw.empires, (e) => e.entityId).map((e) => ({ ...e, color: empireColors.get(e.entityId) ?? null }));
       const members = dedupeBy(raw.members, (m) => `${m.empireEntityId}:${m.playerEntityId}`);
       const claimRows = dedupeBy(mapClaimRows(norm(r, "claim_state"), region), (c) => c.entityId);
       totalPlayers += playerRows.length;

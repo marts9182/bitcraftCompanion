@@ -26,7 +26,7 @@ export {
   buildRegionPlayerRows,
 } from "./ingest/map-leaderboards";
 export type { SkillRow, PlayerSkillRow, PlayerRow, EmpireRow, EmpireMemberRow, ClaimRow } from "./ingest/map-leaderboards";
-export { mapClaimLocalRows, mapChunkRows, mapRegionRows } from "./ingest/map-world";
+export { mapClaimLocalRows, mapChunkRows, mapRegionRows, buildEmpireColors } from "./ingest/map-world";
 export type { MapClaimRow, MapChunkRow, MapRegionRow } from "./ingest/map-world";
 export {
   decodeLocationSum,

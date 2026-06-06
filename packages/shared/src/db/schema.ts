@@ -195,6 +195,7 @@ export const empires = pgTable(
     entityId: text("entity_id").primaryKey(),
     region: text("region").notNull(),
     name: text("name").notNull(),
+    color: text("color"),
     numClaims: integer("num_claims").notNull().default(0),
     treasury: bigint("treasury", { mode: "number" }).notNull().default(0),
     leaderPlayerEntityId: text("leader_player_entity_id"),

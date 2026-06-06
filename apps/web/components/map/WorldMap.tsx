@@ -7,12 +7,6 @@ import type { ClaimPoint, RegionRect, TerritoryCell } from "@/lib/queries/map";
 // CHUNK coordinates. CRS.Simple uses [y,x]; map game (x,z) -> [z, x].
 const pt = (x: number, z: number): [number, number] => [z, x];
 
-function colorFor(empire: string): string {
-  let h = 0;
-  for (const ch of empire) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-  return `hsl(${h % 360} 60% 55%)`;
-}
-
 export function WorldMap({ claims, regions, territory }: {
   claims: ClaimPoint[]; regions: RegionRect[]; territory: TerritoryCell[];
 }) {
@@ -36,7 +30,7 @@ export function WorldMap({ claims, regions, territory }: {
         <LayersControl.Overlay name={`Empire territory (${territory.length.toLocaleString()})`}>
           <LayerGroup>
             {territory.map((c, i) => (
-              <Rectangle key={i} bounds={[pt(c.x0, c.z0), pt(c.x0 + 1, c.z0 + 1)]} pathOptions={{ stroke: false, fillColor: colorFor(c.empire), fillOpacity: 0.55 }} />
+              <Rectangle key={i} bounds={[pt(c.x0, c.z0), pt(c.x0 + 1, c.z0 + 1)]} pathOptions={{ stroke: false, fillColor: c.color, fillOpacity: 0.55 }} />
             ))}
           </LayerGroup>
         </LayersControl.Overlay>

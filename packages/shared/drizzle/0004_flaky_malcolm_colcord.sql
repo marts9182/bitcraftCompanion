@@ -1,0 +1,1 @@
+ALTER TABLE "empires" ADD COLUMN "color" text;

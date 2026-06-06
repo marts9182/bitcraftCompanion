@@ -32,6 +32,29 @@ export function mapChunkRows(rows: Raw[]): MapChunkRow[] {
   }));
 }
 
+/**
+ * Empire entity id (string) → `#rrggbb`, derived from the GLOBAL module's
+ * empire_emblem_state (empire → color1_id) joined to empire_color_desc
+ * (id → color_argb, stored ARGB as 0xAARRGGBB so masking & 0xffffff yields RRGGBB).
+ */
+export function buildEmpireColors(colorDescRows: Raw[], emblemRows: Raw[]): Map<string, string> {
+  const colorById = new Map<number, string>();
+  for (const r of colorDescRows) {
+    const id = toInt(r.id);
+    if (id == null) continue;
+    colorById.set(id, "#" + (Number(r.color_argb) & 0xffffff).toString(16).padStart(6, "0"));
+  }
+  const out = new Map<string, string>();
+  for (const r of emblemRows) {
+    const empireId = idStr(r.entity_id);
+    const cid = toInt(r.color1_id);
+    if (cid == null) continue;
+    const hex = colorById.get(cid);
+    if (hex) out.set(empireId, hex);
+  }
+  return out;
+}
+
 export interface MapRegionRow { id: number; name: string | null; minChunkX: number; minChunkZ: number; widthChunks: number; heightChunks: number; regionIndex: number; }
 export function mapRegionRows(rows: Raw[], nameById: Map<number, string>): MapRegionRow[] {
   return rows.map((r) => {

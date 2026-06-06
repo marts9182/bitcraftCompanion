@@ -127,6 +127,7 @@ export interface EmpireRow {
   entityId: string;
   region: string;
   name: string;
+  color?: string | null;
   numClaims: number;
   treasury: number;
   leaderPlayerEntityId: string | null;
