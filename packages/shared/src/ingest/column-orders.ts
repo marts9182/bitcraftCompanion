@@ -70,4 +70,8 @@ export const COLUMN_ORDERS: Record<string, string[]> = {
     "chunk_index", "chunk_x", "chunk_z", "dimension", "biomes", "biome_density",
     "elevations", "water_levels", "water_body_types", "zoning_types", "original_elevations",
   ],
+  sell_order_state: ["entity_id", "owner_entity_id", "claim_entity_id", "item_id", "item_type", "price_threshold", "quantity", "timestamp", "stored_coins"],
+  buy_order_state: ["entity_id", "owner_entity_id", "claim_entity_id", "item_id", "item_type", "price_threshold", "quantity", "timestamp", "stored_coins"],
+  marketplace_state: ["building_entity_id", "claim_entity_id", "location"],
+  closed_listing_state: ["entity_id", "owner_entity_id", "claim_entity_id", "item_stack", "timestamp"],
 };

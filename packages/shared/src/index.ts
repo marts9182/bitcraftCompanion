@@ -34,6 +34,14 @@ export type { SkillRow, PlayerSkillRow, PlayerRow, EmpireRow, EmpireMemberRow, C
 export { mapClaimLocalRows, mapChunkRows, mapRegionRows, buildEmpireColors, regionNamesById } from "./ingest/map-world";
 export type { MapClaimRow, MapChunkRow, MapRegionRow } from "./ingest/map-world";
 export {
+  mapMarketOrders,
+  mapMarketplaces,
+  mapClosedListings,
+  gameTimestampToMs,
+  PRICE_SENTINEL_CEILING,
+} from "./ingest/map-market";
+export type { MarketOrderRow, MarketplaceRow, MarketSaleRow } from "./ingest/map-market";
+export {
   decodeLocationSum,
   chunkIndexToBounds,
   regionBounds,
