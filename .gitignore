@@ -21,3 +21,4 @@ coverage/
 
 # large regenerable game-schema snapshot (recreate via the worker probe)
 docs/reference/bitcraft-schema.json
+.superpowers/
