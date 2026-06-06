@@ -1,9 +1,10 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { MapContainer, LayersControl, LayerGroup, CircleMarker, Marker, Rectangle, Popup, Tooltip, useMap } from "react-leaflet";
+import { MapContainer, LayersControl, LayerGroup, CircleMarker, Marker, Rectangle, ImageOverlay, Popup, Tooltip, useMap } from "react-leaflet";
 import { CRS, Icon } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { ClaimPoint, RegionRect, TerritoryCell, Watchtower } from "@/lib/queries/map";
+import type { TerrainOverlay } from "@/app/map/page";
 
 // CHUNK coordinates. CRS.Simple uses [y,x]; map game (x,z) -> [z, x].
 const pt = (x: number, z: number): [number, number] => [z, x];
@@ -27,8 +28,8 @@ function FlyToRegion({ region, worldBounds }: { region: RegionRect | null; world
   return null;
 }
 
-export function WorldMap({ claims, regions, territory, watchtowers }: {
-  claims: ClaimPoint[]; regions: RegionRect[]; territory: TerritoryCell[]; watchtowers: Watchtower[];
+export function WorldMap({ claims, regions, territory, watchtowers, terrain }: {
+  claims: ClaimPoint[]; regions: RegionRect[]; territory: TerritoryCell[]; watchtowers: Watchtower[]; terrain: TerrainOverlay | null;
 }) {
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
@@ -58,6 +59,11 @@ export function WorldMap({ claims, regions, territory, watchtowers }: {
         style={{ height: "78vh", background: "#1D1B22", borderRadius: "0.5rem" }}
       >
         <FlyToRegion region={selected} worldBounds={worldBounds} />
+        {/* Biome terrain base: bottom layer (low zIndex) under all overlays. Null
+            until scripts/render-terrain.py has produced terrain.webp + meta. The
+            controller will visually verify alignment vs. the region rectangles
+            after the first real render (flip handled in the Python renderer if needed). */}
+        {terrain && <ImageOverlay url={terrain.url} bounds={terrain.bounds} opacity={1} zIndex={1} />}
         <LayersControl position="topright">
           <LayersControl.Overlay name={`Empire territory (${territory.length.toLocaleString()})`}>
             <LayerGroup>

@@ -59,4 +59,9 @@ export const COLUMN_ORDERS: Record<string, string[]> = {
   empire_emblem_state: ["entity_id", "icon_id", "shape_id", "color1_id", "color2_id"],
   world_region_state: ["id", "region_min_chunk_x", "region_min_chunk_z", "region_width_chunks", "region_height_chunks", "region_index", "region_count", "region_count_sqrt"],
   world_region_name_state: ["id", "player_facing_name", "module_name_prefix"],
+  biome_desc: ["biome_type", "name", "description", "hazard_level", "icon_address", "disallow_player_build"],
+  terrain_chunk_state: [
+    "chunk_index", "chunk_x", "chunk_z", "dimension", "biomes", "biome_density",
+    "elevations", "water_levels", "water_body_types", "zoning_types", "original_elevations",
+  ],
 };

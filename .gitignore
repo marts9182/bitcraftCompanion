@@ -18,7 +18,11 @@ build/
 .DS_Store
 coverage/
 *.log
+__pycache__/
 
 # large regenerable game-schema snapshot (recreate via the worker probe)
 docs/reference/bitcraft-schema.json
 .superpowers/
+
+# terrain biome intermediate (multi-GB pull; regenerate via worker terrain-snapshot)
+apps/worker/.terrain-cache/
