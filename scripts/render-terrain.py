@@ -1,118 +1,141 @@
 #!/usr/bin/env python3
-"""
-Render the BitCraft biome terrain base image (the "bccodex look").
+"""Render per-region biome terrain images from the worker's terrain cache.
 
-Reads the compact intermediate written by the worker terrain snapshot and paints
-one pixel per chunk, coloured by that chunk's dominant biome, into an RGBA webp.
-Chunks with no data (or biome -1) stay transparent so the Leaflet base under it
-shows through.
+Run AFTER:  pnpm --filter @bcc/worker terrain-snapshot [--regions=14]
+Then:       python scripts/render-terrain.py
 
-PIPELINE (run in order, from the repo root):
-  1. pnpm --filter @bcc/worker terrain-snapshot      # multi-GB pull; writes the intermediate
-  2. python scripts/render-terrain.py                # this script; writes terrain.webp + meta
-
-Inputs:  apps/worker/.terrain-cache/terrain-biomes.json   (gitignored, regenerable)
-Outputs: apps/web/public/map/terrain.webp                 (committed by the controller after render)
-         apps/web/public/map/terrain-meta.json            (overlay bounds for the web layer)
-
-ORIENTATION NOTE: pixel (0,0) is at (minX, minZ) — i.e. row index = z - minZ, with
-z increasing DOWNWARD in the image. The web layer uses Leaflet CRS.Simple with
-pt(x,z) = [z, x] and bounds [[minZ,minX],[maxZ,maxX]]. If the controller sees the
-terrain mirrored vertically vs. the region rectangles, flip the image here by
-setting FLIP_Z = True (the rendered rows are reversed) rather than touching the
-web bounds. Leave the bounds in the web layer untouched.
-
-Requirements: Python 3 + Pillow  (from PIL import Image)
-Usage:        python scripts/render-terrain.py
+Reads apps/worker/.terrain-cache/region-*.bin (+ .json sidecars) — each chunk is a
+32x32 tile grid of biome / water-body / elevation — and renders a natural-looking
+biome map per region (per-tile biome colour, water bodies + rivers, elevation
+hillshade). Writes apps/web/public/map/terrain/region-<N>.webp and a manifest
+apps/web/public/map/terrain.json the map overlays.
 """
 import json
 import os
-from collections import Counter
-
+import glob
+import numpy as np
 from PIL import Image
 
-REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-IN_FILE = os.path.join(REPO_ROOT, "apps", "worker", ".terrain-cache", "terrain-biomes.json")
-OUT_DIR = os.path.join(REPO_ROOT, "apps", "web", "public", "map")
-OUT_IMG = os.path.join(OUT_DIR, "terrain.webp")
-OUT_META = os.path.join(OUT_DIR, "terrain-meta.json")
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CACHE = os.path.join(ROOT, "apps", "worker", ".terrain-cache")
+OUT_DIR = os.path.join(ROOT, "apps", "web", "public", "map", "terrain")
+MANIFEST = os.path.join(ROOT, "apps", "web", "public", "map", "terrain.json")
+TILE = 32  # tiles per chunk side
 
-# Set True if the rendered terrain appears vertically mirrored vs. the region
-# rectangles in the Leaflet map (see ORIENTATION NOTE above).
-FLIP_Z = False
-
-# biome_type id -> RGB. Starting bccodex-style palette; tune freely. -1/unknown
-# is left transparent (never written).
-BIOME_PALETTE: dict[int, tuple[int, int, int]] = {
-    0: (20, 20, 24),     # Dev
-    1: (74, 124, 58),    # Calm Forest
-    2: (47, 93, 58),     # Pine Woods
-    3: (232, 238, 242),  # Snowy Peaks
-    4: (143, 191, 90),   # Breezy Grasslands
-    5: (200, 119, 46),   # Autumn Forest
-    6: (159, 176, 168),  # Misty Tundra
-    7: (217, 193, 121),  # Desert Wasteland
-    8: (92, 107, 58),    # Swamp
-    9: (155, 139, 110),  # Rocky Garden
-    10: (30, 90, 134),   # Open Ocean
-    11: (169, 211, 107), # Safe Meadows
-    12: (58, 51, 64),    # Cave
-    13: (47, 125, 79),   # Jungle
-    14: (107, 155, 74),  # Sapwoods
+# Natural, muted biome palette (RGB) tuned toward the in-game minimap look.
+BIOME_PALETTE = {
+    0: (60, 60, 64),     # Dev
+    1: (74, 96, 58),     # Calm Forest
+    2: (58, 80, 56),     # Pine Woods
+    3: (228, 232, 236),  # Snowy Peaks
+    4: (138, 158, 96),   # Breezy Grasslands
+    5: (150, 120, 64),   # Autumn Forest
+    6: (150, 150, 142),  # Misty Tundra
+    7: (178, 154, 102),  # Desert Wasteland
+    8: (86, 100, 66),    # Swamp
+    9: (140, 132, 116),  # Rocky Garden
+    10: (52, 74, 96),    # Open Ocean (biome that reads as ocean)
+    11: (158, 176, 110), # Safe Meadows
+    12: (70, 64, 74),    # Cave
+    13: (60, 110, 72),   # Jungle
+    14: (96, 132, 74),   # Sapwoods
+}
+# Water-body colours by type byte (0 = land, handled separately).
+WATER_PALETTE = {
+    1: (78, 120, 150),   # river
+    2: (78, 120, 150),   # stream
+    3: (62, 100, 132),   # lake / shallow
+    4: (44, 66, 90),     # ocean
 }
 
-BIOME_NAMES: dict[int, str] = {
-    0: "Dev", 1: "Calm Forest", 2: "Pine Woods", 3: "Snowy Peaks", 4: "Breezy Grasslands",
-    5: "Autumn Forest", 6: "Misty Tundra", 7: "Desert Wasteland", 8: "Swamp", 9: "Rocky Garden",
-    10: "Open Ocean", 11: "Safe Meadows", 12: "Cave", 13: "Jungle", 14: "Sapwoods", -1: "(none)",
-}
+# Build LUTs (index 0..255) for fast vectorised lookup.
+_biome_lut = np.zeros((256, 3), np.uint8)
+for i, c in BIOME_PALETTE.items():
+    _biome_lut[i] = c
+_water_lut = np.zeros((256, 3), np.float64)
+_water_mask_lut = np.zeros(256, bool)
+for i, c in WATER_PALETTE.items():
+    _water_lut[i] = c
+    _water_mask_lut[i] = True
 
 
-def main() -> None:
-    if not os.path.exists(IN_FILE):
-        raise SystemExit(
-            f"Intermediate not found: {IN_FILE}\n"
-            "Run `pnpm --filter @bcc/worker terrain-snapshot` first."
-        )
-    with open(IN_FILE, "r", encoding="utf-8-sig") as f:  # utf-8-sig tolerates a stray BOM
-        data = json.load(f)
+def hillshade(elev, az=315.0, alt=45.0, z_factor=2.2):
+    """Standard hillshade in [0,1] from an elevation grid."""
+    dy, dx = np.gradient(elev.astype(np.float64))
+    slope = np.pi / 2.0 - np.arctan(np.hypot(dx, dy) * z_factor / TILE)
+    aspect = np.arctan2(-dx, dy)
+    az_r, alt_r = np.radians(az), np.radians(alt)
+    sh = np.sin(alt_r) * np.sin(slope) + np.cos(alt_r) * np.cos(slope) * np.cos(az_r - aspect)
+    return np.clip(sh, 0.0, 1.0)
 
-    min_x, min_z = data["minX"], data["minZ"]
-    max_x, max_z = data["maxX"], data["maxZ"]
-    chunks = data["chunks"]
 
-    width = max_x - min_x + 1
-    height = max_z - min_z + 1
-    img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-    px = img.load()
+REC = np.dtype([("cx", "<i4"), ("cz", "<i4"), ("biome", "u1", TILE * TILE),
+                ("water", "u1", TILE * TILE), ("elev", "<i2", TILE * TILE)])
 
-    histogram: Counter[int] = Counter()
-    painted = 0
-    for x, z, biome in chunks:
-        histogram[biome] += 1
-        color = BIOME_PALETTE.get(biome)
-        if color is None:  # -1 / unknown -> transparent
-            continue
-        py = (max_z - z) if FLIP_Z else (z - min_z)
-        px[x - min_x, py] = (color[0], color[1], color[2], 255)
-        painted += 1
+
+def render_region(meta):
+    n = meta["region"]
+    min_cx, min_cz = meta["minChunkX"], meta["minChunkZ"]
+    max_cx, max_cz = meta["maxChunkX"], meta["maxChunkZ"]
+    W = (max_cx - min_cx + 1) * TILE
+    H = (max_cz - min_cz + 1) * TILE
+    data = np.fromfile(os.path.join(CACHE, f"region-{n}.bin"), dtype=REC)
+
+    biome = np.zeros((H, W), np.uint8)
+    water = np.zeros((H, W), np.uint8)
+    elev = np.zeros((H, W), np.int16)
+    have = np.zeros((H, W), bool)
+    for rec in data:
+        r = (int(rec["cz"]) - min_cz) * TILE
+        c = (int(rec["cx"]) - min_cx) * TILE
+        biome[r:r + TILE, c:c + TILE] = rec["biome"].reshape(TILE, TILE)
+        water[r:r + TILE, c:c + TILE] = rec["water"].reshape(TILE, TILE)
+        elev[r:r + TILE, c:c + TILE] = rec["elev"].reshape(TILE, TILE)
+        have[r:r + TILE, c:c + TILE] = True
+
+    # Base biome colour, hillshaded for land relief.
+    rgb = _biome_lut[biome].astype(np.float64)
+    shade = (0.55 + 0.75 * hillshade(elev))[..., None]  # 0.55..1.30
+    rgb = rgb * shade
+
+    # Water bodies override the biome colour (kept flat, only faintly shaded).
+    wmask = _water_mask_lut[water]
+    wcol = _water_lut[water] * (0.85 + 0.15 * hillshade(elev))[..., None]
+    rgb = np.where(wmask[..., None], wcol, rgb)
+
+    rgb = np.clip(rgb, 0, 255).astype(np.uint8)
+    # Transparent where no data so the dark map shows through outside the landmass.
+    alpha = np.where(have, 255, 0).astype(np.uint8)
+    # Flip vertically: the binary is row-major in +z (south), but the Leaflet
+    # overlay places the image top at the NORTH (max z) edge of its bounds, so the
+    # image must be north-up to stay aligned with the vector layers.
+    stacked = np.flipud(np.dstack([rgb, alpha]))
+    img = Image.fromarray(stacked, "RGBA")
 
     os.makedirs(OUT_DIR, exist_ok=True)
-    # Biome flats are large solid runs -> lossless webp is crisp and tiny.
-    img.save(OUT_IMG, format="WEBP", lossless=True, method=6)
+    img.save(os.path.join(OUT_DIR, f"region-{n}.webp"), lossless=False, quality=88, method=6)
+    return {
+        "region": n,
+        "url": f"/map/terrain/region-{n}.webp",
+        "minX": min_cx, "minZ": min_cz, "maxX": max_cx + 1, "maxZ": max_cz + 1,
+        "width": W, "height": H,
+    }
 
-    meta = {"minX": min_x, "minZ": min_z, "maxX": max_x, "maxZ": max_z, "width": width, "height": height}
-    with open(OUT_META, "w", encoding="utf-8") as f:
-        json.dump(meta, f)
 
-    file_kb = os.path.getsize(OUT_IMG) / 1024
-    print(f"terrain.webp: {width}x{height}px, {painted}/{len(chunks)} chunks painted, {file_kb:.1f} KiB")
-    print(f"bounds: x[{min_x}..{max_x}] z[{min_z}..{max_z}]  (FLIP_Z={FLIP_Z})")
-    print("biome histogram:")
-    for biome, count in histogram.most_common():
-        print(f"  {biome:>3} {BIOME_NAMES.get(biome, '?'):<18} {count}")
-    print(f"wrote {OUT_IMG}")
-    print(f"wrote {OUT_META}")
+def main():
+    metas = sorted(glob.glob(os.path.join(CACHE, "region-*.json")))
+    if not metas:
+        raise SystemExit(f"No region-*.json in {CACHE}. Run the terrain-snapshot first.")
+    manifest = []
+    for p in metas:
+        with open(p, encoding="utf-8-sig") as f:
+            meta = json.load(f)
+        entry = render_region(meta)
+        manifest.append(entry)
+        print(f"region {entry['region']}: {entry['width']}x{entry['height']}px -> {entry['url']}")
+    with open(MANIFEST, "w", encoding="utf-8") as f:
+        json.dump(manifest, f)
+    print(f"wrote manifest with {len(manifest)} region(s) -> {MANIFEST}")
 
 
 if __name__ == "__main__":

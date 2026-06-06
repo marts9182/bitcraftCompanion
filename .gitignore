@@ -26,3 +26,7 @@ docs/reference/bitcraft-schema.json
 
 # terrain biome intermediate (multi-GB pull; regenerate via worker terrain-snapshot)
 apps/worker/.terrain-cache/
+
+# local debug screenshots
+.map-shot*.png
+.chk.png

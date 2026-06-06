@@ -42,3 +42,7 @@ export { watchtowerCentroids } from "./world/watchtowers";
 export type { Watchtower, WatchtowerChunkRow } from "./world/watchtowers";
 export { dominantBiome, BIOME_NAMES } from "./world/biomes";
 export { vividTerritoryColor } from "./world/empire-colors";
+export { classifyClaim } from "./world/claims";
+export type { ClaimKind, ClaimClass } from "./world/claims";
+export { empireTerritoryOutlines } from "./world/territory";
+export type { EmpireOutline, Segment, TerritoryCellInput } from "./world/territory";

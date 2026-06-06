@@ -1,6 +1,6 @@
 "use client";
 import dynamic from "next/dynamic";
-import type { ClaimPoint, RegionRect, TerritoryCell, Watchtower } from "@/lib/queries/map";
+import type { ClaimPoint, RegionRect, TerritoryCell, Watchtower, EmpireTerritory } from "@/lib/queries/map";
 import type { TerrainOverlay } from "@/app/map/page";
 
 // Leaflet touches `window` at import time, so the map must never render on the
@@ -18,6 +18,6 @@ const WorldMap = dynamic(() => import("./WorldMap").then((m) => m.WorldMap), {
   ),
 });
 
-export function MapClient(props: { claims: ClaimPoint[]; regions: RegionRect[]; territory: TerritoryCell[]; watchtowers: Watchtower[]; terrain: TerrainOverlay | null }) {
+export function MapClient(props: { claims: ClaimPoint[]; regions: RegionRect[]; territory: TerritoryCell[]; watchtowers: Watchtower[]; empires: EmpireTerritory[]; terrain: TerrainOverlay[] }) {
   return <WorldMap {...props} />;
 }

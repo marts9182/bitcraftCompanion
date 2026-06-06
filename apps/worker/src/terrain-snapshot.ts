@@ -1,29 +1,30 @@
 import { config } from "dotenv";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, writeFile, readdir, unlink } from "node:fs/promises";
 config({ path: resolve(dirname(fileURLToPath(import.meta.url)), "../../../.env.local") });
 
 import { parseServerEnv } from "@bcc/shared";
 import { discoverRegionModules } from "./spacetime/discover-regions";
-import { readTerrain } from "./spacetime/terrain-reader";
+import { readTerrain, TILES_PER_CHUNK_SIDE, type TerrainChunkTiles } from "./spacetime/terrain-reader";
 
-// Terrain biome snapshot. Pulls terrain_chunk_state per region, reduces each
-// overworld chunk to its dominant biome, and writes a COMPACT intermediate that
-// scripts/render-terrain.py turns into apps/web/public/map/terrain.webp.
+// Per-tile terrain snapshot. Pulls terrain_chunk_state per region and writes ONE
+// binary per region (its 32×32-tile-per-chunk biome / water / elevation layers),
+// which scripts/render-terrain.py turns into a per-region biome image.
 //
-// WARNING: terrain is MULTI-GIGABYTE over the wire (~164 MB/region × ~13-25
-// regions). This must run with a raised heap:
+// WARNING: terrain is MULTI-GIGABYTE over the wire (~164 MB/region × up to 25
+// regions). Run with a raised heap (the package.json script sets
+// --max-old-space-size=4096):
 //   pnpm --filter @bcc/worker terrain-snapshot
-// (the package.json script sets --max-old-space-size=4096). Optionally limit
-// regions for a quick test:  ... terrain-snapshot --regions=14,7
+// Limit regions for a quick test:  ... terrain-snapshot --regions=14,7
 //
-// Each region is pulled on its OWN dedicated WebSocket (maxPayload 1 GiB) and
-// fully reduced before the next, so the big frame is GC'd between regions.
+// Each region is pulled on its OWN dedicated WebSocket (maxPayload 1 GiB), written
+// to disk, and freed before the next so peak memory stays ~one region.
 
 const OUT_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "../.terrain-cache");
-const OUT_FILE = resolve(OUT_DIR, "terrain-biomes.json");
 const PER_REGION_TIMEOUT = 600_000; // 10 min — terrain frames are large/slow
+const TILES = TILES_PER_CHUNK_SIDE * TILES_PER_CHUNK_SIDE; // 1024
+const REC_BYTES = 8 + TILES + TILES + TILES * 2; // cx,cz int32 + biome + water + elev(int16)
 
 function parseRegionArg(): string[] | null {
   const arg = process.argv.find((a) => a.startsWith("--regions="));
@@ -36,11 +37,29 @@ function parseRegionArg(): string[] | null {
     .map((s) => (/^\d+$/.test(s) ? `bitcraft-live-${s}` : s));
 }
 
+/** Serialize one region's chunks to a flat binary buffer + compute chunk bounds. */
+function encodeRegion(chunks: TerrainChunkTiles[]) {
+  let minCx = Infinity, minCz = Infinity, maxCx = -Infinity, maxCz = -Infinity;
+  const buf = Buffer.allocUnsafe(chunks.length * REC_BYTES);
+  let o = 0;
+  for (const c of chunks) {
+    if (c.cx < minCx) minCx = c.cx;
+    if (c.cz < minCz) minCz = c.cz;
+    if (c.cx > maxCx) maxCx = c.cx;
+    if (c.cz > maxCz) maxCz = c.cz;
+    buf.writeInt32LE(c.cx, o); o += 4;
+    buf.writeInt32LE(c.cz, o); o += 4;
+    Buffer.from(c.biome.buffer, c.biome.byteOffset, TILES).copy(buf, o); o += TILES;
+    Buffer.from(c.water.buffer, c.water.byteOffset, TILES).copy(buf, o); o += TILES;
+    Buffer.from(c.elev.buffer, c.elev.byteOffset, TILES * 2).copy(buf, o); o += TILES * 2;
+  }
+  return { buf, minCx, minCz, maxCx, maxCz };
+}
+
 async function main() {
   const env = parseServerEnv();
   const conn = { uri: env.SPACETIME_URI, token: env.SPACETIME_TOKEN };
 
-  // Region selection priority: --regions CLI arg > SPACETIME_REGIONS env > discovery.
   const cliRegions = parseRegionArg();
   const envRegions = env.SPACETIME_REGIONS
     ? env.SPACETIME_REGIONS.split(",").map((s) => s.trim()).filter(Boolean)
@@ -62,49 +81,47 @@ async function main() {
     process.exit(1);
   }
 
-  // Dedupe across regions: chunk_index is unique per overworld chunk; later
-  // regions overwrite (harmless — overlap regions agree on terrain).
-  const chunks = new Map<number, { x: number; z: number; biome: number }>();
+  await mkdir(OUT_DIR, { recursive: true });
+  // When doing a FULL discovery run, clear stale per-region files first; for a
+  // targeted --regions run, leave the others in place.
+  if (!cliRegions) {
+    for (const f of await readdir(OUT_DIR)) {
+      if (/^region-\d+\.(bin|json)$/.test(f)) await unlink(resolve(OUT_DIR, f));
+    }
+  }
 
+  let written = 0;
   for (const moduleName of modules) {
     const region = moduleName.match(/(\d+)$/)?.[1] ?? moduleName;
     const startedAt = Date.now();
     try {
-      const rows = await readTerrain({ ...conn, moduleName }, PER_REGION_TIMEOUT);
-      for (const r of rows) chunks.set(r.index, { x: r.x, z: r.z, biome: r.biome });
+      const chunks = await readTerrain({ ...conn, moduleName }, PER_REGION_TIMEOUT);
+      if (chunks.length === 0) {
+        console.warn(`[terrain] region ${region}: 0 overworld chunks — skipping.`);
+        continue;
+      }
+      const { buf, minCx, minCz, maxCx, maxCz } = encodeRegion(chunks);
+      await writeFile(resolve(OUT_DIR, `region-${region}.bin`), buf);
+      await writeFile(
+        resolve(OUT_DIR, `region-${region}.json`),
+        JSON.stringify({ region: Number(region), minChunkX: minCx, minChunkZ: minCz, maxChunkX: maxCx, maxChunkZ: maxCz, chunkSize: TILES_PER_CHUNK_SIDE, chunks: chunks.length }),
+      );
+      written++;
       console.log(
-        `[terrain] region ${region} (${moduleName}): +${rows.length} overworld chunks ` +
-          `(total unique ${chunks.size}) in ${Math.round((Date.now() - startedAt) / 1000)}s`,
+        `[terrain] region ${region}: ${chunks.length} chunks → region-${region}.bin ` +
+          `(${(buf.length / 1e6).toFixed(1)} MB, chunk bounds x[${minCx}..${maxCx}] z[${minCz}..${maxCz}]) ` +
+          `in ${Math.round((Date.now() - startedAt) / 1000)}s`,
       );
     } catch (err) {
-      // One region failing should not lose the rest of the render.
       console.warn(`[terrain] region ${region} (${moduleName}) FAILED:`, String(err));
     }
   }
 
-  if (chunks.size === 0) {
-    console.error("[terrain] no chunks collected — not writing an empty intermediate.");
+  if (written === 0) {
+    console.error("[terrain] no regions written.");
     process.exit(1);
   }
-
-  // Compact intermediate: bounds + a flat [x,z,biome] triple list (no keys).
-  let minX = Infinity, minZ = Infinity, maxX = -Infinity, maxZ = -Infinity;
-  const triples: [number, number, number][] = [];
-  for (const { x, z, biome } of chunks.values()) {
-    if (x < minX) minX = x;
-    if (z < minZ) minZ = z;
-    if (x > maxX) maxX = x;
-    if (z > maxZ) maxZ = z;
-    triples.push([x, z, biome]);
-  }
-
-  await mkdir(OUT_DIR, { recursive: true });
-  await writeFile(OUT_FILE, JSON.stringify({ minX, minZ, maxX, maxZ, chunks: triples }));
-  console.log(
-    `[terrain] wrote ${triples.length} chunks → ${OUT_FILE}\n` +
-      `[terrain] bounds x[${minX}..${maxX}] z[${minZ}..${maxZ}] ` +
-      `(${maxX - minX + 1}×${maxZ - minZ + 1} px)`,
-  );
+  console.log(`[terrain] wrote ${written} region file(s) → ${OUT_DIR}\n[terrain] next: python scripts/render-terrain.py`);
   process.exit(0);
 }
 

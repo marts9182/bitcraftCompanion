@@ -1,6 +1,6 @@
 import { gunzipSync } from "node:zlib";
 import WebSocket from "ws";
-import { dominantBiome, normalizeRow, COLUMN_ORDERS } from "@bcc/shared";
+import { normalizeRow, COLUMN_ORDERS } from "@bcc/shared";
 
 // Focused, streaming terrain reader. This intentionally COPIES the proven connect
 // recipe from ./ws-snapshot.ts (token exchange → v1.json WS → SubscribeMulti →
@@ -9,13 +9,20 @@ import { dominantBiome, normalizeRow, COLUMN_ORDERS } from "@bcc/shared";
 // ways that matter for terrain and would destabilise the leaderboard path if
 // retrofitted there:
 //   1. maxPayload is raised to 1 GiB (terrain frames exceed ws's 100 MiB default).
-//   2. Rows are reduced to {x,z,biome} as each frame arrives and the heavy
-//      biome/elevation/water arrays are dropped immediately, so the multi-GB
-//      payload is never retained whole.
+//   2. Each chunk is reduced to its three per-tile layers (biome / water / elevation)
+//      as the frame arrives; the rest of the heavy payload is dropped immediately.
+//
+// terrain_chunk_state rows arrive as KEYED objects; each chunk is a 32×32 tile grid:
+//   biomes            Array<U32>  per-tile biome (type id is the low byte)
+//   elevations        Array<I32>  per-tile height (≈ -21 … 409)
+//   water_body_types  hex string  2 chars (1 byte) per tile: 0=land, 4=ocean, 3=lake, 1/2=river
+// Only overworld chunks (dimension==1) are kept.
 
 const WS_SUBPROTOCOL = "v1.json.spacetimedb";
 const MAX_PAYLOAD = 1024 * 1024 * 1024; // 1 GiB
 const TERRAIN_COLS = COLUMN_ORDERS.terrain_chunk_state ?? [];
+export const TILES_PER_CHUNK_SIDE = 32;
+const TILES_PER_CHUNK = TILES_PER_CHUNK_SIDE * TILES_PER_CHUNK_SIDE; // 1024
 
 export interface TerrainReaderConfig {
   uri: string; // wss://host
@@ -23,15 +30,20 @@ export interface TerrainReaderConfig {
   token: string;
 }
 
-export interface TerrainChunk {
-  index: number;
-  x: number;
-  z: number;
-  biome: number;
+/** One chunk's per-tile layers (row-major, length 1024). */
+export interface TerrainChunkTiles {
+  cx: number;
+  cz: number;
+  biome: Uint8Array; // biome type id 0–14
+  water: Uint8Array; // water body type (0 land, 1/2 river, 3 lake, 4 ocean)
+  elev: Int16Array;
 }
 
-// dominantBiome is imported from @bcc/shared (pure + unit-tested there) so the
-// reduction logic can't drift between the pull script and its tests.
+function parseHexBytes(s: string, n: number): Uint8Array {
+  const out = new Uint8Array(n);
+  for (let i = 0; i < n; i++) out[i] = parseInt(s.substr(i * 2, 2), 16) || 0;
+  return out;
+}
 
 async function exchangeToken(config: TerrainReaderConfig): Promise<string> {
   const base = config.uri.replace(/\/+$/, "").replace(/^ws/, "http");
@@ -65,14 +77,13 @@ function tablesOf(msg: unknown): Array<{ table_name?: string; updates?: Array<{ 
 
 /**
  * Read one region's terrain_chunk_state, reducing each overworld chunk
- * (dimension==1) to its dominant biome. Each frame is processed and discarded as
- * it arrives, so memory stays bounded by the result map, not the payload.
- * Resolves to the reduced chunks once the subscription is applied.
+ * (dimension==1) to its three per-tile layers. Resolves to the chunk list once
+ * the subscription is applied.
  */
 export async function readTerrain(
   config: TerrainReaderConfig,
   timeoutMs = 600_000,
-): Promise<TerrainChunk[]> {
+): Promise<TerrainChunkTiles[]> {
   const tempToken = await exchangeToken(config);
   const base = config.uri.replace(/\/+$/, "");
   const url =
@@ -80,7 +91,7 @@ export async function readTerrain(
     `?token=${encodeURIComponent(tempToken)}&compression=None`;
 
   return new Promise((resolve, reject) => {
-    const out: TerrainChunk[] = [];
+    const out: TerrainChunkTiles[] = [];
     let seenTerrainFrame = false;
     let settled = false;
     const startedAt = Date.now();
@@ -130,28 +141,23 @@ export async function readTerrain(
             } catch {
               continue;
             }
-            // Live terrain rows arrive as KEYED objects (not positional arrays
-            // like the leaderboard tables); normalizeRow handles both encodings.
             const r = normalizeRow(TERRAIN_COLS, parsed);
-            if (Number(r.dimension) !== 1) continue; // overworld only (interiors/instances are other dims)
-            // Per-tile biome values are PACKED (biome_type in the low byte, sub-biome/
-            // variant bits above); mask to 0xFF to get the 0–14 biome_type id.
-            const biomes = r.biomes;
-            const biome = Array.isArray(biomes)
-              ? dominantBiome((biomes as number[]).map((b) => b & 0xff))
-              : -1;
-            out.push({
-              index: Number(r.chunk_index),
-              x: Number(r.chunk_x),
-              z: Number(r.chunk_z),
-              biome,
-            });
-            // `parsed`/`r` (with their heavy arrays) go out of scope at the next
-            // iteration — only the 4 scalars above survive.
+            if (Number(r.dimension) !== 1) continue; // overworld only
+            const rawBiomes = r.biomes;
+            const rawElev = r.elevations;
+            if (!Array.isArray(rawBiomes) || !Array.isArray(rawElev)) continue;
+            const biome = new Uint8Array(TILES_PER_CHUNK);
+            const elev = new Int16Array(TILES_PER_CHUNK);
+            for (let i = 0; i < TILES_PER_CHUNK; i++) {
+              biome[i] = (Number(rawBiomes[i]) & 0xff) || 0;
+              elev[i] = Number(rawElev[i]) | 0;
+            }
+            const water = parseHexBytes(String(r.water_body_types ?? ""), TILES_PER_CHUNK);
+            out.push({ cx: Number(r.chunk_x), cz: Number(r.chunk_z), biome, water, elev });
+            // `parsed`/`r` and their heavy arrays fall out of scope next iteration.
           }
         }
       }
-      // The applied-subscription reply is the terminal frame for a one-shot read.
       const m = msg as { SubscribeMultiApplied?: unknown; InitialSubscription?: unknown };
       if (seenTerrainFrame && (m.SubscribeMultiApplied || m.InitialSubscription)) {
         finish(() => {
@@ -163,7 +169,6 @@ export async function readTerrain(
 
     ws.on("close", (code, reasonBuf) => {
       const reason = reasonBuf?.toString() || "(none)";
-      // If we already have data and the server closed, treat as complete.
       finish(() => {
         if (out.length > 0) resolve(out);
         else reject(new Error(`WS closed before terrain read: code ${code}, reason "${reason}" (${elapsed()})`));
