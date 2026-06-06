@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 const CARDS: [string, string, string][] = [
   ["/leaderboards/skills", "Skills", "Top players by skill, total level, and total XP."],
-  ["/leaderboards/empires", "Empires", "Empires ranked by claims, treasury, and members."],
+  ["/empires", "Empires", "Empires ranked by claims, treasury, and members."],
   ["/leaderboards/activity", "Activity", "Most-played players and who's online now."],
 ];
 

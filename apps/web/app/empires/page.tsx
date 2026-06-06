@@ -1,0 +1,141 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { vividTerritoryColor } from "@bcc/shared";
+import { RegionSwitcher } from "@/components/leaderboards/RegionSwitcher";
+import { Pager } from "@/components/compendium/Pager";
+import { LB_PAGE_SIZE } from "@/lib/leaderboards/params";
+import { getEmpiresList, listRegions, type EmpireSort } from "@/lib/queries/leaderboards";
+
+export const revalidate = 60;
+
+export const metadata: Metadata = {
+  title: "Empires",
+  description: "BitCraft Online empires — searchable and sortable by claims, treasury, hexcoin, members, and towers.",
+  alternates: { canonical: "/empires" },
+};
+
+const SORTS: readonly EmpireSort[] = ["claims", "treasury", "hexcoin", "members", "towers"];
+
+function one(v: string | string[] | undefined): string | undefined {
+  return Array.isArray(v) ? v[0] : v;
+}
+
+type Col = { key?: EmpireSort; label: string; align?: "right" };
+const COLS: Col[] = [
+  { label: "#" },
+  { label: "Empire" },
+  { label: "Region" },
+  { key: "members", label: "Members", align: "right" },
+  { key: "claims", label: "Claims", align: "right" },
+  { key: "hexcoin", label: "Hexcoin", align: "right" },
+  { key: "treasury", label: "Shard treasury", align: "right" },
+  { key: "towers", label: "Towers", align: "right" },
+];
+
+export default async function EmpiresPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const sp = await searchParams;
+  const q = one(sp.q)?.trim() ?? "";
+  const region = one(sp.region)?.trim() || "all";
+  const sortRaw = one(sp.sort) as EmpireSort | undefined;
+  const sort: EmpireSort = sortRaw && SORTS.includes(sortRaw) ? sortRaw : "claims";
+  const page = Math.max(1, Number.parseInt(one(sp.page) ?? "1", 10) || 1);
+
+  const [{ rows, total }, regions] = await Promise.all([
+    getEmpiresList({ q, sort, region, page }),
+    listRegions(),
+  ]);
+
+  // Preserve current filters across sort-header links, pager, and region switch.
+  const preserved: Record<string, string | undefined> = {
+    q: q || undefined,
+    sort: sort !== "claims" ? sort : undefined,
+    region: region !== "all" ? region : undefined,
+  };
+  const sortHref = (key: EmpireSort) => {
+    const params = new URLSearchParams();
+    if (q) params.set("q", q);
+    if (region !== "all") params.set("region", region);
+    params.set("sort", key);
+    return `/empires?${params.toString()}`;
+  };
+
+  return (
+    <main className="mx-auto max-w-5xl px-6 py-12">
+      <h1 className="text-3xl font-bold tracking-tight">Empires</h1>
+      <p className="mt-1 text-sm text-muted-foreground">{total.toLocaleString()} empires</p>
+
+      <div className="mt-6 flex flex-wrap items-center gap-4">
+        <form method="GET" action="/empires" className="flex items-center gap-2 text-sm">
+          {region !== "all" && <input type="hidden" name="region" value={region} />}
+          {sort !== "claims" && <input type="hidden" name="sort" value={sort} />}
+          <input
+            type="text"
+            name="q"
+            defaultValue={q}
+            placeholder="Search empires…"
+            aria-label="Search empires"
+            className="h-9 w-56 rounded-md border border-input bg-transparent px-3 text-sm"
+          />
+          <button type="submit" className="h-9 rounded-md border border-input px-3 text-sm hover:bg-muted/40">
+            Search
+          </button>
+        </form>
+        <RegionSwitcher regions={regions} current={region} />
+      </div>
+
+      <table className="mt-6 w-full text-sm">
+        <thead className="text-left text-muted-foreground">
+          <tr>
+            {COLS.map((c) => (
+              <th key={c.label} className={`py-2 pr-3 ${c.align === "right" ? "text-right" : ""}`}>
+                {c.key ? (
+                  <Link href={sortHref(c.key)} className="hover:underline">
+                    {c.label}
+                    {sort === c.key ? " ▲" : ""}
+                  </Link>
+                ) : (
+                  c.label
+                )}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((e, i) => (
+            <tr key={e.entityId} className="border-t border-border">
+              <td className="py-2 pr-3 font-mono text-muted-foreground">{(page - 1) * LB_PAGE_SIZE + i + 1}</td>
+              <td className="py-2 pr-3">
+                <Link href={`/empires/${e.entityId}`} className="inline-flex items-center gap-2 hover:underline">
+                  {e.color && (
+                    <span
+                      className="inline-block h-3 w-3 rounded-sm border border-border"
+                      style={{ backgroundColor: vividTerritoryColor(e.color) }}
+                    />
+                  )}
+                  {e.name}
+                </Link>
+              </td>
+              <td className="py-2 pr-3 text-muted-foreground">{e.region}</td>
+              <td className="py-2 pr-3 text-right font-mono">{e.memberCount.toLocaleString()}</td>
+              <td className="py-2 pr-3 text-right font-mono">{e.numClaims.toLocaleString()}</td>
+              <td className="py-2 pr-3 text-right font-mono">{e.currencyTreasury.toLocaleString()}</td>
+              <td className="py-2 pr-3 text-right font-mono">{e.treasury.toLocaleString()}</td>
+              <td className="py-2 text-right font-mono">{e.towerCount.toLocaleString()}</td>
+            </tr>
+          ))}
+          {rows.length === 0 && (
+            <tr>
+              <td colSpan={COLS.length} className="py-6 text-center text-muted-foreground">
+                No empires found.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+
+      <div className="mt-6">
+        <Pager page={page} total={total} pageSize={LB_PAGE_SIZE} searchParams={preserved} basePath="/empires" />
+      </div>
+    </main>
+  );
+}

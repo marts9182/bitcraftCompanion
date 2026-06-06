@@ -1,9 +1,9 @@
 import "server-only";
-import { and, desc, eq, sql, count } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, sql, count } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { LB_PAGE_SIZE, type LeaderboardParams } from "@/lib/leaderboards/params";
 
-const { players, playerSkills, skills, empires, regions } = schema;
+const { players, playerSkills, skills, empires, empireMembers, empireTowers, regions } = schema;
 
 export async function listRegions() {
   const db = getDb();
@@ -164,6 +164,90 @@ export async function getEmpire(entityId: string) {
     .where(eq(schema.empireMembers.empireEntityId, entityId))
     .orderBy(schema.empireMembers.rank);
   return { empire, members };
+}
+
+export type EmpireSort = "claims" | "treasury" | "hexcoin" | "members" | "towers";
+
+export interface EmpiresListParams {
+  q?: string;
+  sort?: EmpireSort;
+  region: string;
+  page: number;
+}
+
+export async function getEmpiresList(params: EmpiresListParams) {
+  const db = getDb();
+  const conds = [];
+  if (params.region !== "all") conds.push(eq(empires.region, params.region));
+  const q = params.q?.trim();
+  if (q) conds.push(ilike(empires.name, `%${q}%`));
+  const where = conds.length ? and(...conds) : undefined;
+
+  const orderCol =
+    params.sort === "treasury" ? empires.treasury :
+    params.sort === "hexcoin" ? empires.currencyTreasury :
+    params.sort === "members" ? empires.memberCount :
+    params.sort === "towers" ? empires.towerCount :
+    empires.numClaims;
+
+  const [{ total }] = await db.select({ total: count() }).from(empires).where(where);
+  const rows = await db
+    .select({
+      entityId: empires.entityId,
+      name: empires.name,
+      color: empires.color,
+      region: empires.region,
+      memberCount: empires.memberCount,
+      numClaims: empires.numClaims,
+      currencyTreasury: empires.currencyTreasury,
+      treasury: empires.treasury,
+      towerCount: empires.towerCount,
+    })
+    .from(empires)
+    .where(where)
+    // Tiebreak by name asc for deterministic, stable pagination.
+    .orderBy(desc(orderCol), asc(empires.name), empires.entityId)
+    .limit(LB_PAGE_SIZE)
+    .offset((params.page - 1) * LB_PAGE_SIZE);
+  return { rows, total: Number(total) };
+}
+
+export async function getEmpireDetail(id: string) {
+  const db = getDb();
+  const [empire] = await db.select().from(empires).where(eq(empires.entityId, id)).limit(1);
+  if (!empire) return null;
+
+  const towers = await db
+    .select()
+    .from(empireTowers)
+    .where(eq(empireTowers.empireEntityId, id))
+    .orderBy(desc(empireTowers.energy))
+    .limit(200);
+
+  // Empires are region-replicated; member rows for one empire may live under a
+  // single region. Query by empireEntityId across regions and dedupe by player.
+  const memberRows = await db
+    .select({
+      playerEntityId: empireMembers.playerEntityId,
+      rank: empireMembers.rank,
+      noble: empireMembers.noble,
+      donatedShards: empireMembers.donatedShards,
+      donatedCurrency: empireMembers.donatedCurrency,
+      username: players.username,
+    })
+    .from(empireMembers)
+    .leftJoin(players, eq(players.entityId, empireMembers.playerEntityId))
+    .where(eq(empireMembers.empireEntityId, id))
+    .orderBy(asc(empireMembers.rank), desc(empireMembers.donatedShards));
+
+  const seen = new Set<string>();
+  const members = memberRows.filter((m) => {
+    if (seen.has(m.playerEntityId)) return false;
+    seen.add(m.playerEntityId);
+    return true;
+  });
+
+  return { empire, towers, members };
 }
 
 export async function listTopPlayerIds(limit = 200): Promise<string[]> {

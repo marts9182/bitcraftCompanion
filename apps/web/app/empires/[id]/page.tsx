@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getEmpire, listEmpireIds } from "@/lib/queries/leaderboards";
+import { vividTerritoryColor } from "@bcc/shared";
+import { getEmpireDetail, listEmpireIds } from "@/lib/queries/leaderboards";
 
 export const revalidate = 300;
 export const dynamicParams = true;
@@ -13,45 +14,127 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
-  const data = await getEmpire(id);
+  const data = await getEmpireDetail(id);
   if (!data) return { title: "Empire" };
   return {
     title: `${data.empire.name} — Empire`,
-    description: `BitCraft Online empire ${data.empire.name}: members, claims, and treasury.`,
+    description: `BitCraft Online empire ${data.empire.name}: members, claims, treasury, and towers.`,
     alternates: { canonical: `/empires/${id}` },
   };
 }
 
+function Stat({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="rounded-lg border border-border p-4">
+      <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className="mt-1 text-xl font-semibold font-mono">{typeof value === "number" ? value.toLocaleString() : value}</div>
+    </div>
+  );
+}
+
 export default async function EmpirePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const data = await getEmpire(id);
+  const data = await getEmpireDetail(id);
   if (!data) notFound();
-  const { empire, members } = data;
+  const { empire, towers, members } = data;
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-12">
+    <main className="mx-auto max-w-4xl px-6 py-12">
       <nav className="text-sm text-muted-foreground">
-        <Link href="/leaderboards/empires" className="hover:underline">Empires</Link> / <span>{empire.name}</span>
+        <Link href="/empires" className="hover:underline">Empires</Link> / <span>{empire.name}</span>
       </nav>
-      <h1 className="mt-4 text-3xl font-bold tracking-tight">{empire.name}</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Region {empire.region} · {empire.memberCount} members · {empire.numClaims} claims · treasury {Number(empire.treasury).toLocaleString()}
-      </p>
 
-      <h2 className="mt-8 text-xl font-semibold">Members</h2>
-      <ul className="mt-3 divide-y divide-border">
-        {members.map((m) => (
-          <li key={m.playerEntityId} className="flex items-center gap-3 py-2 text-sm">
-            <span className="font-mono text-xs text-muted-foreground">#{m.rank}</span>
-            {m.username ? (
-              <Link href={`/players/${m.playerEntityId}`} className="hover:underline">{m.username}</Link>
-            ) : (
-              <span className="text-muted-foreground">player {m.playerEntityId}</span>
-            )}
-          </li>
-        ))}
-        {members.length === 0 && <li className="py-6 text-center text-muted-foreground">No members.</li>}
-      </ul>
+      <h1 className="mt-4 flex items-center gap-3 text-3xl font-bold tracking-tight">
+        {empire.color && (
+          <span
+            className="inline-block h-5 w-5 rounded-sm border border-border"
+            style={{ backgroundColor: vividTerritoryColor(empire.color) }}
+          />
+        )}
+        {empire.name}
+      </h1>
+
+      <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        <Stat label="Hexcoin" value={empire.currencyTreasury} />
+        <Stat label="Shard treasury" value={empire.treasury} />
+        <Stat label="Claims" value={empire.numClaims} />
+        <Stat label="Members" value={empire.memberCount} />
+        <Stat label="Nobility threshold" value={empire.nobilityThreshold} />
+        <Stat label="Owner type" value={empire.ownerType ?? "—"} />
+        <Stat label="Towers" value={empire.towerCount} />
+        <Stat label="Tower energy" value={empire.towerEnergy} />
+        <Stat label="Tower upkeep" value={empire.towerUpkeep} />
+        <Stat label="Region" value={empire.region} />
+      </div>
+
+      <section className="mt-10">
+        <h2 className="text-xl font-semibold">Towers</h2>
+        {towers.length === 0 ? (
+          <p className="mt-3 text-sm text-muted-foreground">No towers.</p>
+        ) : (
+          <table className="mt-3 w-full text-sm">
+            <thead className="text-left text-muted-foreground">
+              <tr>
+                <th className="py-2 pr-3">Location</th>
+                <th className="py-2 pr-3 text-right">Energy</th>
+                <th className="py-2 pr-3 text-right">Upkeep</th>
+                <th className="py-2 text-right">Active</th>
+              </tr>
+            </thead>
+            <tbody>
+              {towers.map((t) => (
+                <tr key={t.entityId} className="border-t border-border">
+                  <td className="py-2 pr-3 font-mono text-muted-foreground">{t.chunkIndex}</td>
+                  <td className="py-2 pr-3 text-right font-mono">{t.energy.toLocaleString()}</td>
+                  <td className="py-2 pr-3 text-right font-mono">{t.upkeep.toLocaleString()}</td>
+                  <td className="py-2 text-right">{t.active ? "✓" : "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+
+      <section className="mt-10">
+        <h2 className="text-xl font-semibold">Members</h2>
+        {members.length === 0 ? (
+          <p className="mt-3 text-sm text-muted-foreground">No members.</p>
+        ) : (
+          <table className="mt-3 w-full text-sm">
+            <thead className="text-left text-muted-foreground">
+              <tr>
+                <th className="py-2 pr-3">#</th>
+                <th className="py-2 pr-3">Player</th>
+                <th className="py-2 pr-3 text-right">Donated shards</th>
+                <th className="py-2 text-right">Donated hexcoin</th>
+              </tr>
+            </thead>
+            <tbody>
+              {members.map((m) => (
+                <tr key={m.playerEntityId} className="border-t border-border">
+                  <td className="py-2 pr-3 font-mono text-xs text-muted-foreground">#{m.rank}</td>
+                  <td className="py-2 pr-3">
+                    <span className="inline-flex items-center gap-2">
+                      {m.username ? (
+                        <Link href={`/players/${m.playerEntityId}`} className="hover:underline">{m.username}</Link>
+                      ) : (
+                        <span className="text-muted-foreground">player {m.playerEntityId}</span>
+                      )}
+                      {m.noble && (
+                        <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">
+                          Noble
+                        </span>
+                      )}
+                    </span>
+                  </td>
+                  <td className="py-2 pr-3 text-right font-mono">{m.donatedShards.toLocaleString()}</td>
+                  <td className="py-2 text-right font-mono">{m.donatedCurrency.toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
     </main>
   );
 }
