@@ -364,7 +364,7 @@ async function main() {
     `);
     await db.execute(sql`
       INSERT INTO market_price_history (item_id, item_type, snapshot_at, lowest_ask, highest_bid, ask_qty, bid_qty, sold_qty_recent)
-      SELECT item_id, item_type, ${run!.startedAt}, lowest_ask, highest_bid, ask_qty, bid_qty, sold_qty_recent
+      SELECT item_id, item_type, now(), lowest_ask, highest_bid, ask_qty, bid_qty, sold_qty_recent
       FROM market_item_summary
       ON CONFLICT (item_id, item_type, snapshot_at) DO NOTHING
     `);
