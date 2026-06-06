@@ -97,9 +97,33 @@ async function main() {
         await inChunks(empires, CHUNK, (s) =>
           tx.insert(schema.empires).values(s).onConflictDoUpdate({ target: schema.empires.entityId, set: conflictUpdateSet(schema.empires) }),
         );
-        await inChunks(playerSkillRows, CHUNK, (s) => tx.insert(schema.playerSkills).values(s));
-        await inChunks(members, CHUNK, (s) => tx.insert(schema.empireMembers).values(s));
-        await inChunks(claimRows, CHUNK, (s) => tx.insert(schema.claims).values(s));
+        // Upsert (not plain insert) so a cross-region entity-id collision — SpacetimeDB
+        // ids may only be unique per region module — updates rather than throwing a PK
+        // violation that would abort the run. Region-delete above keeps each region fresh.
+        await inChunks(playerSkillRows, CHUNK, (s) =>
+          tx
+            .insert(schema.playerSkills)
+            .values(s)
+            .onConflictDoUpdate({
+              target: [schema.playerSkills.playerEntityId, schema.playerSkills.skillId],
+              set: conflictUpdateSet(schema.playerSkills, ["playerEntityId", "skillId"]),
+            }),
+        );
+        await inChunks(members, CHUNK, (s) =>
+          tx
+            .insert(schema.empireMembers)
+            .values(s)
+            .onConflictDoUpdate({
+              target: [schema.empireMembers.empireEntityId, schema.empireMembers.playerEntityId],
+              set: conflictUpdateSet(schema.empireMembers, ["empireEntityId", "playerEntityId"]),
+            }),
+        );
+        await inChunks(claimRows, CHUNK, (s) =>
+          tx
+            .insert(schema.claims)
+            .values(s)
+            .onConflictDoUpdate({ target: schema.claims.entityId, set: conflictUpdateSet(schema.claims, ["entityId"]) }),
+        );
         await tx
           .insert(schema.regions)
           .values({ region, module: moduleName, name: `Region ${region}` })
