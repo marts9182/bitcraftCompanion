@@ -8,6 +8,7 @@
     "start": "tsx src/main.ts",
     "probe": "tsx src/probe.ts",
     "snapshot": "tsx src/snapshot.ts",
+    "leaderboard-snapshot": "tsx src/leaderboard-snapshot.ts",
     "typecheck": "tsc --noEmit",
     "lint": "echo \"(no lint configured for worker yet)\"",
     "build": "tsc -p tsconfig.json"
