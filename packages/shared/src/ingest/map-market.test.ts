@@ -36,6 +36,10 @@ describe("mapMarketplaces", () => {
     const rows = mapMarketplaces([{ building_entity_id: "72057594000000001", claim_entity_id: "8" }], "7");
     expect(rows).toEqual([{ buildingEntityId: "72057594000000001", claimEntityId: "8", region: "7" }]);
   });
+
+  it("skips rows with no building id", () => {
+    expect(mapMarketplaces([{ claim_entity_id: "8" }], "7")).toEqual([]);
+  });
 });
 
 describe("mapClosedListings", () => {

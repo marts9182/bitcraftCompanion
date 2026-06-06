@@ -7,9 +7,11 @@ const idStr = (v: unknown): string => (v == null ? "" : String(v));
  *  excluded from best-price/quantity aggregates, flagged (not hidden) in the order ladder. */
 export const PRICE_SENTINEL_CEILING = 400_000_000;
 
-/** SpacetimeDB Timestamp is microseconds since the Unix epoch → JS milliseconds. */
+/** SpacetimeDB Timestamp is microseconds since the Unix epoch → integer JS milliseconds.
+ *  Microsecond values stay below Number.MAX_SAFE_INTEGER (2^53) until ~year 2255, so
+ *  Number precision is not a concern at game timescales. */
 export function gameTimestampToMs(ts: unknown): number {
-  return (toInt(ts) ?? 0) / 1000;
+  return Math.trunc((toInt(ts) ?? 0) / 1000);
 }
 
 export interface MarketOrderRow {
@@ -59,11 +61,16 @@ export interface MarketplaceRow {
   region: string;
 }
 export function mapMarketplaces(rows: Raw[], region: string): MarketplaceRow[] {
-  return rows.map((r) => ({
-    buildingEntityId: idStr(r.building_entity_id),
-    claimEntityId: idStr(r.claim_entity_id),
-    region,
-  }));
+  const out: MarketplaceRow[] = [];
+  for (const r of rows) {
+    if (r.building_entity_id == null) continue;
+    out.push({
+      buildingEntityId: idStr(r.building_entity_id),
+      claimEntityId: idStr(r.claim_entity_id),
+      region,
+    });
+  }
+  return out;
 }
 
 export interface MarketSaleRow {
