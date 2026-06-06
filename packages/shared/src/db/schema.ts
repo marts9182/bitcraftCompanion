@@ -233,6 +233,42 @@ export const claims = pgTable(
   }),
 );
 
+export const mapRegions = pgTable("map_regions", {
+  id: integer("id").primaryKey(),
+  name: text("name"),
+  minChunkX: integer("min_chunk_x").notNull(),
+  minChunkZ: integer("min_chunk_z").notNull(),
+  widthChunks: integer("width_chunks").notNull(),
+  heightChunks: integer("height_chunks").notNull(),
+  regionIndex: integer("region_index").notNull().default(0),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const mapClaims = pgTable(
+  "map_claims",
+  {
+    entityId: text("entity_id").primaryKey(),
+    name: text("name").notNull(),
+    x: integer("x").notNull(),
+    z: integer("z").notNull(),
+    dimension: integer("dimension").notNull().default(1),
+    numTiles: integer("num_tiles").notNull().default(0),
+    treasury: bigint("treasury", { mode: "number" }).notNull().default(0),
+    supplies: integer("supplies").notNull().default(0),
+  },
+  (t) => ({ byXz: index("map_claims_xz_idx").on(t.x, t.z) }),
+);
+
+export const mapChunks = pgTable(
+  "map_chunks",
+  {
+    chunkIndex: text("chunk_index").primaryKey(),
+    empireEntityId: text("empire_entity_id").notNull(),
+    watchtowerEntityId: text("watchtower_entity_id"),
+  },
+  (t) => ({ byEmpire: index("map_chunks_empire_idx").on(t.empireEntityId) }),
+);
+
 export type Item = typeof items.$inferSelect;
 export type NewItem = typeof items.$inferInsert;
 export type Recipe = typeof recipes.$inferSelect;
