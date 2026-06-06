@@ -1,42 +1,28 @@
 import type { ReactNode } from "react";
-import Link from "next/link";
+import { Josefin_Sans } from "next/font/google";
 import "./globals.css";
 import { defaultMetadata, websiteJsonLd } from "@/lib/seo";
 import { jsonLdScript } from "@/lib/jsonld";
+import { SiteHeader } from "@/components/SiteHeader";
 
 export const metadata = defaultMetadata;
 
-const NAV: [string, string][] = [
-  ["/items", "Items"],
-  ["/cargo", "Cargo"],
-  ["/buildings", "Buildings"],
-  ["/recipes", "Recipes"],
-  ["/calculator", "Calculator"],
-  ["/leaderboards", "Leaderboards"],
-  ["/map", "Map"],
-  ["/blog", "Blog"],
-];
+const josefin = Josefin_Sans({
+  subsets: ["latin"],
+  weight: ["600", "700"],
+  variable: "--font-display",
+  display: "swap",
+});
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={josefin.variable}>
       <body>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: jsonLdScript(websiteJsonLd()) }}
         />
-        <header className="border-b">
-          <nav className="mx-auto flex max-w-5xl flex-wrap items-center gap-4 px-6 py-3 text-sm">
-            <Link href="/" className="font-semibold">
-              BitCraft Companion
-            </Link>
-            {NAV.map(([href, label]) => (
-              <Link key={href} href={href} className="text-muted-foreground hover:text-foreground">
-                {label}
-              </Link>
-            ))}
-          </nav>
-        </header>
+        <SiteHeader />
         {children}
       </body>
     </html>

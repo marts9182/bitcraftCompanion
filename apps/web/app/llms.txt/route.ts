@@ -23,6 +23,10 @@ export function GET() {
 ## Map
 - World map: ${SITE_URL}/map
 
+## Empires & Players
+- Empires: ${SITE_URL}/empires — claims, territory, and empire rankings.
+- Players: ${SITE_URL}/players — player directory with profiles and stats.
+
 ## Blog & Guides
 - Blog: ${SITE_URL}/blog
 - RSS: ${SITE_URL}/feed.xml
