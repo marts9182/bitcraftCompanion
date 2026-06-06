@@ -18,10 +18,10 @@ export async function getMarketList(params: MarketListParams): Promise<{ rows: M
 
   const orderBy =
     params.sort === "ask" ? sql`${marketItemSummary.lowestAsk} asc nulls last` :
-    params.sort === "bid" ? desc(marketItemSummary.highestBid) :
+    params.sort === "bid" ? sql`${marketItemSummary.highestBid} desc nulls last` :
     params.sort === "askQty" ? desc(marketItemSummary.askQty) :
     params.sort === "name" ? asc(marketItemSummary.itemName) :
-    params.sort === "tier" ? desc(marketItemSummary.tier) :
+    params.sort === "tier" ? sql`${marketItemSummary.tier} desc nulls last` :
     desc(marketItemSummary.soldQtyRecent);
 
   const [{ total }] = await db.select({ total: count() }).from(marketItemSummary).where(where);
