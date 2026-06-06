@@ -88,9 +88,14 @@ async function main() {
             tx.insert(schema.skills).values(s).onConflictDoUpdate({ target: schema.skills.id, set: conflictUpdateSet(schema.skills, ["id"]) }),
           );
         }
+        // Clear this region's rows first so entities that disappeared from the live
+        // snapshot (deleted players, disbanded empires) don't linger as ghosts. The
+        // upserts below then re-insert fresh; onConflict keeps cross-region collisions safe.
         await tx.delete(schema.playerSkills).where(eq(schema.playerSkills.region, region));
         await tx.delete(schema.empireMembers).where(eq(schema.empireMembers.region, region));
         await tx.delete(schema.claims).where(eq(schema.claims.region, region));
+        await tx.delete(schema.players).where(eq(schema.players.region, region));
+        await tx.delete(schema.empires).where(eq(schema.empires.region, region));
         await inChunks(playerRows, CHUNK, (s) =>
           tx.insert(schema.players).values(s).onConflictDoUpdate({ target: schema.players.entityId, set: conflictUpdateSet(schema.players) }),
         );
