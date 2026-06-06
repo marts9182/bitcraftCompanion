@@ -13,6 +13,7 @@ export function GET() {
 - Cargo: ${SITE_URL}/cargo
 - Buildings: ${SITE_URL}/buildings
 - Recipes: ${SITE_URL}/recipes
+- Calculator: ${SITE_URL}/calculator
 
 ## Blog & Guides
 - Blog: ${SITE_URL}/blog

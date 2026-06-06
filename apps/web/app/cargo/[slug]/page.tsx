@@ -71,6 +71,13 @@ export default async function CargoDetailPage({ params }: { params: Promise<{ sl
           </div>
         </dl>
       )}
+      <Link
+        href={`/calculator/cargo/${c.slug}`}
+        className="mt-4 inline-block rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90"
+      >
+        Calculate materials →
+      </Link>
+
       <CraftGraphSection title="Made by" recipes={graph.madeBy} />
       <CraftGraphSection title="Used in" recipes={graph.usedIn} />
     </main>

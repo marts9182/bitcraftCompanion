@@ -11,6 +11,7 @@ const NAV: [string, string][] = [
   ["/cargo", "Cargo"],
   ["/buildings", "Buildings"],
   ["/recipes", "Recipes"],
+  ["/calculator", "Calculator"],
   ["/blog", "Blog"],
 ];
 

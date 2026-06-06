@@ -90,6 +90,13 @@ export default async function ItemDetailPage({ params }: { params: Promise<{ slu
         )}
       </dl>
 
+      <Link
+        href={`/calculator/item/${item.slug}`}
+        className="mt-4 inline-block rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90"
+      >
+        Calculate materials →
+      </Link>
+
       <CraftGraphSection title="Made by" recipes={graph.madeBy} />
       <CraftGraphSection title="Used in" recipes={graph.usedIn} />
     </main>
