@@ -18,24 +18,50 @@ const emptyIcon = divIcon({ className: "", html: "", iconSize: [0, 0] });
 // Only label empires with a meaningful footprint, so the world view stays legible.
 const EMPIRE_LABEL_MIN_CHUNKS = 180;
 
-// Biome key — colours MUST match scripts/render-terrain.py BIOME_PALETTE / WATER_PALETTE.
-const BIOME_LEGEND: { name: string; color: string }[] = [
-  { name: "Calm Forest", color: "#4a603a" },
-  { name: "Pine Woods", color: "#3a5038" },
-  { name: "Sapwoods", color: "#60844a" },
-  { name: "Jungle", color: "#3c6e48" },
-  { name: "Swamp", color: "#566442" },
-  { name: "Safe Meadows", color: "#9eb06e" },
-  { name: "Breezy Grasslands", color: "#8a9e60" },
-  { name: "Autumn Forest", color: "#967840" },
-  { name: "Desert Wasteland", color: "#b29a66" },
-  { name: "Rocky Garden", color: "#8c8474" },
-  { name: "Misty Tundra", color: "#96968e" },
-  { name: "Snowy Peaks", color: "#e4e8ec" },
-  { name: "Cave", color: "#46404a" },
-  { name: "Rivers & lakes", color: "#4e7896" },
-  { name: "Open Ocean", color: "#344a60" },
+// Biome key — colours MUST match scripts/render-terrain.py BIOME_PALETTE.
+// `id` is the biome_type used by the per-chunk highlight grid (terrain-biomes.json).
+// "Rivers & lakes" is a water overlay, not a biome (id null → not highlightable).
+const BIOME_LEGEND: { id: number | null; name: string; color: string }[] = [
+  { id: 1, name: "Calm Forest", color: "#4a603a" },
+  { id: 2, name: "Pine Woods", color: "#3a5038" },
+  { id: 14, name: "Sapwoods", color: "#60844a" },
+  { id: 13, name: "Jungle", color: "#3c6e48" },
+  { id: 8, name: "Swamp", color: "#566442" },
+  { id: 11, name: "Safe Meadows", color: "#9eb06e" },
+  { id: 4, name: "Breezy Grasslands", color: "#8a9e60" },
+  { id: 5, name: "Autumn Forest", color: "#967840" },
+  { id: 7, name: "Desert Wasteland", color: "#b29a66" },
+  { id: 9, name: "Rocky Garden", color: "#8c8474" },
+  { id: 6, name: "Misty Tundra", color: "#96968e" },
+  { id: 3, name: "Snowy Peaks", color: "#e4e8ec" },
+  { id: 12, name: "Cave", color: "#46404a" },
+  { id: null, name: "Rivers & lakes", color: "#4e7896" },
+  { id: 10, name: "Open Ocean", color: "#344a60" },
 ];
+
+interface BiomeGrid { region: number; w: number; h: number; grid: number[]; }
+
+// Build a chunk-resolution highlight image (data URL) for one region: cells whose
+// dominant biome == `biome` get the highlight colour, the rest stay transparent.
+// The grid is north-up (row 0 = max z), matching the terrain overlay's bounds.
+function biomeHighlightUrl(g: BiomeGrid, biome: number, color: string): string | null {
+  const cv = document.createElement("canvas");
+  cv.width = g.w; cv.height = g.h;
+  const ctx = cv.getContext("2d");
+  if (!ctx) return null;
+  const r = parseInt(color.slice(1, 3), 16), gg = parseInt(color.slice(3, 5), 16), b = parseInt(color.slice(5, 7), 16);
+  const img = ctx.createImageData(g.w, g.h);
+  let any = false;
+  for (let i = 0; i < g.grid.length; i++) {
+    if (g.grid[i] !== biome) continue;
+    any = true;
+    const o = i * 4;
+    img.data[o] = r; img.data[o + 1] = gg; img.data[o + 2] = b; img.data[o + 3] = 235;
+  }
+  if (!any) return null;
+  ctx.putImageData(img, 0, 0);
+  return cv.toDataURL();
+}
 
 export const regionLabel = (r: RegionRect): string => r.name ?? `Region ${r.id}`;
 export const sortRegions = (regions: RegionRect[]): RegionRect[] =>
@@ -58,6 +84,27 @@ export function WorldMap({ claims, regions, territory, watchtowers, empires, ter
   claims: ClaimPoint[]; regions: RegionRect[]; territory: TerritoryCell[]; watchtowers: Watchtower[]; empires: EmpireTerritory[]; terrain: TerrainOverlay[];
 }) {
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedBiome, setSelectedBiome] = useState<number | null>(null);
+  const [biomeGrids, setBiomeGrids] = useState<Map<number, BiomeGrid> | null>(null);
+
+  // Lazy-load the per-chunk biome grids the first time a biome is highlighted.
+  useEffect(() => {
+    if (selectedBiome === null || biomeGrids) return;
+    let alive = true;
+    fetch("/map/terrain-biomes.json")
+      .then((r) => r.json() as Promise<BiomeGrid[]>)
+      .then((list) => { if (alive) setBiomeGrids(new Map(list.map((g) => [g.region, g]))); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [selectedBiome, biomeGrids]);
+
+  const biomeColor = BIOME_LEGEND.find((b) => b.id === selectedBiome)?.color ?? "#ffd84d";
+  const biomeHighlights = useMemo(() => {
+    if (selectedBiome === null || !biomeGrids) return [];
+    return terrain
+      .map((t) => { const g = biomeGrids.get(t.region); const url = g ? biomeHighlightUrl(g, selectedBiome, biomeColor) : null; return url ? { region: t.region, url, bounds: t.bounds } : null; })
+      .filter((x): x is { region: number; url: string; bounds: TerrainOverlay["bounds"] } => x !== null);
+  }, [selectedBiome, biomeGrids, terrain, biomeColor]);
 
   // Fit bounds to the region extent (chunk coords). Fallback to a default if empty.
   const xs = regions.flatMap((r) => [r.x0, r.x1]);
@@ -107,8 +154,11 @@ export function WorldMap({ claims, regions, territory, watchtowers, empires, ter
       >
         <FlyToRegion region={selected} worldBounds={worldBounds} />
 
-        {/* Biome terrain base (per-region images) — always-on bottom layer. */}
-        {terrain.map((t) => <ImageOverlay key={t.region} url={t.url} bounds={t.bounds} />)}
+        {/* Biome terrain base (per-region images) — always-on bottom layer.
+            Dimmed when a biome is highlighted so the highlight stands out. */}
+        {terrain.map((t) => <ImageOverlay key={t.region} url={t.url} bounds={t.bounds} opacity={selectedBiome === null ? 1 : 0.3} />)}
+        {/* Click-to-highlight: the selected biome, chunk-resolution, over the dimmed terrain. */}
+        {biomeHighlights.map((h) => <ImageOverlay key={`hl-${h.region}`} url={h.url} bounds={h.bounds} zIndex={5} />)}
 
         <LayersControl position="topright">
           {/* Empire borders + names — the headline overlay. */}
@@ -199,16 +249,42 @@ export function WorldMap({ claims, regions, territory, watchtowers, empires, ter
         </LayersControl>
       </MapContainer>
 
-      {/* Biome key — what each terrain colour means. */}
+      {/* Biome key — click a biome to highlight it on the map. */}
       <div style={{ marginTop: 10 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6, color: "var(--muted-foreground, #555)" }}>Biome key</div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 14px" }}>
-          {BIOME_LEGEND.map((b) => (
-            <span key={b.name} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12 }}>
-              <span style={{ width: 14, height: 14, borderRadius: 3, background: b.color, border: "1px solid rgba(0,0,0,0.25)", display: "inline-block" }} />
-              {b.name}
-            </span>
-          ))}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--muted-foreground, #555)" }}>Biome key</span>
+          <span style={{ fontSize: 11, color: "#999" }}>click to highlight</span>
+          {selectedBiome !== null && (
+            <button type="button" onClick={() => setSelectedBiome(null)} style={{ cursor: "pointer", background: "transparent", border: "none", color: "#a07f25", textDecoration: "underline", fontSize: 12 }}>
+              Clear
+            </button>
+          )}
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 10px" }}>
+          {BIOME_LEGEND.map((b) => {
+            const isSel = b.id !== null && b.id === selectedBiome;
+            const clickable = b.id !== null;
+            return (
+              <button
+                key={b.name}
+                type="button"
+                aria-pressed={isSel}
+                disabled={!clickable}
+                onClick={() => clickable && setSelectedBiome((cur) => (cur === b.id ? null : b.id))}
+                title={clickable ? `Highlight ${b.name}` : "Water overlay (not highlightable)"}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12,
+                  padding: "2px 6px", borderRadius: 6, cursor: clickable ? "pointer" : "default",
+                  background: isSel ? "rgba(245,196,81,0.18)" : "transparent",
+                  border: isSel ? "1px solid #d8a93a" : "1px solid transparent",
+                  opacity: selectedBiome !== null && !isSel ? 0.5 : 1,
+                }}
+              >
+                <span style={{ width: 14, height: 14, borderRadius: 3, background: b.color, border: "1px solid rgba(0,0,0,0.25)", display: "inline-block" }} />
+                {b.name}
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>

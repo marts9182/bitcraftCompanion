@@ -20,6 +20,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CACHE = os.path.join(ROOT, "apps", "worker", ".terrain-cache")
 OUT_DIR = os.path.join(ROOT, "apps", "web", "public", "map", "terrain")
 MANIFEST = os.path.join(ROOT, "apps", "web", "public", "map", "terrain.json")
+BIOMES_MANIFEST = os.path.join(ROOT, "apps", "web", "public", "map", "terrain-biomes.json")
 TILE = 32  # tiles per chunk side
 
 # Natural, muted biome palette (RGB) tuned toward the in-game minimap look.
@@ -89,13 +90,19 @@ def render_region(meta):
     water = np.zeros((H, W), np.uint8)
     elev = np.zeros((H, W), np.int16)
     have = np.zeros((H, W), bool)
+    # Per-chunk dominant biome grid (north-up: row 0 = max cz), for click-to-highlight.
+    wc, hc = max_cx - min_cx + 1, max_cz - min_cz + 1
+    grid = np.full(hc * wc, 255, np.uint8)  # 255 = no data
     for rec in data:
-        r = (int(rec["cz"]) - min_cz) * TILE
-        c = (int(rec["cx"]) - min_cx) * TILE
+        cz, cx = int(rec["cz"]), int(rec["cx"])
+        r = (cz - min_cz) * TILE
+        c = (cx - min_cx) * TILE
         biome[r:r + TILE, c:c + TILE] = rec["biome"].reshape(TILE, TILE)
         water[r:r + TILE, c:c + TILE] = rec["water"].reshape(TILE, TILE)
         elev[r:r + TILE, c:c + TILE] = rec["elev"].reshape(TILE, TILE)
         have[r:r + TILE, c:c + TILE] = True
+        vals, counts = np.unique(rec["biome"], return_counts=True)
+        grid[(max_cz - cz) * wc + (cx - min_cx)] = int(vals[np.argmax(counts)])
 
     # Base biome colour, hillshaded for land relief.
     rgb = _biome_lut[biome].astype(np.float64)
@@ -118,28 +125,33 @@ def render_region(meta):
 
     os.makedirs(OUT_DIR, exist_ok=True)
     img.save(os.path.join(OUT_DIR, f"region-{n}.webp"), lossless=False, quality=88, method=6)
-    return {
+    entry = {
         "region": n,
         "url": f"/map/terrain/region-{n}.webp",
         "minX": min_cx, "minZ": min_cz, "maxX": max_cx + 1, "maxZ": max_cz + 1,
         "width": W, "height": H,
     }
+    return entry, {"region": n, "w": wc, "h": hc, "grid": grid.tolist()}
 
 
 def main():
     metas = sorted(glob.glob(os.path.join(CACHE, "region-*.json")))
     if not metas:
         raise SystemExit(f"No region-*.json in {CACHE}. Run the terrain-snapshot first.")
-    manifest = []
+    manifest, biomes = [], []
     for p in metas:
         with open(p, encoding="utf-8-sig") as f:
             meta = json.load(f)
-        entry = render_region(meta)
+        entry, grid = render_region(meta)
         manifest.append(entry)
+        biomes.append(grid)
         print(f"region {entry['region']}: {entry['width']}x{entry['height']}px -> {entry['url']}")
     with open(MANIFEST, "w", encoding="utf-8") as f:
         json.dump(manifest, f)
+    with open(BIOMES_MANIFEST, "w", encoding="utf-8") as f:
+        json.dump(biomes, f)
     print(f"wrote manifest with {len(manifest)} region(s) -> {MANIFEST}")
+    print(f"wrote biome grids -> {BIOMES_MANIFEST}")
 
 
 if __name__ == "__main__":
