@@ -57,3 +57,19 @@ export function thingJsonLd(name: string, description: string, url: string) {
   if (description) ld.description = description;
   return ld;
 }
+
+/** schema.org Article for a blog/guide post. */
+export function articleJsonLd(
+  a: { title: string; description: string; date: string; author: string },
+  url: string,
+) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: a.title,
+    description: a.description,
+    datePublished: a.date,
+    author: { "@type": "Person", name: a.author },
+    url,
+  };
+}

@@ -1,5 +1,28 @@
 import { describe, it, expect } from "vitest";
-import { breadcrumbJsonLd, itemJsonLd, itemListJsonLd, jsonLdScript, thingJsonLd } from "./jsonld";
+import {
+  articleJsonLd,
+  breadcrumbJsonLd,
+  itemJsonLd,
+  itemListJsonLd,
+  jsonLdScript,
+  thingJsonLd,
+} from "./jsonld";
+
+describe("articleJsonLd", () => {
+  it("builds an Article with author and date", () => {
+    expect(
+      articleJsonLd({ title: "T", description: "D", date: "2026-06-01", author: "Me" }, "https://x.com/blog/t"),
+    ).toEqual({
+      "@context": "https://schema.org",
+      "@type": "Article",
+      headline: "T",
+      description: "D",
+      datePublished: "2026-06-01",
+      author: { "@type": "Person", name: "Me" },
+      url: "https://x.com/blog/t",
+    });
+  });
+});
 
 describe("jsonld builders", () => {
   it("builds a BreadcrumbList with positions", () => {

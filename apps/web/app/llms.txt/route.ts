@@ -14,6 +14,10 @@ export function GET() {
 - Buildings: ${SITE_URL}/buildings
 - Recipes: ${SITE_URL}/recipes
 
+## Blog & Guides
+- Blog: ${SITE_URL}/blog
+- RSS: ${SITE_URL}/feed.xml
+
 ## Notes
 - Every item, cargo, building, and recipe has its own page with details and crafting relationships (made-by / used-in, inputs / outputs).
 - Data is sourced from BitCraft's SpacetimeDB descriptor tables and refreshed on game patches.

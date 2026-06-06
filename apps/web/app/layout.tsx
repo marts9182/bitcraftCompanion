@@ -11,6 +11,7 @@ const NAV: [string, string][] = [
   ["/cargo", "Cargo"],
   ["/buildings", "Buildings"],
   ["/recipes", "Recipes"],
+  ["/blog", "Blog"],
 ];
 
 export default function RootLayout({ children }: { children: ReactNode }) {
