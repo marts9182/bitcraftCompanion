@@ -93,6 +93,25 @@ cleared (use a CDN or a gitignored `public/icons`).
 - Runtime smoke: with no base set, list/detail render monogram tiles (no broken images);
   set a dummy `NEXT_PUBLIC_ICON_BASE_URL` and confirm `<img>` src is built correctly.
 
+## UPDATE — real icons extracted (2026-06-05)
+
+Owner has BitCraft dev-program access and the game installed, so real icons WERE
+extracted (not just placeholders):
+- Source: the Addressables bundle `remoteassets_assets__*.bundle` in the local
+  install holds 5k+ `Sprite` objects at container paths
+  `Assets/_Project/StaticAssets/_AddressedAssets/Sprites/GeneratedIcons/<Cat>/<Name>.png`.
+- `scripts/extract-game-icons.py` (UnityPy + Pillow) exports each as a 128px
+  `.webp` to `apps/web/public/icons/GeneratedIcons/<Cat>/<Name>.webp` (2,652 icons,
+  ~7.5 MB) and writes `apps/web/lib/icon-manifest.json` (the set of available keys).
+- `icons.ts` gained `normalizeIconAsset()` to reconcile the messy `icon_asset_name`
+  values (strip `[params]`; take the tail after the LAST `GeneratedIcons/`), and
+  `iconUrl`/`buildIconUrl` now consult the manifest so we never emit an `<img>` that
+  would 404 (unmatched → monogram). Coverage: **items ~80%, cargo ~99%, buildings ~85%**.
+- The extracted icons + manifest ARE committed (CI can't regenerate them — no game
+  files), so deploys serve them from `/public`. Set `NEXT_PUBLIC_ICON_BASE_URL=/icons`
+  in the deploy env (and `apps/web/.env.local` locally) to turn them on.
+- Refresh after a game patch by re-running the extraction script.
+
 ## Verification & delivery
 Lands on `main`, tests green, pushed. Final report documents that placeholders are showing and
 the exact steps to enable real icons.
