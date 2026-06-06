@@ -1,12 +1,12 @@
 # Phase 4 — Market & Economy (design)
 
 **Date:** 2026-06-06
-**Status:** Design / awaiting user review
+**Status:** Design / approved by user (decisions in §2 and §10 confirmed)
 **Pillar:** Last of the four Phase 4 pillars (crafting calculator, leaderboards + empires/players, interactive map are done).
 
-> ⚠️ **Process note.** This spec was drafted autonomously (user stepped away mid-brainstorm).
-> The clarifying questions below were resolved with explicit rationale rather than live Q&A.
-> **Every decision marked 🔸 is a call I made for the user to confirm or override at the review gate.**
+> **Process note.** Drafted autonomously while the user stepped away mid-brainstorm, then
+> confirmed in a live one-question-at-a-time review. All 🔸 decisions are now user-approved
+> (see §10 for the confirmed answers).
 
 ---
 
@@ -159,14 +159,14 @@ A single CTE-based SQL statement (`drizzle sql\`\``), then a history append:
 1. `TRUNCATE market_item_summary;` then `INSERT … SELECT` grouping `market_orders` by `(item_id,item_type)` with `FILTER (WHERE price < PRICE_SENTINEL_CEILING)` for best-price/qty aggregates, `count(DISTINCT region)`, `count(DISTINCT claim_entity_id)`; LEFT JOIN a `market_sales` window aggregate for `soldQtyRecent`/`lastSoldAt`; LEFT JOIN `items`/`cargo` (by `item_type`) for denormalized name/slug/icon/tier/rarity.
 2. `INSERT INTO market_price_history SELECT itemId,itemType, <runStartedAt>, lowestAsk, highestBid, askQty, bidQty, soldQtyRecent FROM market_item_summary;`
 
-The recency window for `soldQtyRecent` is applied at aggregation time by comparing `market_sales.timestamp` (decoded via the shared timestamp helper) to the run time. Then `triggerRevalidate` (already called at the end) refreshes the market pages.
+The recency window for `soldQtyRecent` is **24h** (snapshot cadence is ~hourly, so ~24 points), applied at aggregation time by comparing `market_sales.timestamp` (decoded via the shared timestamp helper) to the run time. Then `triggerRevalidate` (already called at the end) refreshes the market pages.
 
 ---
 
 ## 6. Web queries (`apps/web/lib/queries/market.ts`)
 
 Drizzle, same style as `leaderboards.ts`/`items.ts`:
-- `getMarketList({ q, type, tier, rarity, sort, page })` — scans `market_item_summary` only. Sort keys: `lowestAsk` (asc, nulls last), `highestBid` (desc), `askQty`, `soldQtyRecent`, `itemName`, `tier`. `type` filters item vs cargo; `q` is `ilike` on `itemName`. Returns `{ rows, total }`.
+- `getMarketList({ q, type, tier, rarity, sort, page })` — scans `market_item_summary` only. **Default sort: `soldQtyRecent` desc** (most actively traded). Other sort keys: `lowestAsk` (asc, nulls last), `highestBid` (desc), `askQty`, `itemName`, `tier`. `type` filters item vs cargo; `q` is `ilike` on `itemName`. Returns `{ rows, total }`.
 - `getMarketItem(type, id)` — summary row + resolved item/cargo header (name, icon, tier, rarity, link back to the compendium item/cargo page).
 - `getMarketOrders(type, id)` — ask ladder (`side='sell'` order by price asc) + bid ladder (`side='buy'` order by price desc), each with `quantity`; computes cumulative quantity in JS; flags rows ≥ sentinel.
 - `getMarketLocations(type, id)` — group orders by `claimEntityId` joined to `marketplaces`/`claims` (claim name) → per-location best ask, best bid, qty, region.
@@ -181,8 +181,8 @@ Drizzle, same style as `leaderboards.ts`/`items.ts`:
 Reuse the Empires/Players list+detail components, server components, ISR.
 
 ### 7.1 `/market` — browse list (`page.tsx`)
-- One row per traded item: icon + name (→ detail), tier, **lowest ask**, **highest bid**, spread (ask−bid), qty available, # orders, # marketplaces, **recent sold volume**.
-- Search by name; filter by item/cargo and by tier/rarity; sortable headers; paginated. URL-param driven (same helper pattern as players page). `export const revalidate = 60`.
+- One row per traded item: icon + name (→ detail), tier, **lowest ask**, **highest bid**, spread (ask−bid), qty available, # orders, # marketplaces, **recent sold volume (24h)**.
+- **Default sort: most actively traded** (recent sold volume desc). Search by name; filter by item/cargo and by tier/rarity; sortable headers; paginated. URL-param driven (same helper pattern as players page). `export const revalidate = 60`.
 
 ### 7.2 `/market/[key]` — item detail (`[key]/page.tsx`)
 `key` = `<type>-<id>`. `generateStaticParams` pre-renders top-N traded items; `dynamicParams = true`; `revalidate = 300`; `generateMetadata` per item.
@@ -216,9 +216,10 @@ Add `["/market", "Market"]` to `NAV` in `apps/web/components/SiteHeader.tsx` (af
 
 ---
 
-## 10. Open items for the user (review gate)
-- Confirm **Approach A** (capture history now) vs B (order book only).
-- Confirm the recency window for `soldQtyRecent` / "recent sales" (proposal: **24h**; if snapshots are infrequent, widen to 7d).
-- Confirm `PRICE_SENTINEL_CEILING = 400_000_000`.
-- Confirm the detail route key format `/market/<type>-<id>`.
-- Confirm v1 omits NPC shops, barter, and trade sessions.
+## 10. Decisions confirmed at the review gate
+- ✅ **Approach A** — capture price history from day one (minimal chart now).
+- ✅ Snapshot cadence is **~hourly** → `soldQtyRecent` / "recent sold volume" window = **24h**; history granularity ≈ hourly.
+- ✅ **Player order book only** for v1 — NPC/traveler shops, barter stalls, and trade sessions deferred.
+- ✅ `PRICE_SENTINEL_CEILING = 400_000_000` — excluded from best-price/qty aggregates; stored and flagged in the detail ladder.
+- ✅ **Default browse sort = most actively traded** (recent sold volume desc).
+- ✅ Detail route key `/market/<type>-<id>` (e.g. `/market/item-12345`).
