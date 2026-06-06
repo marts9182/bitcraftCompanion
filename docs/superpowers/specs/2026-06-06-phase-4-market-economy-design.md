@@ -83,8 +83,8 @@ Five new tables. Big-int-safe ids are strings (already handled by `extractTableI
 Indexes: `(itemId, itemType, side, price)` (the detail ladder + aggregation), `(region)` (clean rebuild), `(claimEntityId)` (per-location).
 
 ### 4.2 `marketplaces` — marketplace buildings (region-scoped, full-replace per region)
-`buildingEntityId` text PK · `claimEntityId` text · `region` text notNull · `locationX` integer · `locationZ` integer · `updatedAt`.
-Index `(region)`, `(claimEntityId)`.
+`buildingEntityId` text PK · `claimEntityId` text · `region` text notNull · `updatedAt`.
+Index `(region)`, `(claimEntityId)`. **Coordinates deferred for v1** — the `marketplace_state.location` wire format is unverified and the location display uses the claim name + region from the existing `claims` table, not coordinates. (Add `locationX/Z` in a later iteration if a market-locations map is built.)
 
 ### 4.3 `market_sales` — closed/sold listings (region-scoped, full-replace per region)
 `entityId` text PK · `region` text notNull · `itemId` integer · `itemType` integer · `quantity` integer · `ownerEntityId` text · `claimEntityId` text · `timestamp` bigint · `updatedAt`.
