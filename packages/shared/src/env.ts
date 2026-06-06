@@ -8,6 +8,9 @@ export const serverEnvSchema = z.object({
   DATABASE_URL: z.string().url().or(z.string().startsWith("postgres")),
   SPACETIME_URI: z.string().min(1),
   SPACETIME_MODULE: z.string().min(1),
+  // Comma-separated live region module names for the leaderboard snapshot,
+  // e.g. "bitcraft-live-1,bitcraft-live-14". Falls back to SPACETIME_MODULE.
+  SPACETIME_REGIONS: z.string().min(1).optional(),
   SPACETIME_TOKEN: z.string().min(1),
   // Optional: the public identity the token encodes. Not required to connect;
   // kept for reference and an optional connect-time sanity check.

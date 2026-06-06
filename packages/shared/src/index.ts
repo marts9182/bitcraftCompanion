@@ -13,3 +13,12 @@ export { mapItemRow, mapCargoRow, mapBuildingRow } from "./ingest/map-entities";
 export { mapRecipeRow, buildRecipeGraph, refTypeOf } from "./ingest/map-recipes";
 export type { RefType, GraphRow } from "./ingest/map-recipes";
 export { makeUniqueSlug } from "./ingest/unique-slug";
+export { levelForXp, XP_LEVEL_THRESHOLDS } from "./leaderboards/levels";
+export {
+  mapSkillRow,
+  mapExperienceRows,
+  buildPlayerRows,
+  mapEmpireData,
+  mapClaimRows,
+} from "./ingest/map-leaderboards";
+export type { SkillRow, PlayerSkillRow, PlayerRow, EmpireRow, EmpireMemberRow, ClaimRow } from "./ingest/map-leaderboards";
