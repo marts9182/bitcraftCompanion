@@ -124,8 +124,21 @@ async function main() {
 
       const skillRows = dedupeBy(norm(r, "skill_desc").map(mapSkillRow), (s) => String(s.id));
       const maxBySkill = new Map(skillRows.map((s) => [s.id, s.maxLevel] as const));
-      const playerRows = dedupeBy(buildRegionPlayerRows(norm(r, "player_state"), region, usernameMap, onlineSet), (p) => p.entityId);
       const playerSkillRows = dedupeBy(mapExperienceRows(norm(r, "experience_state"), region, maxBySkill), (s) => `${s.playerEntityId}:${s.skillId}`);
+      // Materialize per-player skill totals (excluding skill_id 1 = the "ANY" sentinel).
+      const skillTotals = new Map<string, { level: number; xp: number }>();
+      for (const s of playerSkillRows) {
+        if (s.skillId === 1) continue;
+        const t = skillTotals.get(s.playerEntityId) ?? { level: 0, xp: 0 };
+        t.level += s.level; t.xp += s.xp;
+        skillTotals.set(s.playerEntityId, t);
+      }
+      const playerRows = dedupeBy(
+        buildRegionPlayerRows(norm(r, "player_state"), region, usernameMap, onlineSet).map((p) => ({
+          ...p, totalLevel: skillTotals.get(p.entityId)?.level ?? 0, totalXp: skillTotals.get(p.entityId)?.xp ?? 0,
+        })),
+        (p) => p.entityId,
+      );
       const raw = mapEmpireData(norm(r, "empire_state"), norm(r, "empire_player_data_state"), region);
       const { towers, agg } = mapEmpireNodes(norm(r, "empire_node_state"), region);
       const empires = dedupeBy(raw.empires, (e) => e.entityId).map((e) => {

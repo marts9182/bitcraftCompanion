@@ -160,11 +160,16 @@ export const players = pgTable(
     timeSignedIn: integer("time_signed_in").notNull().default(0),
     signInTimestamp: bigint("sign_in_timestamp", { mode: "number" }).notNull().default(0),
     signedIn: boolean("signed_in").notNull().default(false),
+    // Materialized skill totals (sum across player_skills) so the players list can
+    // sort/rank on an indexed column instead of aggregating 625k rows per request.
+    totalLevel: integer("total_level").notNull().default(0),
+    totalXp: bigint("total_xp", { mode: "number" }).notNull().default(0),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
   (t) => ({
     byRegion: index("players_region_idx").on(t.region),
     byName: index("players_username_idx").on(t.username),
+    byLevel: index("players_total_level_idx").on(t.totalLevel),
   }),
 );
 

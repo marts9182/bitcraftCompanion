@@ -179,23 +179,11 @@ export async function getPlayersList(params: PlayersListParams): Promise<{ rows:
   if (q) conds.push(ilike(players.username, `%${q}%`));
   const where = conds.length ? and(...conds) : undefined;
 
-  // Sum skill levels per player in SQL (group by) so total-level sort is not N+1.
-  const agg = db
-    .select({
-      playerEntityId: playerSkills.playerEntityId,
-      totalLevel: sql<number>`sum(${playerSkills.level})`.as("total_level"),
-    })
-    .from(playerSkills)
-    .groupBy(playerSkills.playerEntityId)
-    .as("agg");
-
-  // Players with no skills → COALESCE the left-joined sum to 0.
-  const totalLevelExpr = sql<number>`coalesce(${agg.totalLevel}, 0)`;
-
+  // Sort on the materialized players.totalLevel (indexed) — no per-request aggregation.
   const orderBy =
     params.sort === "playtime" ? [desc(players.timePlayed), players.entityId] :
     params.sort === "name" ? [asc(players.username), players.entityId] :
-    [desc(totalLevelExpr), players.entityId];
+    [desc(players.totalLevel), players.entityId];
 
   const [{ total }] = await db.select({ total: count() }).from(players).where(where);
   const rows = await db
@@ -203,18 +191,17 @@ export async function getPlayersList(params: PlayersListParams): Promise<{ rows:
       entityId: players.entityId,
       username: players.username,
       region: players.region,
-      totalLevel: totalLevelExpr,
+      totalLevel: players.totalLevel,
       timePlayed: players.timePlayed,
       signedIn: players.signedIn,
     })
     .from(players)
-    .leftJoin(agg, eq(agg.playerEntityId, players.entityId))
     .where(where)
     .orderBy(...orderBy)
     .limit(LB_PAGE_SIZE)
     .offset((params.page - 1) * LB_PAGE_SIZE);
 
-  return { rows: rows.map((r) => ({ ...r, totalLevel: Number(r.totalLevel) })), total: Number(total) };
+  return { rows, total: Number(total) };
 }
 
 export async function getPlayerDetail(id: string) {
