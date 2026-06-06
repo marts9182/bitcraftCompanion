@@ -14,6 +14,16 @@ export function gameTimestampToMs(ts: unknown): number {
   return Math.trunc((toInt(ts) ?? 0) / 1000);
 }
 
+/** A SpacetimeDB Timestamp serializes as { __timestamp_micros_since_unix_epoch__: "<i64>" }
+ *  in the v1.json protocol; older/other fields may already be plain numbers. Returns
+ *  microseconds since the Unix epoch as a number (0 if absent/unparseable). */
+export function decodeTimestampMicros(v: unknown): number {
+  if (v && typeof v === "object" && !Array.isArray(v)) {
+    return toInt((v as Record<string, unknown>).__timestamp_micros_since_unix_epoch__) ?? 0;
+  }
+  return toInt(v) ?? 0;
+}
+
 export interface MarketOrderRow {
   entityId: string;
   region: string;
@@ -44,7 +54,7 @@ function mapOrderSide(rows: Raw[], side: "sell" | "buy", region: string): Market
       price: toInt(r.price_threshold) ?? 0,
       quantity: toInt(r.quantity) ?? 0,
       storedCoins: toInt(r.stored_coins) ?? 0,
-      timestamp: toInt(r.timestamp) ?? 0,
+      timestamp: decodeTimestampMicros(r.timestamp),
     });
   }
   return out;
@@ -84,19 +94,20 @@ export interface MarketSaleRow {
   timestamp: number;
 }
 
-/** Read an item_stack that may be a positional array [item_id, quantity, item_type, durability]
- *  or a keyed object {item_id, quantity, item_type}. Null if no item id. */
+/** Read item_id/quantity/item_type from an item_stack. item_type may be a tagged-enum
+ *  array [tag,{}] (real closed_listing wire form) or a plain number. Null if no item id. */
 function readStack(stack: unknown): { itemId: number; quantity: number; itemType: number } | null {
+  const tag = (v: unknown): number => (Array.isArray(v) ? toInt(v[0]) ?? 0 : toInt(v) ?? 0);
   if (Array.isArray(stack)) {
     const itemId = toInt(stack[0]);
     if (itemId == null) return null;
-    return { itemId, quantity: toInt(stack[1]) ?? 0, itemType: toInt(stack[2]) ?? 0 };
+    return { itemId, quantity: toInt(stack[1]) ?? 0, itemType: tag(stack[2]) };
   }
   if (stack && typeof stack === "object") {
-    const o = stack as Raw;
+    const o = stack as Record<string, unknown>;
     const itemId = toInt(o.item_id);
     if (itemId == null) return null;
-    return { itemId, quantity: toInt(o.quantity) ?? 0, itemType: toInt(o.item_type) ?? 0 };
+    return { itemId, quantity: toInt(o.quantity) ?? 0, itemType: tag(o.item_type) };
   }
   return null;
 }
@@ -115,7 +126,7 @@ export function mapClosedListings(rows: Raw[], region: string): MarketSaleRow[] 
       quantity: stack.quantity,
       ownerEntityId: idStr(r.owner_entity_id),
       claimEntityId: idStr(r.claim_entity_id),
-      timestamp: toInt(r.timestamp) ?? 0,
+      timestamp: decodeTimestampMicros(r.timestamp),
     });
   }
   return out;

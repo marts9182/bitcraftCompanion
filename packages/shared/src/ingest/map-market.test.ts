@@ -4,6 +4,7 @@ import {
   mapMarketplaces,
   mapClosedListings,
   gameTimestampToMs,
+  decodeTimestampMicros,
   PRICE_SENTINEL_CEILING,
 } from "./map-market";
 
@@ -28,6 +29,14 @@ describe("mapMarketOrders", () => {
 
   it("skips rows with no item id", () => {
     expect(mapMarketOrders([{ entity_id: "1" }], [], "7")).toEqual([]);
+  });
+
+  it("decodes the object-form timestamp", () => {
+    const rows = mapMarketOrders(
+      [{ entity_id: "1", item_id: 10, item_type: 0, price_threshold: 5, quantity: 1, timestamp: { __timestamp_micros_since_unix_epoch__: "1779206819941775" } }],
+      [], "7",
+    );
+    expect(rows[0]!.timestamp).toBe(1779206819941775);
   });
 });
 
@@ -62,12 +71,31 @@ describe("mapClosedListings", () => {
   it("skips listings with no item id", () => {
     expect(mapClosedListings([{ entity_id: "1", item_stack: null, timestamp: 1 }], "7")).toEqual([]);
   });
+
+  it("decodes a real closed_listing item_stack (tagged item_type) + object timestamp", () => {
+    const rows = mapClosedListings(
+      [{ entity_id: "1", owner_entity_id: "2", claim_entity_id: "3", item_stack: { item_id: 77, quantity: 50, item_type: [1, {}], durability: [1, {}] }, timestamp: { __timestamp_micros_since_unix_epoch__: "1772242803974739" } }],
+      "7",
+    );
+    expect(rows[0]).toMatchObject({ itemId: 77, quantity: 50, itemType: 1, timestamp: 1772242803974739 });
+  });
 });
 
 describe("gameTimestampToMs", () => {
   it("converts SpacetimeDB microsecond timestamps to JS milliseconds", () => {
     expect(gameTimestampToMs(1700000000000000)).toBe(1700000000000);
     expect(gameTimestampToMs(null)).toBe(0);
+  });
+});
+
+describe("decodeTimestampMicros", () => {
+  it("reads the SpacetimeDB Timestamp object form", () => {
+    expect(decodeTimestampMicros({ __timestamp_micros_since_unix_epoch__: "1779206819941775" })).toBe(1779206819941775);
+  });
+  it("passes through a plain numeric timestamp and defaults missing to 0", () => {
+    expect(decodeTimestampMicros(1700000000000000)).toBe(1700000000000000);
+    expect(decodeTimestampMicros(null)).toBe(0);
+    expect(decodeTimestampMicros({})).toBe(0);
   });
 });
 

@@ -38,6 +38,7 @@ export {
   mapMarketplaces,
   mapClosedListings,
   gameTimestampToMs,
+  decodeTimestampMicros,
   PRICE_SENTINEL_CEILING,
 } from "./ingest/map-market";
 export type { MarketOrderRow, MarketplaceRow, MarketSaleRow } from "./ingest/map-market";
