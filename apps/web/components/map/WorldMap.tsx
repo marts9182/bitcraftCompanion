@@ -64,7 +64,13 @@ export function WorldMap({ claims, regions, territory, watchtowers }: {
         <LayersControl.Overlay name={`Watchtowers (${watchtowers.length.toLocaleString()})`} checked>
           <LayerGroup>
             {watchtowers.map((w) => (
-              <Marker key={w.id} position={pt(w.x, w.z)} icon={watchtowerIcon} />
+              <Marker key={w.id} position={pt(w.x, w.z)} icon={watchtowerIcon}>
+                <Tooltip>
+                  <strong>Watchtower</strong>
+                  <br />
+                  {w.chunks.toLocaleString()} chunks covered
+                </Tooltip>
+              </Marker>
             ))}
           </LayerGroup>
         </LayersControl.Overlay>

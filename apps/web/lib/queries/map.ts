@@ -1,12 +1,13 @@
 import "server-only";
 import { getDb, schema } from "@/lib/db";
-import { smallHexToChunk, regionBounds, chunkIndexToBounds } from "@bcc/shared";
+import { smallHexToChunk, regionBounds, chunkIndexToBounds, watchtowerCentroids } from "@bcc/shared";
+import type { Watchtower } from "@bcc/shared";
 import { eq, isNotNull } from "drizzle-orm";
 
 export interface ClaimPoint { id: string; name: string; x: number; z: number; tiles: number; treasury: number; }
 export interface RegionRect { id: number; name: string | null; x0: number; z0: number; x1: number; z1: number; }
 export interface TerritoryCell { x0: number; z0: number; color: string; }
-export interface Watchtower { id: string; x: number; z: number; }
+export type { Watchtower };
 
 export async function getMapClaims(): Promise<ClaimPoint[]> {
   const rows = await getDb().select().from(schema.mapClaims);
@@ -35,13 +36,12 @@ export async function getTerritoryCells(): Promise<TerritoryCell[]> {
   });
 }
 
+// Every chunk carries the id of the watchtower covering it (~38k chunks, ~555 distinct towers).
+// Return ONE marker per distinct watchtower, placed at the centroid of its covered chunks.
 export async function getWatchtowers(): Promise<Watchtower[]> {
   const rows = await getDb()
     .select({ chunkIndex: schema.mapChunks.chunkIndex, id: schema.mapChunks.watchtowerEntityId })
     .from(schema.mapChunks)
     .where(isNotNull(schema.mapChunks.watchtowerEntityId));
-  return rows.map((c) => {
-    const b = chunkIndexToBounds(c.chunkIndex);
-    return { id: String(c.id), x: b.x0 + 0.5, z: b.z0 + 0.5 };
-  });
+  return watchtowerCentroids(rows.map((c) => ({ chunkIndex: c.chunkIndex, id: String(c.id) })));
 }

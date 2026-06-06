@@ -38,3 +38,5 @@ export {
   SMALL_HEX_PER_CHUNK,
 } from "./world/coords";
 export type { Bounds } from "./world/coords";
+export { watchtowerCentroids } from "./world/watchtowers";
+export type { Watchtower, WatchtowerChunkRow } from "./world/watchtowers";
