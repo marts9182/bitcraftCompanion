@@ -1,6 +1,6 @@
 import { gunzipSync } from "node:zlib";
 import WebSocket from "ws";
-import { dominantBiome } from "@bcc/shared";
+import { dominantBiome, normalizeRow, COLUMN_ORDERS } from "@bcc/shared";
 
 // Focused, streaming terrain reader. This intentionally COPIES the proven connect
 // recipe from ./ws-snapshot.ts (token exchange → v1.json WS → SubscribeMulti →
@@ -15,15 +15,7 @@ import { dominantBiome } from "@bcc/shared";
 
 const WS_SUBPROTOCOL = "v1.json.spacetimedb";
 const MAX_PAYLOAD = 1024 * 1024 * 1024; // 1 GiB
-
-// Positional indices into terrain_chunk_state (see COLUMN_ORDERS.terrain_chunk_state):
-// [chunk_index, chunk_x, chunk_z, dimension, biomes, …]. We read by index so we
-// never materialise a keyed object (and so we can ignore the heavy tail columns).
-const I_CHUNK_INDEX = 0;
-const I_CHUNK_X = 1;
-const I_CHUNK_Z = 2;
-const I_DIMENSION = 3;
-const I_BIOMES = 4;
+const TERRAIN_COLS = COLUMN_ORDERS.terrain_chunk_state ?? [];
 
 export interface TerrainReaderConfig {
   uri: string; // wss://host
@@ -132,23 +124,29 @@ export async function readTerrain(
         seenTerrainFrame = true;
         for (const update of table.updates ?? []) {
           for (const raw of update.inserts ?? []) {
-            let row: unknown[];
+            let parsed: unknown;
             try {
-              row = JSON.parse(raw) as unknown[];
+              parsed = JSON.parse(raw);
             } catch {
               continue;
             }
-            if (!Array.isArray(row)) continue;
-            if (Number(row[I_DIMENSION]) !== 1) continue; // overworld only
-            const biomes = row[I_BIOMES];
-            const biome = Array.isArray(biomes) ? dominantBiome(biomes as number[]) : -1;
+            // Live terrain rows arrive as KEYED objects (not positional arrays
+            // like the leaderboard tables); normalizeRow handles both encodings.
+            const r = normalizeRow(TERRAIN_COLS, parsed);
+            if (Number(r.dimension) !== 1) continue; // overworld only (interiors/instances are other dims)
+            // Per-tile biome values are PACKED (biome_type in the low byte, sub-biome/
+            // variant bits above); mask to 0xFF to get the 0–14 biome_type id.
+            const biomes = r.biomes;
+            const biome = Array.isArray(biomes)
+              ? dominantBiome((biomes as number[]).map((b) => b & 0xff))
+              : -1;
             out.push({
-              index: Number(row[I_CHUNK_INDEX]),
-              x: Number(row[I_CHUNK_X]),
-              z: Number(row[I_CHUNK_Z]),
+              index: Number(r.chunk_index),
+              x: Number(r.chunk_x),
+              z: Number(r.chunk_z),
               biome,
             });
-            // `row` (with its heavy arrays) goes out of scope at the next
+            // `parsed`/`r` (with their heavy arrays) go out of scope at the next
             // iteration — only the 4 scalars above survive.
           }
         }
