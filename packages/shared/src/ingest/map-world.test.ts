@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { mapClaimLocalRows, mapChunkRows, mapRegionRows, buildEmpireColors } from "./map-world";
+import { mapClaimLocalRows, mapChunkRows, mapRegionRows, buildEmpireColors, regionNamesById } from "./map-world";
 
 describe("mapClaimLocalRows", () => {
   it("decodes location Sum + carries stats; joins names by entity id", () => {
@@ -32,6 +32,26 @@ describe("mapRegionRows", () => {
     expect(mapRegionRows([{ id: 0, region_min_chunk_x: 240, region_min_chunk_z: 160, region_width_chunks: 80, region_height_chunks: 80, region_index: 14 }], new Map([[0, "Foo"]]))).toEqual([
       { id: 0, name: "Foo", minChunkX: 240, minChunkZ: 160, widthChunks: 80, heightChunks: 80, regionIndex: 14 },
     ]);
+  });
+});
+
+describe("regionNamesById", () => {
+  it("maps id -> player_facing_name", () => {
+    expect(
+      regionNamesById([
+        { id: 14, player_facing_name: "Foo" },
+        { id: 3, player_facing_name: "Bar" },
+      ]),
+    ).toEqual(new Map([[14, "Foo"], [3, "Bar"]]));
+  });
+  it("skips rows with null id or empty name", () => {
+    expect(
+      regionNamesById([
+        { id: null, player_facing_name: "Nope" },
+        { id: 5, player_facing_name: "" },
+        { id: 7, player_facing_name: "Ok" },
+      ]),
+    ).toEqual(new Map([[7, "Ok"]]));
   });
 });
 

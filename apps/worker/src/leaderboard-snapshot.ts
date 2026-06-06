@@ -7,9 +7,10 @@ import {
   parseServerEnv, createDb, schema, COLUMN_ORDERS, normalizeRow,
   mapSkillRow, mapExperienceRows, mapEmpireData, mapClaimRows,
   usernamesById, onlineEntityIds, activeRegionIds, buildRegionPlayerRows,
-  mapClaimLocalRows, mapChunkRows, mapRegionRows, buildEmpireColors, type MapChunkRow, type MapRegionRow,
+  mapClaimLocalRows, mapChunkRows, mapRegionRows, buildEmpireColors, regionNamesById, type MapChunkRow, type MapRegionRow,
 } from "@bcc/shared";
 import { readSnapshot } from "./spacetime/ws-snapshot";
+import { discoverRegionModules } from "./spacetime/discover-regions";
 import { triggerRevalidate } from "./revalidate";
 import { eq, sql, getTableColumns, type SQL } from "drizzle-orm";
 import type { PgTable } from "drizzle-orm/pg-core";
@@ -21,6 +22,7 @@ const GLOBAL_QUERIES = [
   "SELECT * FROM user_region_state",
   "SELECT * FROM empire_color_desc",
   "SELECT * FROM empire_emblem_state",
+  "SELECT * FROM world_region_name_state",
 ];
 const GLOBAL_EXPECTED = ["player_username_state", "user_region_state"];
 
@@ -36,9 +38,13 @@ const REGION_QUERIES = [
   "SELECT * FROM claim_local_state",
   "SELECT * FROM empire_chunk_state",
   "SELECT * FROM world_region_state",
-  "SELECT * FROM world_region_name_state",
 ];
 const REGION_EXPECTED = ["experience_state", "player_state"];
+
+// Grid-only pass for empty (zero-player) regions: just the region grid.
+const GRID_QUERIES = ["SELECT * FROM world_region_state"];
+const GRID_EXPECTED = ["world_region_state"];
+const GRID_TIMEOUT = 20_000;
 
 const CHUNK = 500;
 
@@ -88,12 +94,19 @@ async function main() {
     const onlineSet = onlineEntityIds(norm(g, "signed_in_player_state"));
     const regionList = activeRegionIds(norm(g, "user_region_state"));
     const empireColors = buildEmpireColors(norm(g, "empire_color_desc"), norm(g, "empire_emblem_state"));
-    console.log(`[lb-snapshot] global: usernames=${usernameMap.size} online=${onlineSet.size} active regions=[${regionList.join(",")}] empireColors=${empireColors.size}`);
+    const regionNameMap = regionNamesById(norm(g, "world_region_name_state"));
+    console.log(`[lb-snapshot] global: usernames=${usernameMap.size} online=${onlineSet.size} active regions=[${regionList.join(",")}] empireColors=${empireColors.size} regionNames=${regionNameMap.size}`);
 
     // Active region modules: explicit override, else auto-discovered from user_region_state.
     const modules = env.SPACETIME_REGIONS
       ? env.SPACETIME_REGIONS.split(",").map((s) => s.trim()).filter(Boolean)
       : regionList.map((id) => `bitcraft-live-${id}`);
+
+    // Discover ALL deployed region modules (incl. zero-player ones) via read-only HTTP probe.
+    const httpBase = env.SPACETIME_URI.replace(/^wss:\/\//, "https://").replace(/^ws:\/\//, "http://").replace(/\/+$/, "");
+    const discovered = await discoverRegionModules(httpBase);
+    const emptyModules = discovered.filter((m) => !modules.includes(m));
+    console.log(`[lb-snapshot] discovered modules=[${discovered.join(",")}] empty (grid-only)=[${emptyModules.join(",")}]`);
 
     // ── 2. Per-region pass: XP, playtime, empires, claims ─────────────────────
     let totalPlayers = 0;
@@ -120,12 +133,11 @@ async function main() {
       // Map layers: claims (per-region, with names from claim_state), chunks + regions (replicated).
       const claimNameMap = new Map(norm(r, "claim_state").map((c) => [String(c.entity_id), String(c.name ?? "")] as const));
       const mapClaimData = dedupeBy(mapClaimLocalRows(norm(r, "claim_local_state"), claimNameMap), (c) => c.entityId);
-      const regionNameMap = new Map(norm(r, "world_region_name_state").map((n) => [Number(n.id), String(n.player_facing_name ?? "")] as const));
       for (const c of mapChunkRows(norm(r, "empire_chunk_state"))) allChunks.set(c.chunkIndex, c);
       for (const g of mapRegionRows(norm(r, "world_region_state"), new Map())) {
         // Each module reports its OWN region; key by the global region number (module suffix),
-        // not the local world_region_state.id (which is 0 per module).
-        allRegions.set(Number(region), { ...g, id: Number(region), name: regionNameMap.get(g.regionIndex) ?? regionNameMap.get(g.id) ?? `Region ${region}` });
+        // not the local world_region_state.id (which is 0 per module). Name from the global map.
+        allRegions.set(Number(region), { ...g, id: Number(region), name: regionNameMap.get(g.regionIndex) ?? regionNameMap.get(Number(region)) ?? `Region ${region}` });
       }
 
       await db.transaction(async (tx) => {
@@ -173,6 +185,37 @@ async function main() {
       console.log(`[lb-snapshot]   region ${region}: players=${playerRows.length} skills=${playerSkillRows.length} empires=${empires.length} claims=${claimRows.length} mapClaims=${mapClaimData.length}`);
     }
 
+    // ── 3. Grid-only pass for empty (zero-player) regions ─────────────────────
+    // These modules have a world_region_state grid but no residents. Subscribe
+    // SEQUENTIALLY (one WS at a time) and tolerate failures: a module with no
+    // grid (or that refuses) rejects — log and skip, never fail the snapshot.
+    let emptyGridded = 0;
+    for (const moduleName of emptyModules) {
+      const region = (moduleName.match(/(\d+)$/)?.[1]) ?? moduleName;
+      try {
+        const r = await readSnapshot({ ...conn, moduleName }, GRID_QUERIES, GRID_EXPECTED, GRID_TIMEOUT);
+        let folded = 0;
+        for (const grid of mapRegionRows(norm(r, "world_region_state"), new Map())) {
+          allRegions.set(Number(region), {
+            ...grid,
+            id: Number(region),
+            name: regionNameMap.get(grid.regionIndex) ?? regionNameMap.get(Number(region)) ?? `Region ${region}`,
+          });
+          folded++;
+        }
+        if (folded) {
+          await db
+            .insert(schema.regions)
+            .values({ region, module: moduleName, name: regionNameMap.get(Number(region)) ?? `Region ${region}` })
+            .onConflictDoUpdate({ target: schema.regions.region, set: { module: moduleName, updatedAt: new Date() } });
+          emptyGridded++;
+        }
+        console.log(`[lb-snapshot]   empty region ${region} (${moduleName}): grid rows=${folded}`);
+      } catch (err) {
+        console.warn(`[lb-snapshot]   empty region ${region} (${moduleName}) skipped:`, String(err));
+      }
+    }
+
     // Map chunks + regions: write once (replicated data accumulated across the loop).
     const chunkRows = [...allChunks.values()];
     await db.transaction(async (tx) => {
@@ -186,7 +229,7 @@ async function main() {
 
     await db.update(schema.ingestionRuns).set({ status: "ok", finishedAt: new Date(), rowsUpserted: totalPlayers }).where(eq(schema.ingestionRuns.id, run!.id));
     await triggerRevalidate({ url: env.REVALIDATE_URL, secret: env.REVALIDATE_SECRET });
-    console.log(`[lb-snapshot] OK — ${modules.length} region(s), ${totalPlayers} players${skillsLoaded ? "" : " (no skill_desc seen)"}`);
+    console.log(`[lb-snapshot] OK — ${modules.length} player region(s) + ${emptyGridded}/${emptyModules.length} empty region(s) gridded (${discovered.length} discovered), ${totalPlayers} players${skillsLoaded ? "" : " (no skill_desc seen)"}`);
     process.exit(0);
   } catch (err) {
     await db.update(schema.ingestionRuns).set({ status: "error", finishedAt: new Date(), error: String(err) }).where(eq(schema.ingestionRuns.id, run!.id));

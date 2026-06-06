@@ -55,6 +55,21 @@ export function buildEmpireColors(colorDescRows: Raw[], emblemRows: Raw[]): Map<
   return out;
 }
 
+/**
+ * Region id → player-facing name, from the GLOBAL module's world_region_name_state
+ * (id, player_facing_name). Skips rows with null id or empty name.
+ */
+export function regionNamesById(rows: Raw[]): Map<number, string> {
+  const out = new Map<number, string>();
+  for (const r of rows) {
+    const id = toInt(r.id);
+    const name = String(r.player_facing_name ?? "");
+    if (id == null || name === "") continue;
+    out.set(id, name);
+  }
+  return out;
+}
+
 export interface MapRegionRow { id: number; name: string | null; minChunkX: number; minChunkZ: number; widthChunks: number; heightChunks: number; regionIndex: number; }
 export function mapRegionRows(rows: Raw[], nameById: Map<number, string>): MapRegionRow[] {
   return rows.map((r) => {
