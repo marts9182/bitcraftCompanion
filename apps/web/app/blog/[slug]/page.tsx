@@ -60,7 +60,7 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
       <p className="mt-2 text-sm text-muted-foreground">
         {fmtDate(fm.date)} · {post.meta.readingTime} min read · {fm.author}
       </p>
-      <article className="prose prose-invert mt-6 max-w-none">{content}</article>
+      <article className="prose dark:prose-invert mt-6 max-w-none">{content}</article>
     </main>
   );
 }
