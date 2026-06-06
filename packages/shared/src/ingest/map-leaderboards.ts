@@ -243,6 +243,36 @@ export function aggregateEmpireFoundries(rows: Raw[]): Map<string, EmpireFoundry
   return m;
 }
 
+export const HEXITE_CAPSULE_ITEM_ID = 2000000;
+/**
+ * Sum Hexite Capsules (item 2000000) sitting collected inside Hexite Reserve
+ * buildings, per empire, for ONE region. Inventory rows are owned by reserve
+ * buildings; link building→claim (building_state) → empire (empire_settlement_state).
+ * Pocket format: [volume, [tag, [itemId, qty, …]], locked] — tag 0 = occupied slot.
+ * Caller accumulates the per-region maps across regions (an empire's reserves can
+ * span regions).
+ */
+export function aggregateReserveCapsules(inventory: Raw[], reserves: Raw[], settlements: Raw[]): Map<string, number> {
+  const buildingClaim = new Map<string, string>();
+  for (const b of reserves) buildingClaim.set(idStr(b.entity_id), idStr(b.claim_entity_id));
+  const claimEmpire = new Map<string, string>();
+  for (const s of settlements) claimEmpire.set(idStr(s.claim_entity_id), idStr(s.empire_entity_id));
+  const out = new Map<string, number>();
+  for (const inv of inventory) {
+    const empire = claimEmpire.get(buildingClaim.get(idStr(inv.owner_entity_id)) ?? "");
+    if (!empire) continue;
+    let caps = 0;
+    for (const p of (inv.pockets as unknown[]) ?? []) {
+      const contents = (p as unknown[])?.[1];
+      if (Array.isArray(contents) && contents[0] === 0 && Array.isArray(contents[1]) && Number(contents[1][0]) === HEXITE_CAPSULE_ITEM_ID) {
+        caps += Number(contents[1][1]) || 0;
+      }
+    }
+    if (caps) out.set(empire, (out.get(empire) ?? 0) + caps);
+  }
+  return out;
+}
+
 export interface ClaimMemberRow {
   claimEntityId: string;
   playerEntityId: string;

@@ -215,6 +215,9 @@ export const empires = pgTable(
     // and waiting to collect, plus currently-crafting (queued), summed across foundries.
     foundryCapsules: bigint("foundry_capsules", { mode: "number" }).notNull().default(0),
     foundryQueued: bigint("foundry_queued", { mode: "number" }).notNull().default(0),
+    // Hexite Capsules collected into the empire's Hexite Reserve building(s)
+    // (inventory_state), summed across the empire's reserves in all regions.
+    reserveCapsules: bigint("reserve_capsules", { mode: "number" }).notNull().default(0),
     leaderPlayerEntityId: text("leader_player_entity_id"),
     memberCount: integer("member_count").notNull().default(0),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),

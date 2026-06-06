@@ -12,6 +12,7 @@ import {
   mapEmpireNodes,
   mapClaimMembers,
   aggregateEmpireFoundries,
+  aggregateReserveCapsules,
 } from "./map-leaderboards";
 
 describe("activeRegionIds", () => {
@@ -133,6 +134,31 @@ describe("aggregateEmpireFoundries", () => {
     ]);
     expect(m.get("100")).toEqual({ capsules: 251, queued: 3, count: 2 });
     expect(m.get("200")).toEqual({ capsules: 0, queued: 1, count: 1 });
+  });
+});
+
+describe("aggregateReserveCapsules", () => {
+  it("sums Hexite Capsules in reserve inventories, linked building→claim→empire, per region", () => {
+    const inventory = [
+      // reserve building b1 (claim c1 → empire 100): one occupied pocket of 78 capsules + an empty one
+      { owner_entity_id: "b1", pockets: [[6000000, [0, [2000000, 78]], false], [6000000, [1, []], false]] },
+      // reserve building b2 (claim c2 → empire 200): 50 capsules
+      { owner_entity_id: "b2", pockets: [[6000000, [0, [2000000, 50]], false]] },
+      // inventory whose owner isn't a known reserve → ignored
+      { owner_entity_id: "bX", pockets: [[6000000, [0, [2000000, 999]], false]] },
+    ];
+    const reserves = [
+      { entity_id: "b1", claim_entity_id: "c1" },
+      { entity_id: "b2", claim_entity_id: "c2" },
+    ];
+    const settlements = [
+      { claim_entity_id: "c1", empire_entity_id: "100" },
+      { claim_entity_id: "c2", empire_entity_id: "200" },
+    ];
+    const m = aggregateReserveCapsules(inventory, reserves, settlements);
+    expect(m.get("100")).toBe(78);
+    expect(m.get("200")).toBe(50);
+    expect(m.has("bX")).toBe(false);
   });
 });
 

@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/empires" },
 };
 
-const SORTS: readonly EmpireSort[] = ["claims", "hexcoin", "capsules", "members", "towers"];
+const SORTS: readonly EmpireSort[] = ["claims", "hexcoin", "capsules", "reserve", "members", "towers"];
 
 function one(v: string | string[] | undefined): string | undefined {
   return Array.isArray(v) ? v[0] : v;
@@ -26,7 +26,8 @@ const COLS: Col[] = [
   { key: "members", label: "Members", align: "right" },
   { key: "claims", label: "Claims", align: "right" },
   { key: "hexcoin", label: "Hexite energy", align: "right" },
-  { key: "capsules", label: "Hexite capsules", align: "right" },
+  { key: "capsules", label: "Foundry capsules", align: "right" },
+  { key: "reserve", label: "Reserve capsules", align: "right" },
   { key: "towers", label: "Towers", align: "right" },
 ];
 
@@ -111,6 +112,7 @@ export default async function EmpiresPage({ searchParams }: { searchParams: Prom
               <td className="py-2 pr-3 text-right font-mono">{e.numClaims.toLocaleString()}</td>
               <td className="py-2 pr-3 text-right font-mono">{e.currencyTreasury.toLocaleString()}</td>
               <td className="py-2 pr-3 text-right font-mono">{e.foundryCapsules.toLocaleString()}</td>
+              <td className="py-2 pr-3 text-right font-mono">{e.reserveCapsules.toLocaleString()}</td>
               <td className="py-2 text-right font-mono">{e.towerCount.toLocaleString()}</td>
             </tr>
           ))}

@@ -259,7 +259,7 @@ export async function getEmpire(entityId: string) {
   return { empire, members };
 }
 
-export type EmpireSort = "claims" | "treasury" | "hexcoin" | "capsules" | "members" | "towers";
+export type EmpireSort = "claims" | "treasury" | "hexcoin" | "capsules" | "reserve" | "members" | "towers";
 
 export interface EmpiresListParams {
   q?: string;
@@ -280,6 +280,7 @@ export async function getEmpiresList(params: EmpiresListParams) {
     params.sort === "treasury" ? empires.treasury :
     params.sort === "hexcoin" ? empires.currencyTreasury :
     params.sort === "capsules" ? empires.foundryCapsules :
+    params.sort === "reserve" ? empires.reserveCapsules :
     params.sort === "members" ? empires.memberCount :
     params.sort === "towers" ? empires.towerCount :
     empires.numClaims;
@@ -295,6 +296,7 @@ export async function getEmpiresList(params: EmpiresListParams) {
       numClaims: empires.numClaims,
       currencyTreasury: empires.currencyTreasury,
       foundryCapsules: empires.foundryCapsules,
+      reserveCapsules: empires.reserveCapsules,
       treasury: empires.treasury,
       towerCount: empires.towerCount,
     })

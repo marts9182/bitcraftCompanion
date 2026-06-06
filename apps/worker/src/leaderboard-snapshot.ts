@@ -5,7 +5,7 @@ config({ path: resolve(dirname(fileURLToPath(import.meta.url)), "../../../.env.l
 
 import {
   parseServerEnv, createDb, schema, COLUMN_ORDERS, normalizeRow,
-  mapSkillRow, mapExperienceRows, mapEmpireData, mapClaimRows, mapEmpireNodes, mapClaimMembers, aggregateEmpireFoundries,
+  mapSkillRow, mapExperienceRows, mapEmpireData, mapClaimRows, mapEmpireNodes, mapClaimMembers, aggregateEmpireFoundries, aggregateReserveCapsules,
   usernamesById, onlineEntityIds, activeRegionIds, buildRegionPlayerRows,
   mapClaimLocalRows, mapChunkRows, mapRegionRows, buildEmpireColors, regionNamesById, type MapChunkRow, type MapRegionRow,
 } from "@bcc/shared";
@@ -41,6 +41,11 @@ const REGION_QUERIES = [
   "SELECT * FROM claim_local_state",
   "SELECT * FROM empire_chunk_state",
   "SELECT * FROM world_region_state",
+  // Reserve capsules: Hexite Capsules collected into Hexite Reserve (90001) buildings.
+  // JOIN keeps inventory_state to just reserve owners (a full scan would be huge).
+  "SELECT inventory_state.* FROM inventory_state JOIN building_state ON inventory_state.owner_entity_id = building_state.entity_id WHERE building_state.building_description_id = 90001",
+  "SELECT * FROM building_state WHERE building_description_id = 90001",
+  "SELECT * FROM empire_settlement_state",
 ];
 const REGION_EXPECTED = ["experience_state", "player_state"];
 
@@ -120,6 +125,7 @@ async function main() {
     const allChunks = new Map<string, MapChunkRow>();
     const allRegions = new Map<number, MapRegionRow>();
     const allMapClaims = new Map<string, ReturnType<typeof mapClaimLocalRows>[number]>();
+    const allReserveCapsules = new Map<string, number>(); // empireId → Hexite Capsules, summed across regions
     for (const moduleName of modules) {
       const region = (moduleName.match(/(\d+)$/)?.[1]) ?? moduleName;
       console.log(`[lb-snapshot] region ${region} (${moduleName}) …`);
@@ -164,6 +170,8 @@ async function main() {
       const mapClaimData = dedupeBy(mapClaimLocalRows(norm(r, "claim_local_state"), claimNameMap), (c) => c.entityId);
       for (const c of mapClaimData) allMapClaims.set(c.entityId, c);
       for (const c of mapChunkRows(norm(r, "empire_chunk_state"))) allChunks.set(c.chunkIndex, c);
+      for (const [empireId, caps] of aggregateReserveCapsules(norm(r, "inventory_state"), norm(r, "building_state"), norm(r, "empire_settlement_state")))
+        allReserveCapsules.set(empireId, (allReserveCapsules.get(empireId) ?? 0) + caps);
       for (const g of mapRegionRows(norm(r, "world_region_state"), new Map())) {
         // Each module reports its OWN region; key by the global region number (module suffix),
         // not the local world_region_state.id (which is 0 per module). Name from the global map.
@@ -238,6 +246,15 @@ async function main() {
       await inChunks(rosterRows, CHUNK, (s) => tx.insert(schema.players).values(s).onConflictDoNothing({ target: schema.players.entityId }));
     });
     console.log(`[lb-snapshot] roster fill: ${rosterRows.length} roster players (non-residents inserted with region="")`);
+
+    // ── 2c. Reserve capsules: write the cross-region totals. Per-region empire
+    // upserts reset reserve_capsules to 0 (it isn't on the empire row), so apply
+    // the accumulated total once here, after all regions.
+    await db.transaction(async (tx) => {
+      for (const [empireId, caps] of allReserveCapsules)
+        await tx.update(schema.empires).set({ reserveCapsules: caps }).where(eq(schema.empires.entityId, empireId));
+    });
+    console.log(`[lb-snapshot] reserve capsules: ${allReserveCapsules.size} empires hold Hexite Capsules in reserves`);
 
     // ── 3. Grid-only pass for empty (zero-player) regions ─────────────────────
     // These modules have a world_region_state grid but no residents. Subscribe

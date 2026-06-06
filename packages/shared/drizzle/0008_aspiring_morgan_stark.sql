@@ -1,0 +1,1 @@
+ALTER TABLE "empires" ADD COLUMN "reserve_capsules" bigint DEFAULT 0 NOT NULL;

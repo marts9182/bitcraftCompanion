@@ -27,6 +27,8 @@ export {
   mapEmpireNodes,
   mapClaimMembers,
   aggregateEmpireFoundries,
+  aggregateReserveCapsules,
+  HEXITE_CAPSULE_ITEM_ID,
 } from "./ingest/map-leaderboards";
 export type { SkillRow, PlayerSkillRow, PlayerRow, EmpireRow, EmpireMemberRow, ClaimRow, EmpireTowerRow, EmpireTowerAgg, ClaimMemberRow, EmpireFoundryAgg } from "./ingest/map-leaderboards";
 export { mapClaimLocalRows, mapChunkRows, mapRegionRows, buildEmpireColors, regionNamesById } from "./ingest/map-world";

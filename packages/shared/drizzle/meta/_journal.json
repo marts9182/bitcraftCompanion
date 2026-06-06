@@ -57,6 +57,13 @@
       "when": 1780777679535,
       "tag": "0007_old_annihilus",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1780778471838,
+      "tag": "0008_aspiring_morgan_stark",
+      "breakpoints": true
     }
   ]
 }
