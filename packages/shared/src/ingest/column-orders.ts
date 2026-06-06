@@ -53,4 +53,8 @@ export const COLUMN_ORDERS: Record<string, string[]> = {
   empire_state: ["entity_id", "capital_building_entity_id", "name", "shard_treasury", "nobility_threshold", "num_claims", "location"],
   empire_player_data_state: ["entity_id", "empire_entity_id", "rank", "donated_shards", "noble"],
   claim_state: ["entity_id", "owner_player_entity_id", "owner_building_entity_id", "name", "neutral"],
+  claim_local_state: ["entity_id", "supplies", "building_maintenance", "num_tiles", "num_tile_neighbors", "location", "treasury", "xp_gained_since_last_coin_minting", "supplies_purchase_threshold", "supplies_purchase_price", "building_description_id"],
+  empire_chunk_state: ["chunk_index", "empire_entity_id", "watchtower_entity_id"],
+  world_region_state: ["id", "region_min_chunk_x", "region_min_chunk_z", "region_width_chunks", "region_height_chunks", "region_index", "region_count", "region_count_sqrt"],
+  world_region_name_state: ["id", "player_facing_name", "module_name_prefix"],
 };

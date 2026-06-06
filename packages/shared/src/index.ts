@@ -26,3 +26,15 @@ export {
   buildRegionPlayerRows,
 } from "./ingest/map-leaderboards";
 export type { SkillRow, PlayerSkillRow, PlayerRow, EmpireRow, EmpireMemberRow, ClaimRow } from "./ingest/map-leaderboards";
+export { mapClaimLocalRows, mapChunkRows, mapRegionRows } from "./ingest/map-world";
+export type { MapClaimRow, MapChunkRow, MapRegionRow } from "./ingest/map-world";
+export {
+  decodeLocationSum,
+  chunkIndexToBounds,
+  regionBounds,
+  smallHexToChunk,
+  chunkIndexToCoord,
+  CHUNK_STRIDE,
+  SMALL_HEX_PER_CHUNK,
+} from "./world/coords";
+export type { Bounds } from "./world/coords";
