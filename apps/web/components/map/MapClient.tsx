@@ -9,10 +9,7 @@ import type { TerrainOverlay } from "@/app/map/page";
 const WorldMap = dynamic(() => import("./WorldMap").then((m) => m.WorldMap), {
   ssr: false,
   loading: () => (
-    <div
-      className="flex items-center justify-center rounded-lg text-sm text-muted-foreground"
-      style={{ height: "78vh", background: "#1D1B22" }}
-    >
+    <div className="flex h-[70vh] min-h-[420px] items-center justify-center rounded-lg bg-card text-sm text-muted-foreground">
       Loading map…
     </div>
   ),
