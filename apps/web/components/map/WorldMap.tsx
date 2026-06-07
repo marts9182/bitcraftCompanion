@@ -124,19 +124,19 @@ export function WorldMap({ claims, regions, territory, watchtowers, empires, ter
   return (
     <div>
       {/* Region focus selector — lives OFF the map (above it), not floating over it. */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, fontSize: 14 }}>
-        <label htmlFor="region-focus" style={{ color: "var(--muted-foreground, #666)" }}>Focus region</label>
+      <div className="mb-2 flex flex-wrap items-center gap-2 text-sm">
+        <label htmlFor="region-focus" className="text-muted-foreground">Focus region</label>
         <select
           id="region-focus"
           value={selectedId ?? ""}
           onChange={(e) => setSelectedId(e.target.value ? Number(e.target.value) : null)}
-          style={{ padding: "4px 8px", borderRadius: 6, border: "1px solid #ccc", background: "#fff", fontSize: 14, minWidth: 180 }}
+          className="h-9 w-full min-w-0 rounded-md border border-border bg-card px-2 text-sm text-foreground sm:w-auto sm:min-w-[180px]"
         >
           <option value="">All regions</option>
           {sorted.map((r) => <option key={r.id} value={r.id}>{regionLabel(r)}</option>)}
         </select>
         {selectedId !== null && (
-          <button type="button" onClick={() => setSelectedId(null)} style={{ cursor: "pointer", background: "transparent", border: "none", color: "#a07f25", textDecoration: "underline", fontSize: 13 }}>
+          <button type="button" onClick={() => setSelectedId(null)} className="text-sm text-primary underline">
             Show all
           </button>
         )}
@@ -253,12 +253,12 @@ export function WorldMap({ claims, regions, territory, watchtowers, empires, ter
       </MapContainer>
 
       {/* Biome key — click a biome to highlight it on the map. */}
-      <div style={{ marginTop: 10 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--muted-foreground, #555)" }}>Biome key</span>
-          <span style={{ fontSize: 11, color: "#999" }}>click to highlight</span>
+      <div className="mt-2.5">
+        <div className="mb-1.5 flex flex-wrap items-center gap-2.5">
+          <span className="text-sm font-semibold text-muted-foreground">Biome key</span>
+          <span className="text-xs text-muted-foreground">click to highlight</span>
           {selectedBiome !== null && (
-            <button type="button" onClick={() => setSelectedBiome(null)} style={{ cursor: "pointer", background: "transparent", border: "none", color: "#a07f25", textDecoration: "underline", fontSize: 12 }}>
+            <button type="button" onClick={() => setSelectedBiome(null)} className="text-xs text-primary underline">
               Clear
             </button>
           )}
