@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { RegionSwitcher } from "@/components/leaderboards/RegionSwitcher";
 import { Pager } from "@/components/compendium/Pager";
+import { MobileCard } from "@/components/mobile/MobileCard";
 import { LB_PAGE_SIZE } from "@/lib/leaderboards/params";
 import { getPlayersList, listRegions, type PlayerSort } from "@/lib/queries/leaderboards";
 
@@ -80,7 +81,7 @@ export default async function PlayersPage({ searchParams }: { searchParams: Prom
         <RegionSwitcher regions={regions} current={region} />
       </div>
 
-      <table className="mt-6 w-full text-sm">
+      <table className="mt-6 hidden w-full text-sm md:table">
         <thead className="text-left text-muted-foreground">
           <tr>
             {COLS.map((c) => (
@@ -121,6 +122,23 @@ export default async function PlayersPage({ searchParams }: { searchParams: Prom
           )}
         </tbody>
       </table>
+
+      <ul className="mt-6 space-y-3 md:hidden">
+        {rows.map((p, i) => (
+          <MobileCard
+            key={p.entityId}
+            href={`/players/${p.entityId}`}
+            rank={(page - 1) * LB_PAGE_SIZE + i + 1}
+            title={p.username}
+            subtitle={`${p.region || "—"}${p.signedIn ? " · online" : ""}`}
+            stats={[
+              { label: "Total level", value: p.totalLevel.toLocaleString() },
+              { label: "Hours played", value: Math.round(p.timePlayed / 3600).toLocaleString() },
+            ]}
+          />
+        ))}
+        {rows.length === 0 && <li className="py-6 text-center text-sm text-muted-foreground">No players found.</li>}
+      </ul>
 
       <div className="mt-6">
         <Pager page={page} total={total} pageSize={LB_PAGE_SIZE} searchParams={preserved} basePath="/players" />

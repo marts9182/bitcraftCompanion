@@ -4,6 +4,7 @@ import { vividTerritoryColor } from "@bcc/shared";
 import { Pager } from "@/components/compendium/Pager";
 import { LB_PAGE_SIZE } from "@/lib/leaderboards/params";
 import { getEmpiresList, type EmpireSort } from "@/lib/queries/leaderboards";
+import { MobileCard } from "@/components/mobile/MobileCard";
 
 export const revalidate = 60;
 
@@ -76,7 +77,7 @@ export default async function EmpiresPage({ searchParams }: { searchParams: Prom
         </form>
       </div>
 
-      <table className="mt-6 w-full text-sm">
+      <table className="mt-6 hidden w-full text-sm md:table">
         <thead className="text-left text-muted-foreground">
           <tr>
             {COLS.map((c) => (
@@ -125,6 +126,33 @@ export default async function EmpiresPage({ searchParams }: { searchParams: Prom
           )}
         </tbody>
       </table>
+
+      <ul className="mt-6 space-y-3 md:hidden">
+        {rows.map((e, i) => (
+          <MobileCard
+            key={e.entityId}
+            href={`/empires/${e.entityId}`}
+            rank={(page - 1) * LB_PAGE_SIZE + i + 1}
+            title={
+              <span className="inline-flex items-center gap-2">
+                {e.color && (
+                  <span
+                    className="inline-block h-3 w-3 rounded-sm border border-border"
+                    style={{ backgroundColor: vividTerritoryColor(e.color) }}
+                  />
+                )}
+                {e.name}
+              </span>
+            }
+            stats={[
+              { label: "Members", value: e.memberCount.toLocaleString() },
+              { label: "Claims", value: e.numClaims.toLocaleString() },
+              { label: "Hexite energy", value: e.currencyTreasury.toLocaleString() },
+            ]}
+          />
+        ))}
+        {rows.length === 0 && <li className="py-6 text-center text-sm text-muted-foreground">No empires found.</li>}
+      </ul>
 
       <div className="mt-6">
         <Pager page={page} total={total} pageSize={LB_PAGE_SIZE} searchParams={preserved} basePath="/empires" />
