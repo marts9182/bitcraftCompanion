@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Pager } from "@/components/compendium/Pager";
 import { PageHeader } from "@/components/PageHeader";
+import { MobileCard } from "@/components/mobile/MobileCard";
 import { getSettlementsList } from "@/lib/queries/settlements";
 import { SETTLEMENT_PAGE_SIZE, parseSettlementParams, type SettlementSort } from "@/lib/settlements/params";
 
@@ -69,7 +70,7 @@ export default async function SettlementsPage({ searchParams }: { searchParams: 
         <button type="submit" className="h-9 rounded-md border border-input px-3 text-sm hover:bg-muted/40">Search</button>
       </form>
 
-      <table className="mt-6 w-full text-sm">
+      <table className="mt-6 hidden w-full text-sm md:table">
         <thead className="text-left text-muted-foreground">
           <tr>
             {COLS.map((c) => (
@@ -112,6 +113,24 @@ export default async function SettlementsPage({ searchParams }: { searchParams: 
           )}
         </tbody>
       </table>
+
+      <ul className="mt-6 space-y-3 md:hidden">
+        {rows.map((s, i) => (
+          <MobileCard
+            key={s.entityId}
+            href={`/settlements/${s.entityId}`}
+            rank={(params.page - 1) * SETTLEMENT_PAGE_SIZE + i + 1}
+            title={s.name || `Claim ${s.entityId}`}
+            subtitle={`Region ${s.region}`}
+            stats={[
+              { label: "Tiles", value: s.numTiles.toLocaleString() },
+              { label: "Treasury", value: s.treasury.toLocaleString() },
+              { label: "Members", value: s.memberCount.toLocaleString() },
+            ]}
+          />
+        ))}
+        {rows.length === 0 && <li className="py-6 text-center text-sm text-muted-foreground">No settlements found.</li>}
+      </ul>
 
       <div className="mt-6">
         <Pager page={params.page} total={total} pageSize={SETTLEMENT_PAGE_SIZE} searchParams={preserved} basePath="/settlements" />

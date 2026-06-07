@@ -3,6 +3,7 @@ import Link from "next/link";
 import { EntityIcon } from "@/components/compendium/EntityIcon";
 import { Pager } from "@/components/compendium/Pager";
 import { PageHeader } from "@/components/PageHeader";
+import { MobileCard } from "@/components/mobile/MobileCard";
 import { getMarketList } from "@/lib/queries/market";
 import { MARKET_PAGE_SIZE, marketKey, parseMarketParams, type MarketSort } from "@/lib/market/params";
 
@@ -81,7 +82,7 @@ export default async function MarketPage({ searchParams }: { searchParams: Promi
         </div>
       </div>
 
-      <table className="mt-6 w-full text-sm">
+      <table className="mt-6 hidden w-full text-sm md:table">
         <thead className="text-left text-muted-foreground">
           <tr>
             {COLS.map((c) => (
@@ -117,6 +118,29 @@ export default async function MarketPage({ searchParams }: { searchParams: Promi
           )}
         </tbody>
       </table>
+
+      <ul className="mt-6 space-y-3 md:hidden">
+        {rows.map((m, i) => (
+          <MobileCard
+            key={`${m.itemType}-${m.itemId}`}
+            href={`/market/${marketKey(m.itemType, m.itemId)}`}
+            rank={(params.page - 1) * MARKET_PAGE_SIZE + i + 1}
+            title={
+              <span className="inline-flex items-center gap-2">
+                <EntityIcon assetName={m.iconAssetName} name={m.itemName} rarity={m.rarity} size={20} />
+                {m.itemName || `#${m.itemId}`}
+              </span>
+            }
+            subtitle={`${m.itemType === 1 ? "Cargo" : "Item"}${m.tier != null ? ` · Tier ${m.tier}` : ""}`}
+            stats={[
+              { label: "Lowest ask", value: m.lowestAsk?.toLocaleString() ?? "—" },
+              { label: "Highest bid", value: m.highestBid?.toLocaleString() ?? "—" },
+              { label: "Sold (24h)", value: m.soldQtyRecent.toLocaleString() },
+            ]}
+          />
+        ))}
+        {rows.length === 0 && <li className="py-6 text-center text-sm text-muted-foreground">No items found.</li>}
+      </ul>
 
       <div className="mt-6">
         <Pager page={params.page} total={total} pageSize={MARKET_PAGE_SIZE} searchParams={preserved} basePath="/market" />
