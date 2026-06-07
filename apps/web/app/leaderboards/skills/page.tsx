@@ -4,6 +4,7 @@ import { RegionSwitcher } from "@/components/leaderboards/RegionSwitcher";
 import { Pager } from "@/components/compendium/Pager";
 import { parseLeaderboardParams, LB_PAGE_SIZE, SKILL_SORTS } from "@/lib/leaderboards/params";
 import { getTotalLeaderboard, listRegions, listSkills } from "@/lib/queries/leaderboards";
+import { MobileCard } from "@/components/mobile/MobileCard";
 
 export const revalidate = 60;
 
@@ -54,7 +55,7 @@ export default async function SkillsLeaderboard({ searchParams }: { searchParams
         </div>
       </div>
 
-      <table className="mt-6 w-full text-sm">
+      <table className="mt-6 hidden w-full text-sm md:table">
         <thead className="text-left text-muted-foreground">
           <tr>
             <th className="py-2 pr-3">#</th>
@@ -83,6 +84,24 @@ export default async function SkillsLeaderboard({ searchParams }: { searchParams
           )}
         </tbody>
       </table>
+
+      <ul className="mt-6 space-y-3 md:hidden">
+        {rows.map((r) => (
+          <MobileCard
+            key={r.entityId}
+            href={`/players/${r.entityId}`}
+            rank={r.rank}
+            title={r.username}
+            subtitle={r.region}
+            stats={[
+              { label: "Highest", value: r.highestLevel },
+              { label: "Total level", value: Number(r.totalLevel).toLocaleString() },
+              { label: "Total XP", value: Number(r.totalXp).toLocaleString() },
+            ]}
+          />
+        ))}
+        {rows.length === 0 && <li className="py-6 text-center text-sm text-muted-foreground">No ranked players yet.</li>}
+      </ul>
 
       <div className="mt-6 flex flex-wrap gap-2">
         {skills.map((s) => (

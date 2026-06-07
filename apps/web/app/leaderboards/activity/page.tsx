@@ -4,6 +4,7 @@ import { RegionSwitcher } from "@/components/leaderboards/RegionSwitcher";
 import { Pager } from "@/components/compendium/Pager";
 import { parseLeaderboardParams, LB_PAGE_SIZE } from "@/lib/leaderboards/params";
 import { getActivityLeaderboard, listRegions } from "@/lib/queries/leaderboards";
+import { MobileCard } from "@/components/mobile/MobileCard";
 
 export const revalidate = 60;
 
@@ -30,7 +31,7 @@ export default async function ActivityLeaderboard({ searchParams }: { searchPara
       </p>
       <div className="mt-6"><RegionSwitcher regions={regions} current={params.region} /></div>
 
-      <table className="mt-6 w-full text-sm">
+      <table className="mt-6 hidden w-full text-sm md:table">
         <thead className="text-left text-muted-foreground">
           <tr>
             <th className="py-2 pr-3">#</th>
@@ -53,6 +54,21 @@ export default async function ActivityLeaderboard({ searchParams }: { searchPara
           {rows.length === 0 && <tr><td colSpan={5} className="py-6 text-center text-muted-foreground">No players yet.</td></tr>}
         </tbody>
       </table>
+
+      <ul className="mt-6 space-y-3 md:hidden">
+        {rows.map((r, i) => (
+          <MobileCard
+            key={r.entityId}
+            href={`/players/${r.entityId}`}
+            rank={(params.page - 1) * LB_PAGE_SIZE + i + 1}
+            title={r.username}
+            subtitle={`${r.region} · ${r.signedIn ? "online" : "offline"}`}
+            stats={[{ label: "Time played", value: hours(r.timePlayed) }]}
+          />
+        ))}
+        {rows.length === 0 && <li className="py-6 text-center text-sm text-muted-foreground">No players yet.</li>}
+      </ul>
+
       <div className="mt-6"><Pager page={params.page} total={total} pageSize={LB_PAGE_SIZE} searchParams={pagerParams} basePath="/leaderboards/activity" /></div>
     </main>
   );

@@ -5,6 +5,7 @@ import { RegionSwitcher } from "@/components/leaderboards/RegionSwitcher";
 import { Pager } from "@/components/compendium/Pager";
 import { parseLeaderboardParams, LB_PAGE_SIZE } from "@/lib/leaderboards/params";
 import { getSkillLeaderboard, listRegions, listSkills } from "@/lib/queries/leaderboards";
+import { MobileCard } from "@/components/mobile/MobileCard";
 
 export const revalidate = 60;
 export const dynamicParams = true;
@@ -54,7 +55,7 @@ export default async function SkillLeaderboard({
       <p className="mt-1 text-sm text-muted-foreground">{total.toLocaleString()} players</p>
       <div className="mt-6"><RegionSwitcher regions={regions} current={lbParams.region} /></div>
 
-      <table className="mt-6 w-full text-sm">
+      <table className="mt-6 hidden w-full text-sm md:table">
         <thead className="text-left text-muted-foreground">
           <tr>
             <th className="py-2 pr-3">#</th>
@@ -77,6 +78,24 @@ export default async function SkillLeaderboard({
           {rows.length === 0 && <tr><td colSpan={5} className="py-6 text-center text-muted-foreground">No players yet.</td></tr>}
         </tbody>
       </table>
+
+      <ul className="mt-6 space-y-3 md:hidden">
+        {rows.map((r) => (
+          <MobileCard
+            key={r.entityId}
+            href={`/players/${r.entityId}`}
+            rank={r.rank}
+            title={r.username}
+            subtitle={r.region}
+            stats={[
+              { label: "Level", value: r.level },
+              { label: "XP", value: Number(r.xp).toLocaleString() },
+            ]}
+          />
+        ))}
+        {rows.length === 0 && <li className="py-6 text-center text-sm text-muted-foreground">No players yet.</li>}
+      </ul>
+
       <Pager page={lbParams.page} total={total} pageSize={LB_PAGE_SIZE} searchParams={pagerParams} basePath={`/leaderboards/skills/${skillId}`} />
     </main>
   );
