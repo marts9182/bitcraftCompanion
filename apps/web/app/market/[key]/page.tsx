@@ -88,18 +88,20 @@ export default async function MarketItemPage({ params }: { params: Promise<{ key
           {orders.asks.length === 0 ? (
             <p className="mt-3 text-sm text-muted-foreground">No sell orders.</p>
           ) : (
-            <table className="mt-3 w-full text-sm">
-              <thead className="text-left text-muted-foreground"><tr><th className="py-2 pr-3 text-right">Price</th><th className="py-2 pr-3 text-right">Qty</th><th className="py-2 text-right">Cumul.</th></tr></thead>
-              <tbody>
-                {orders.asks.map((o, i) => (
-                  <tr key={i} className="border-t border-border">
-                    <td className={`py-1.5 pr-3 text-right font-mono ${o.sentinel ? "text-muted-foreground" : ""}`}>{o.price.toLocaleString()}{o.sentinel ? " ⚠" : ""}</td>
-                    <td className="py-1.5 pr-3 text-right font-mono">{o.quantity.toLocaleString()}</td>
-                    <td className="py-1.5 text-right font-mono text-muted-foreground">{o.cumulative.toLocaleString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+              <table className="mt-3 w-full text-sm">
+                <thead className="text-left text-muted-foreground"><tr><th className="py-2 pr-3 text-right">Price</th><th className="py-2 pr-3 text-right">Qty</th><th className="py-2 text-right">Cumul.</th></tr></thead>
+                <tbody>
+                  {orders.asks.map((o, i) => (
+                    <tr key={i} className="border-t border-border">
+                      <td className={`py-1.5 pr-3 text-right font-mono ${o.sentinel ? "text-muted-foreground" : ""}`}>{o.price.toLocaleString()}{o.sentinel ? " ⚠" : ""}</td>
+                      <td className="py-1.5 pr-3 text-right font-mono">{o.quantity.toLocaleString()}</td>
+                      <td className="py-1.5 text-right font-mono text-muted-foreground">{o.cumulative.toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
         <div>
@@ -107,18 +109,20 @@ export default async function MarketItemPage({ params }: { params: Promise<{ key
           {orders.bids.length === 0 ? (
             <p className="mt-3 text-sm text-muted-foreground">No buy orders.</p>
           ) : (
-            <table className="mt-3 w-full text-sm">
-              <thead className="text-left text-muted-foreground"><tr><th className="py-2 pr-3 text-right">Price</th><th className="py-2 pr-3 text-right">Qty</th><th className="py-2 text-right">Cumul.</th></tr></thead>
-              <tbody>
-                {orders.bids.map((o, i) => (
-                  <tr key={i} className="border-t border-border">
-                    <td className={`py-1.5 pr-3 text-right font-mono ${o.sentinel ? "text-muted-foreground" : ""}`}>{o.price.toLocaleString()}{o.sentinel ? " ⚠" : ""}</td>
-                    <td className="py-1.5 pr-3 text-right font-mono">{o.quantity.toLocaleString()}</td>
-                    <td className="py-1.5 text-right font-mono text-muted-foreground">{o.cumulative.toLocaleString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+              <table className="mt-3 w-full text-sm">
+                <thead className="text-left text-muted-foreground"><tr><th className="py-2 pr-3 text-right">Price</th><th className="py-2 pr-3 text-right">Qty</th><th className="py-2 text-right">Cumul.</th></tr></thead>
+                <tbody>
+                  {orders.bids.map((o, i) => (
+                    <tr key={i} className="border-t border-border">
+                      <td className={`py-1.5 pr-3 text-right font-mono ${o.sentinel ? "text-muted-foreground" : ""}`}>{o.price.toLocaleString()}{o.sentinel ? " ⚠" : ""}</td>
+                      <td className="py-1.5 pr-3 text-right font-mono">{o.quantity.toLocaleString()}</td>
+                      <td className="py-1.5 text-right font-mono text-muted-foreground">{o.cumulative.toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </section>
@@ -133,19 +137,21 @@ export default async function MarketItemPage({ params }: { params: Promise<{ key
         {locations.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">No active listings.</p>
         ) : (
-          <table className="mt-3 w-full text-sm">
-            <thead className="text-left text-muted-foreground"><tr><th className="py-2 pr-3">Claim</th><th className="py-2 pr-3">Region</th><th className="py-2 pr-3 text-right">Best ask</th><th className="py-2 text-right">Available</th></tr></thead>
-            <tbody>
-              {locations.map((l) => (
-                <tr key={l.claimEntityId} className="border-t border-border">
-                  <td className="py-1.5 pr-3">{l.claimName || l.claimEntityId}</td>
-                  <td className="py-1.5 pr-3 text-muted-foreground">{l.region}</td>
-                  <td className="py-1.5 pr-3 text-right font-mono">{l.bestAsk?.toLocaleString() ?? "—"}</td>
-                  <td className="py-1.5 text-right font-mono">{l.askQty.toLocaleString()}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+            <table className="mt-3 w-full text-sm">
+              <thead className="text-left text-muted-foreground"><tr><th className="py-2 pr-3">Claim</th><th className="py-2 pr-3">Region</th><th className="py-2 pr-3 text-right">Best ask</th><th className="py-2 text-right">Available</th></tr></thead>
+              <tbody>
+                {locations.map((l) => (
+                  <tr key={l.claimEntityId} className="border-t border-border">
+                    <td className="py-1.5 pr-3">{l.claimName || l.claimEntityId}</td>
+                    <td className="py-1.5 pr-3 text-muted-foreground">{l.region}</td>
+                    <td className="py-1.5 pr-3 text-right font-mono">{l.bestAsk?.toLocaleString() ?? "—"}</td>
+                    <td className="py-1.5 text-right font-mono">{l.askQty.toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
 
@@ -155,18 +161,20 @@ export default async function MarketItemPage({ params }: { params: Promise<{ key
         {sales.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">No recent sales.</p>
         ) : (
-          <table className="mt-3 w-full text-sm">
-            <thead className="text-left text-muted-foreground"><tr><th className="py-2 pr-3 text-right">Qty</th><th className="py-2 pr-3">Region</th><th className="py-2">When</th></tr></thead>
-            <tbody>
-              {sales.map((s, i) => (
-                <tr key={i} className="border-t border-border">
-                  <td className="py-1.5 pr-3 text-right font-mono">{s.quantity.toLocaleString()}</td>
-                  <td className="py-1.5 pr-3 text-muted-foreground">{s.region}</td>
-                  <td className="py-1.5 text-muted-foreground">{new Date(gameTimestampToMs(s.timestamp)).toLocaleString()}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+            <table className="mt-3 w-full text-sm">
+              <thead className="text-left text-muted-foreground"><tr><th className="py-2 pr-3 text-right">Qty</th><th className="py-2 pr-3">Region</th><th className="py-2">When</th></tr></thead>
+              <tbody>
+                {sales.map((s, i) => (
+                  <tr key={i} className="border-t border-border">
+                    <td className="py-1.5 pr-3 text-right font-mono">{s.quantity.toLocaleString()}</td>
+                    <td className="py-1.5 pr-3 text-muted-foreground">{s.region}</td>
+                    <td className="py-1.5 text-muted-foreground">{new Date(gameTimestampToMs(s.timestamp)).toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
     </main>

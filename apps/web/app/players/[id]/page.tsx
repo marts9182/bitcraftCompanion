@@ -100,23 +100,25 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
       )}
 
       <h2 className="mt-8 text-xl font-semibold">Skills</h2>
-      <table className="mt-3 w-full text-sm">
-        <thead className="text-left text-muted-foreground">
-          <tr><th className="py-2 pr-3">Skill</th><th className="py-2 pr-3 text-right">Level</th><th className="py-2 text-right">XP</th></tr>
-        </thead>
-        <tbody>
-          {skills.map((s) => (
-            <tr key={s.skillId} className="border-t border-border">
-              <td className="py-2 pr-3">
-                <Link href={`/leaderboards/skills/${s.skillId}`} className="hover:underline">{s.name}</Link>
-              </td>
-              <td className="py-2 pr-3 text-right">{s.level}</td>
-              <td className="py-2 text-right font-mono">{Number(s.xp).toLocaleString()}</td>
-            </tr>
-          ))}
-          {skills.length === 0 && <tr><td colSpan={3} className="py-6 text-center text-muted-foreground">No skill data.</td></tr>}
-        </tbody>
-      </table>
+      <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+        <table className="mt-3 w-full text-sm">
+          <thead className="text-left text-muted-foreground">
+            <tr><th className="py-2 pr-3">Skill</th><th className="py-2 pr-3 text-right">Level</th><th className="py-2 text-right">XP</th></tr>
+          </thead>
+          <tbody>
+            {skills.map((s) => (
+              <tr key={s.skillId} className="border-t border-border">
+                <td className="py-2 pr-3">
+                  <Link href={`/leaderboards/skills/${s.skillId}`} className="hover:underline">{s.name}</Link>
+                </td>
+                <td className="py-2 pr-3 text-right">{s.level}</td>
+                <td className="py-2 text-right font-mono">{Number(s.xp).toLocaleString()}</td>
+              </tr>
+            ))}
+            {skills.length === 0 && <tr><td colSpan={3} className="py-6 text-center text-muted-foreground">No skill data.</td></tr>}
+          </tbody>
+        </table>
+      </div>
     </main>
   );
 }

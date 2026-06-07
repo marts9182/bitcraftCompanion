@@ -72,26 +72,28 @@ export default async function EmpirePage({ params }: { params: Promise<{ id: str
         {towers.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">No towers.</p>
         ) : (
-          <table className="mt-3 w-full text-sm">
-            <thead className="text-left text-muted-foreground">
-              <tr>
-                <th className="py-2 pr-3">Location</th>
-                <th className="py-2 pr-3 text-right">Energy</th>
-                <th className="py-2 pr-3 text-right">Upkeep</th>
-                <th className="py-2 text-right">Active</th>
-              </tr>
-            </thead>
-            <tbody>
-              {towers.map((t) => (
-                <tr key={t.entityId} className="border-t border-border">
-                  <td className="py-2 pr-3 font-mono text-muted-foreground">{t.chunkIndex}</td>
-                  <td className="py-2 pr-3 text-right font-mono">{t.energy.toLocaleString()}</td>
-                  <td className="py-2 pr-3 text-right font-mono">{t.upkeep.toLocaleString()}</td>
-                  <td className="py-2 text-right">{t.active ? "✓" : "—"}</td>
+          <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+            <table className="mt-3 w-full text-sm">
+              <thead className="text-left text-muted-foreground">
+                <tr>
+                  <th className="py-2 pr-3">Location</th>
+                  <th className="py-2 pr-3 text-right">Energy</th>
+                  <th className="py-2 pr-3 text-right">Upkeep</th>
+                  <th className="py-2 text-right">Active</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {towers.map((t) => (
+                  <tr key={t.entityId} className="border-t border-border">
+                    <td className="py-2 pr-3 font-mono text-muted-foreground">{t.chunkIndex}</td>
+                    <td className="py-2 pr-3 text-right font-mono">{t.energy.toLocaleString()}</td>
+                    <td className="py-2 pr-3 text-right font-mono">{t.upkeep.toLocaleString()}</td>
+                    <td className="py-2 text-right">{t.active ? "✓" : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
 
