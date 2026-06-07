@@ -9,6 +9,7 @@ const NAV: [string, string][] = [
   ["/calculator", "Calculator"],
   ["/map", "Map"],
   ["/empires", "Empires"],
+  ["/settlements", "Settlements"],
   ["/players", "Players"],
   ["/market", "Market"],
   ["/leaderboards", "Leaderboards"],
