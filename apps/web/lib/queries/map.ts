@@ -79,5 +79,9 @@ export async function getWatchtowers(): Promise<Watchtower[]> {
     .select({ chunkIndex: schema.mapChunks.chunkIndex, id: schema.mapChunks.watchtowerEntityId })
     .from(schema.mapChunks)
     .where(isNotNull(schema.mapChunks.watchtowerEntityId));
-  return watchtowerCentroids(rows.map((c) => ({ chunkIndex: c.chunkIndex, id: String(c.id) })));
+  // Watchtowers come from the same chunk grid as claims, so they share the
+  // one-chunk-east calibration (CLAIM_DX) that aligns the decode to the terrain base.
+  return watchtowerCentroids(rows.map((c) => ({ chunkIndex: c.chunkIndex, id: String(c.id) }))).map(
+    (w) => ({ ...w, x: w.x + CLAIM_DX }),
+  );
 }
