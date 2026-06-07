@@ -9,7 +9,7 @@ export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: "Settlements",
-  description: "BitCraft Online player settlements — supplies, treasury, tiles, maintenance, and members across all regions.",
+  description: "BitCraft Online player settlements — supplies, treasury, tiles, and members across all regions.",
   alternates: { canonical: "/settlements" },
 };
 
