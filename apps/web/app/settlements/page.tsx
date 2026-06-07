@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Pager } from "@/components/compendium/Pager";
+import { PageHeader } from "@/components/PageHeader";
 import { getSettlementsList } from "@/lib/queries/settlements";
 import { SETTLEMENT_PAGE_SIZE, parseSettlementParams, type SettlementSort } from "@/lib/settlements/params";
 
@@ -45,8 +46,7 @@ export default async function SettlementsPage({ searchParams }: { searchParams: 
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-12">
-      <h1 className="text-3xl font-bold tracking-tight">Settlements</h1>
-      <p className="mt-1 text-sm text-muted-foreground">{total.toLocaleString()} player settlements</p>
+      <PageHeader title="Settlements" subtitle={`${total.toLocaleString()} player settlements`} />
 
       <form method="GET" action="/settlements" className="mt-6 flex flex-wrap items-center gap-2 text-sm">
         {params.sort !== "tiles" && <input type="hidden" name="sort" value={params.sort} />}

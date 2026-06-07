@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { EntityIcon } from "@/components/compendium/EntityIcon";
 import { Pager } from "@/components/compendium/Pager";
+import { PageHeader } from "@/components/PageHeader";
 import { getMarketList } from "@/lib/queries/market";
 import { MARKET_PAGE_SIZE, marketKey, parseMarketParams, type MarketSort } from "@/lib/market/params";
 
@@ -44,8 +45,7 @@ export default async function MarketPage({ searchParams }: { searchParams: Promi
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-12">
-      <h1 className="text-3xl font-bold tracking-tight">Market</h1>
-      <p className="mt-1 text-sm text-muted-foreground">{total.toLocaleString()} traded items</p>
+      <PageHeader title="Market" subtitle={`${total.toLocaleString()} traded items`} />
 
       <div className="mt-6 flex flex-wrap items-center gap-4">
         <form method="GET" action="/market" className="flex items-center gap-2 text-sm">
