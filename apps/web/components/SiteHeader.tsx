@@ -5,22 +5,8 @@ import { usePathname } from "next/navigation";
 import { Logo } from "./Logo";
 import { ThemeToggle } from "./ThemeToggle";
 import { MobileNav } from "./MobileNav";
-
-const NAV: [string, string][] = [
-  ["/compendium", "Compendium"],
-  ["/calculator", "Calculator"],
-  ["/map", "Map"],
-  ["/empires", "Empires"],
-  ["/settlements", "Settlements"],
-  ["/players", "Players"],
-  ["/market", "Market"],
-  ["/leaderboards", "Leaderboards"],
-  ["/blog", "Blog"],
-];
-
-function isActive(pathname: string, href: string) {
-  return pathname === href || pathname.startsWith(href + "/");
-}
+import { NavDropdown } from "./NavDropdown";
+import { NAV, isNavGroup, isActive } from "./nav-items";
 
 export function SiteHeader() {
   const pathname = usePathname();
@@ -40,28 +26,26 @@ export function SiteHeader() {
           </span>
         </Link>
 
-        <nav
-          aria-label="Primary"
-          className="hidden flex-1 items-center justify-end gap-1 overflow-x-auto text-sm font-medium [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:flex"
-        >
-          {NAV.map(([href, label]) => {
-            const active = isActive(pathname, href);
-            return (
+        <nav aria-label="Primary" className="hidden flex-1 items-center justify-end gap-1 text-sm font-medium lg:flex">
+          {NAV.map((e) =>
+            isNavGroup(e) ? (
+              <NavDropdown key={e.label} label={e.label} items={e.items} pathname={pathname} />
+            ) : (
               <Link
-                key={href}
-                href={href}
-                aria-current={active ? "page" : undefined}
+                key={e.href}
+                href={e.href}
+                aria-current={isActive(pathname, e.href) ? "page" : undefined}
                 className={
                   "relative whitespace-nowrap rounded-md px-2.5 py-1.5 transition-colors " +
-                  (active
+                  (isActive(pathname, e.href)
                     ? "text-primary after:absolute after:inset-x-2.5 after:-bottom-px after:h-0.5 after:rounded-full after:bg-primary"
                     : "text-muted-foreground hover:text-foreground")
                 }
               >
-                {label}
+                {e.label}
               </Link>
-            );
-          })}
+            ),
+          )}
         </nav>
 
         <div className="ml-auto flex items-center gap-1 lg:ml-0">
