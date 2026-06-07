@@ -1,9 +1,11 @@
 import type { ReactNode } from "react";
-import { Josefin_Sans } from "next/font/google";
+import { Josefin_Sans, Lexend } from "next/font/google";
 import "./globals.css";
 import { defaultMetadata, websiteJsonLd } from "@/lib/seo";
 import { jsonLdScript } from "@/lib/jsonld";
 import { SiteHeader } from "@/components/SiteHeader";
+import { SiteFooter } from "@/components/SiteFooter";
+import { ThemeProvider } from "@/components/ThemeProvider";
 
 export const metadata = defaultMetadata;
 
@@ -14,16 +16,26 @@ const josefin = Josefin_Sans({
   display: "swap",
 });
 
+const lexend = Lexend({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600"],
+  variable: "--font-sans",
+  display: "swap",
+});
+
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={josefin.variable}>
+    <html lang="en" suppressHydrationWarning className={`${josefin.variable} ${lexend.variable}`}>
       <body>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: jsonLdScript(websiteJsonLd()) }}
         />
-        <SiteHeader />
-        {children}
+        <ThemeProvider>
+          <SiteHeader />
+          {children}
+          <SiteFooter />
+        </ThemeProvider>
       </body>
     </html>
   );
