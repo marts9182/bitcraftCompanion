@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Logo } from "./Logo";
 import { ThemeToggle } from "./ThemeToggle";
+import { MobileNav } from "./MobileNav";
 
 const NAV: [string, string][] = [
   ["/compendium", "Compendium"],
@@ -26,7 +27,7 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/95 shadow-[0_1px_0_0_rgba(0,0,0,0.4),0_8px_24px_-12px_rgba(0,0,0,0.6)] supports-[backdrop-filter]:bg-background/80 supports-[backdrop-filter]:backdrop-blur">
-      <div className="mx-auto flex h-14 max-w-6xl items-center gap-6 px-6 sm:h-16">
+      <div className="mx-auto flex h-14 max-w-6xl items-center gap-4 px-4 sm:h-16 sm:px-6">
         <Link
           href="/"
           className="group flex shrink-0 items-center gap-2.5"
@@ -41,7 +42,7 @@ export function SiteHeader() {
 
         <nav
           aria-label="Primary"
-          className="-mx-2 flex flex-1 items-center gap-1 overflow-x-auto px-2 text-sm font-medium [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:justify-end"
+          className="hidden flex-1 items-center justify-end gap-1 overflow-x-auto text-sm font-medium [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:flex"
         >
           {NAV.map(([href, label]) => {
             const active = isActive(pathname, href);
@@ -61,8 +62,12 @@ export function SiteHeader() {
               </Link>
             );
           })}
-          <ThemeToggle />
         </nav>
+
+        <div className="ml-auto flex items-center gap-1 lg:ml-0">
+          <ThemeToggle />
+          <MobileNav navItems={NAV} />
+        </div>
       </div>
     </header>
   );
