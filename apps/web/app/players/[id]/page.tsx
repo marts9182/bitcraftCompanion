@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPlayerDetail, listTopPlayerIds } from "@/lib/queries/leaderboards";
+import { classifyClaim } from "@bcc/shared";
 
 export const revalidate = 300;
 export const dynamicParams = true;
@@ -79,15 +80,22 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
         <p className="mt-3 text-sm text-muted-foreground">No claim memberships.</p>
       ) : (
         <ul className="mt-3 space-y-2 text-sm">
-          {claims.map((c) => (
+          {claims.map((c) => {
+            const isSettlement = !!c.claimName && classifyClaim(c.claimName).kind === "settlement";
+            return (
             <li key={c.claimEntityId} className="flex flex-wrap items-center gap-2">
-              <span>{c.claimName || `claim ${c.claimEntityId}`}</span>
+              {isSettlement ? (
+                <Link href={`/settlements/${c.claimEntityId}`} className="hover:underline">{c.claimName}</Link>
+              ) : (
+                <span>{c.claimName || `claim ${c.claimEntityId}`}</span>
+              )}
               {c.coOwner && <Badge>Co-owner</Badge>}
               {c.officer && <Badge>Officer</Badge>}
               {c.build && <Badge>Build</Badge>}
               {c.inventory && <Badge>Inventory</Badge>}
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
 

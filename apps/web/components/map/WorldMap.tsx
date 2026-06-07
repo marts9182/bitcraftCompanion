@@ -215,6 +215,8 @@ export function WorldMap({ claims, regions, territory, watchtowers, empires, ter
                     <strong>{c.name}</strong>
                     <br />
                     {c.tiles.toLocaleString()} tiles · treasury {c.treasury.toLocaleString()}
+                    <br />
+                    <a href={`/settlements/${c.id}`}>Details →</a>
                   </Popup>
                 </CircleMarker>
               ))}
