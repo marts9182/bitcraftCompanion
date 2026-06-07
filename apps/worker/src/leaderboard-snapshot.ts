@@ -9,6 +9,7 @@ import {
   usernamesById, onlineEntityIds, activeRegionIds, buildRegionPlayerRows,
   mapClaimLocalRows, mapChunkRows, mapRegionRows, buildEmpireColors, regionNamesById, type MapChunkRow, type MapRegionRow,
   mapMarketOrders, mapMarketplaces, mapClosedListings, PRICE_SENTINEL_CEILING,
+  mapSettlements,
 } from "@bcc/shared";
 import { readSnapshot } from "./spacetime/ws-snapshot";
 import { discoverRegionModules } from "./spacetime/discover-regions";
@@ -171,6 +172,16 @@ async function main() {
       const marketOrderRows = dedupeBy(mapMarketOrders(norm(r, "sell_order_state"), norm(r, "buy_order_state"), region), (o) => o.entityId);
       const marketplaceRows = dedupeBy(mapMarketplaces(norm(r, "marketplace_state"), region), (m) => m.buildingEntityId);
       const marketSaleRows = dedupeBy(mapClosedListings(norm(r, "closed_listing_state"), region), (s) => s.entityId);
+      const settlementRows = dedupeBy(
+        mapSettlements(
+          norm(r, "claim_state"),
+          norm(r, "claim_local_state"),
+          norm(r, "empire_settlement_state"),
+          norm(r, "claim_member_state"),
+          region,
+        ),
+        (s) => s.entityId,
+      );
       totalPlayers += playerRows.length;
 
       // Map layers: claims (per-region, with names from claim_state), chunks + regions (replicated).
@@ -205,6 +216,7 @@ async function main() {
         await tx.delete(schema.marketOrders).where(eq(schema.marketOrders.region, region));
         await tx.delete(schema.marketplaces).where(eq(schema.marketplaces.region, region));
         await tx.delete(schema.marketSales).where(eq(schema.marketSales.region, region));
+        await tx.delete(schema.settlements).where(eq(schema.settlements.region, region));
         await inChunks(playerRows, CHUNK, (s) =>
           tx.insert(schema.players).values(s).onConflictDoUpdate({ target: schema.players.entityId, set: conflictUpdateSet(schema.players, ["entityId"]) }),
         );
@@ -244,12 +256,15 @@ async function main() {
         await inChunks(marketSaleRows, CHUNK, (s) =>
           tx.insert(schema.marketSales).values(s).onConflictDoUpdate({ target: schema.marketSales.entityId, set: conflictUpdateSet(schema.marketSales, ["entityId"]) }),
         );
+        await inChunks(settlementRows, CHUNK, (s) =>
+          tx.insert(schema.settlements).values(s).onConflictDoUpdate({ target: schema.settlements.entityId, set: conflictUpdateSet(schema.settlements, ["entityId"]) }),
+        );
         await tx
           .insert(schema.regions)
           .values({ region, module: moduleName, name: `Region ${region}` })
           .onConflictDoUpdate({ target: schema.regions.region, set: { module: moduleName, updatedAt: new Date() } });
       });
-      console.log(`[lb-snapshot]   region ${region}: players=${playerRows.length} skills=${playerSkillRows.length} empires=${empires.length} claims=${claimRows.length} mapClaims=${mapClaimData.length} orders=${marketOrderRows.length} sales=${marketSaleRows.length}`);
+      console.log(`[lb-snapshot]   region ${region}: players=${playerRows.length} skills=${playerSkillRows.length} empires=${empires.length} claims=${claimRows.length} mapClaims=${mapClaimData.length} orders=${marketOrderRows.length} sales=${marketSaleRows.length} settlements=${settlementRows.length}`);
     }
 
     // ── 2b. Roster fill: every player in the GLOBAL username roster that isn't a
@@ -371,6 +386,18 @@ async function main() {
     const marketRes = await db.execute(sql`SELECT count(*)::int AS count FROM market_item_summary`);
     const marketSummaryCount = (marketRes as unknown as { count: number }[])[0]?.count ?? 0;
     console.log(`[lb-snapshot] market: ${marketSummaryCount} traded items summarized + price-history slice appended`);
+
+    // ── Settlements: append a supplies/treasury history slice (after all regions) ──
+    // Stamped with SQL now() (a bound JS Date crashes postgres-js).
+    await db.execute(sql`
+      INSERT INTO settlement_supply_history (settlement_entity_id, snapshot_at, supplies, treasury, building_maintenance, num_tiles)
+      SELECT entity_id, now(), supplies, treasury, building_maintenance, num_tiles
+      FROM settlements
+      ON CONFLICT (settlement_entity_id, snapshot_at) DO NOTHING
+    `);
+    const settlementRes = await db.execute(sql`SELECT count(*)::int AS count FROM settlements`);
+    const settlementCount = (settlementRes as unknown as { count: number }[])[0]?.count ?? 0;
+    console.log(`[lb-snapshot] settlements: ${settlementCount} player settlements + supply-history slice appended`);
 
     await db.update(schema.ingestionRuns).set({ status: "ok", finishedAt: new Date(), rowsUpserted: totalPlayers }).where(eq(schema.ingestionRuns.id, run!.id));
     await triggerRevalidate({ url: env.REVALIDATE_URL, secret: env.REVALIDATE_SECRET });
