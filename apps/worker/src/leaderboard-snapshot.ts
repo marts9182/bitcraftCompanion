@@ -390,8 +390,8 @@ async function main() {
     // ── Settlements: append a supplies/treasury history slice (after all regions) ──
     // Stamped with SQL now() (a bound JS Date crashes postgres-js).
     await db.execute(sql`
-      INSERT INTO settlement_supply_history (settlement_entity_id, snapshot_at, supplies, treasury, building_maintenance, num_tiles)
-      SELECT entity_id, now(), supplies, treasury, building_maintenance, num_tiles
+      INSERT INTO settlement_supply_history (settlement_entity_id, snapshot_at, supplies, treasury, num_tiles)
+      SELECT entity_id, now(), supplies, treasury, num_tiles
       FROM settlements
       ON CONFLICT (settlement_entity_id, snapshot_at) DO NOTHING
     `);

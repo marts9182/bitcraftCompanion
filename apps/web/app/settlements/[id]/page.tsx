@@ -75,7 +75,6 @@ export default async function SettlementPage({ params }: { params: Promise<{ id:
         <Stat label="Supplies" value={s.supplies} />
         <Stat label="Supplies threshold" value={s.suppliesPurchaseThreshold} />
         <Stat label="Purchase price" value={s.suppliesPurchasePrice} />
-        <Stat label="Maintenance" value={Math.round(s.buildingMaintenance)} />
         <Stat label="Treasury" value={s.treasury} />
         <Stat label="XP since minting" value={s.xpSinceMinting} />
         <Stat label="Members" value={s.memberCount} />

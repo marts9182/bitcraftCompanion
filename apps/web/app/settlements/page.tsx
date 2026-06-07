@@ -22,7 +22,6 @@ const COLS: Col[] = [
   { key: "tiles", label: "Tiles", align: "right" },
   { key: "supplies", label: "Supplies", align: "right" },
   { key: "treasury", label: "Treasury", align: "right" },
-  { key: "maintenance", label: "Maintenance", align: "right" },
   { key: "members", label: "Members", align: "right" },
 ];
 
@@ -105,7 +104,6 @@ export default async function SettlementsPage({ searchParams }: { searchParams: 
               <td className="py-2 pr-3 text-right font-mono">{s.numTiles.toLocaleString()}</td>
               <td className="py-2 pr-3 text-right font-mono">{s.supplies.toLocaleString()}</td>
               <td className="py-2 pr-3 text-right font-mono">{s.treasury.toLocaleString()}</td>
-              <td className="py-2 pr-3 text-right font-mono">{Math.round(s.buildingMaintenance).toLocaleString()}</td>
               <td className="py-2 text-right font-mono">{s.memberCount.toLocaleString()}</td>
             </tr>
           ))}

@@ -16,7 +16,6 @@ export interface SettlementListRow {
   numTiles: number;
   supplies: number;
   treasury: number;
-  buildingMaintenance: number;
   memberCount: number;
 }
 
@@ -30,7 +29,6 @@ export async function getSettlementsList(params: SettlementListParams): Promise<
   const orderBy =
     params.sort === "supplies" ? desc(settlements.supplies) :
     params.sort === "treasury" ? desc(settlements.treasury) :
-    params.sort === "maintenance" ? desc(settlements.buildingMaintenance) :
     params.sort === "members" ? desc(settlements.memberCount) :
     params.sort === "name" ? asc(settlements.name) :
     desc(settlements.numTiles);
@@ -48,7 +46,6 @@ export async function getSettlementsList(params: SettlementListParams): Promise<
       numTiles: settlements.numTiles,
       supplies: settlements.supplies,
       treasury: settlements.treasury,
-      buildingMaintenance: settlements.buildingMaintenance,
       memberCount: settlements.memberCount,
     })
     .from(settlements)
@@ -111,7 +108,6 @@ export interface SupplyPoint {
   snapshotAt: Date;
   supplies: number;
   treasury: number;
-  buildingMaintenance: number;
   numTiles: number;
 }
 
@@ -122,7 +118,6 @@ export async function getSettlementHistory(id: string): Promise<SupplyPoint[]> {
       snapshotAt: settlementSupplyHistory.snapshotAt,
       supplies: settlementSupplyHistory.supplies,
       treasury: settlementSupplyHistory.treasury,
-      buildingMaintenance: settlementSupplyHistory.buildingMaintenance,
       numTiles: settlementSupplyHistory.numTiles,
     })
     .from(settlementSupplyHistory)

@@ -465,7 +465,6 @@ export const settlements = pgTable(
     supplies: bigint("supplies", { mode: "number" }).notNull().default(0),
     suppliesPurchaseThreshold: bigint("supplies_purchase_threshold", { mode: "number" }).notNull().default(0),
     suppliesPurchasePrice: bigint("supplies_purchase_price", { mode: "number" }).notNull().default(0),
-    buildingMaintenance: real("building_maintenance").notNull().default(0),
     treasury: bigint("treasury", { mode: "number" }).notNull().default(0),
     xpSinceMinting: bigint("xp_since_minting", { mode: "number" }).notNull().default(0),
     canHouseStorehouse: boolean("can_house_storehouse").notNull().default(false),
@@ -492,7 +491,6 @@ export const settlementSupplyHistory = pgTable(
     snapshotAt: timestamp("snapshot_at").notNull(),
     supplies: bigint("supplies", { mode: "number" }).notNull().default(0),
     treasury: bigint("treasury", { mode: "number" }).notNull().default(0),
-    buildingMaintenance: real("building_maintenance").notNull().default(0),
     numTiles: integer("num_tiles").notNull().default(0),
   },
   (t) => ({

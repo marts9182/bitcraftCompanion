@@ -6,11 +6,6 @@ type Raw = Record<string, unknown>;
 const idStr = (v: unknown): string => (v == null ? "" : String(v));
 const str = (v: unknown): string => (typeof v === "string" ? v : v == null ? "" : String(v));
 const bool = (v: unknown): boolean => v === true || v === 1 || v === "true";
-/** Float-preserving numeric coercion (building_maintenance is fractional). */
-const toNum = (v: unknown): number => {
-  const n = typeof v === "number" ? v : Number(v);
-  return Number.isFinite(n) ? n : 0;
-};
 
 export interface SettlementRow {
   entityId: string;
@@ -26,7 +21,6 @@ export interface SettlementRow {
   supplies: number;
   suppliesPurchaseThreshold: number;
   suppliesPurchasePrice: number;
-  buildingMaintenance: number;
   treasury: number;
   xpSinceMinting: number;
   canHouseStorehouse: boolean;
@@ -82,7 +76,6 @@ export function mapSettlements(
       supplies: toInt(local?.supplies) ?? 0,
       suppliesPurchaseThreshold: toInt(local?.supplies_purchase_threshold) ?? 0,
       suppliesPurchasePrice: toInt(local?.supplies_purchase_price) ?? 0,
-      buildingMaintenance: toNum(local?.building_maintenance),
       treasury: toInt(local?.treasury) ?? 0,
       xpSinceMinting: toInt(local?.xp_gained_since_last_coin_minting) ?? 0,
       canHouseStorehouse: settlement ? bool(settlement.can_house_empire_storehouse) : false,

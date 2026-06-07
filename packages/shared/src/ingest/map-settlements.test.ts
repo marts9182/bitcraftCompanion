@@ -11,7 +11,7 @@ const claimState = [
 ];
 const claimLocal = [
   {
-    entity_id: "100", supplies: 1234, building_maintenance: 12.5, num_tiles: 48,
+    entity_id: "100", supplies: 1234, num_tiles: 48,
     num_tile_neighbors: 6, treasury: 5000, xp_gained_since_last_coin_minting: 777,
     supplies_purchase_threshold: 100, supplies_purchase_price: 9,
     location: [0, { x: 24594, z: 15592, dimension: 1 }],
@@ -38,7 +38,7 @@ describe("mapSettlements", () => {
       entityId: "100", region: "7", name: "Ravenmoor", ownerPlayerEntityId: "900",
       empireEntityId: "72057594000000042", x: 24594, z: 15592, dimension: 1,
       numTiles: 48, numTileNeighbors: 6, supplies: 1234, treasury: 5000,
-      buildingMaintenance: 12.5, xpSinceMinting: 777,
+      xpSinceMinting: 777,
       suppliesPurchaseThreshold: 100, suppliesPurchasePrice: 9,
       canHouseStorehouse: true, membersDonations: 333, memberCount: 2,
     });
@@ -50,7 +50,7 @@ describe("mapSettlements", () => {
     expect(r).toMatchObject({
       entityId: "300", name: "Far Horizon", ownerPlayerEntityId: null, empireEntityId: null,
       x: 0, z: 0, dimension: 0, numTiles: 0, supplies: 0, treasury: 0,
-      buildingMaintenance: 0, canHouseStorehouse: false, membersDonations: 0, memberCount: 0,
+      canHouseStorehouse: false, membersDonations: 0, memberCount: 0,
     });
   });
 

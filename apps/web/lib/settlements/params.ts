@@ -1,5 +1,5 @@
 export const SETTLEMENT_PAGE_SIZE = 100;
-export const SETTLEMENT_SORTS = ["tiles", "supplies", "treasury", "maintenance", "members", "name"] as const;
+export const SETTLEMENT_SORTS = ["tiles", "supplies", "treasury", "members", "name"] as const;
 export type SettlementSort = (typeof SETTLEMENT_SORTS)[number];
 
 export interface SettlementListParams {
