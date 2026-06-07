@@ -1,30 +1,31 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
+import { ThemeToggle } from "./ThemeToggle";
+import { NAV, isNavGroup, isActive, type NavLink } from "./nav-items";
 
-function isActive(pathname: string, href: string) {
-  return pathname === href || pathname.startsWith(href + "/");
-}
-
-export function MobileNav({ navItems }: { navItems: [string, string][] }) {
+export function MobileNav() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => setMounted(true), []);
 
   // Close on route change.
   useEffect(() => {
     setOpen(false);
   }, [pathname]);
 
-  // While open: lock body scroll, Escape to close, focus the close button,
-  // and trap Tab focus within the dialog.
+  // While open: lock body scroll, Escape to close, focus the close button, trap Tab.
   useEffect(() => {
     if (!open) return;
-    const prevOverflow = document.body.style.overflow;
+    const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     closeRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
@@ -49,9 +50,34 @@ export function MobileNav({ navItems }: { navItems: [string, string][] }) {
     document.addEventListener("keydown", onKey);
     return () => {
       document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prevOverflow;
+      document.body.style.overflow = prev;
     };
   }, [open]);
+
+  const topLinks = NAV.filter((e): e is NavLink => !isNavGroup(e) && e.href !== "/blog");
+  const groups = NAV.filter(isNavGroup);
+  const blog = NAV.find((e) => !isNavGroup(e) && (e as NavLink).href === "/blog") as NavLink | undefined;
+
+  function Section({ label, links }: { label: string; links: NavLink[] }) {
+    return (
+      <div className="mb-2">
+        <div className="px-1 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</div>
+        {links.map((l) => (
+          <Link
+            key={l.href}
+            href={l.href}
+            aria-current={isActive(pathname, l.href) ? "page" : undefined}
+            className={
+              "block py-2.5 font-[family-name:var(--font-display)] text-2xl font-semibold tracking-tight transition-colors " +
+              (isActive(pathname, l.href) ? "text-primary" : "text-foreground hover:text-primary")
+            }
+          >
+            {l.label}
+          </Link>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <>
@@ -66,43 +92,39 @@ export function MobileNav({ navItems }: { navItems: [string, string][] }) {
         <Menu className="h-5 w-5" />
       </button>
 
-      {open && (
-        <div
-          id="mobile-menu"
-          ref={dialogRef}
-          role="dialog"
-          aria-modal="true"
-          aria-label="Site menu"
-          className="fixed inset-0 z-[100] flex flex-col bg-background lg:hidden"
-        >
-          <div className="flex h-14 items-center justify-end px-4 sm:h-16 sm:px-6">
-            <button
-              ref={closeRef}
-              type="button"
-              aria-label="Close menu"
-              onClick={() => setOpen(false)}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-          <nav aria-label="Mobile" className="flex flex-1 flex-col gap-1 overflow-y-auto px-6 pb-12">
-            {navItems.map(([href, label]) => (
-              <Link
-                key={href}
-                href={href}
-                aria-current={isActive(pathname, href) ? "page" : undefined}
-                className={
-                  "py-3 font-[family-name:var(--font-display)] text-2xl font-semibold tracking-tight transition-colors " +
-                  (isActive(pathname, href) ? "text-primary" : "text-foreground hover:text-primary")
-                }
+      {mounted &&
+        open &&
+        createPortal(
+          <div
+            id="mobile-menu"
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Site menu"
+            className="fixed inset-0 z-[100] flex flex-col bg-background lg:hidden"
+          >
+            <div className="flex h-14 items-center justify-end gap-1 px-4 sm:h-16 sm:px-6">
+              <ThemeToggle />
+              <button
+                ref={closeRef}
+                type="button"
+                aria-label="Close menu"
+                onClick={() => setOpen(false)}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground"
               >
-                {label}
-              </Link>
-            ))}
-          </nav>
-        </div>
-      )}
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <nav aria-label="Mobile" className="flex-1 overflow-y-auto px-6 pb-12">
+              <Section label="Browse" links={topLinks} />
+              {groups.map((g) => (
+                <Section key={g.label} label={g.label} links={g.items} />
+              ))}
+              {blog && <Section label="More" links={[blog]} />}
+            </nav>
+          </div>,
+          document.body,
+        )}
     </>
   );
 }

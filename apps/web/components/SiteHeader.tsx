@@ -66,7 +66,7 @@ export function SiteHeader() {
 
         <div className="ml-auto flex items-center gap-1 lg:ml-0">
           <ThemeToggle />
-          <MobileNav navItems={NAV} />
+          <MobileNav />
         </div>
       </div>
     </header>
