@@ -17,7 +17,7 @@ export default async function StatusPage() {
     .limit(5);
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-12">
+    <main className="mx-auto max-w-2xl px-4 sm:px-6 py-12">
       <h1 className="text-2xl font-semibold">Ingestion status</h1>
       <ul className="mt-4 space-y-2">
         {runs.length === 0 && <li className="text-muted-foreground">No ingestion runs yet.</li>}

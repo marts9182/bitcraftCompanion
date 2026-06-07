@@ -60,7 +60,7 @@ export default async function CalculatorResultPage({ params }: { params: Promise
   subgraph.refInfo[key] ??= { name: t.name, slug: t.slug, iconAssetName: t.icon };
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-12">
+    <main className="mx-auto max-w-3xl px-4 sm:px-6 py-12">
       <nav className="text-sm text-muted-foreground">
         <Link href="/calculator" className="hover:underline">
           Calculator

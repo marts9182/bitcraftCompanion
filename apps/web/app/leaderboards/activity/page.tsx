@@ -24,7 +24,7 @@ export default async function ActivityLeaderboard({ searchParams }: { searchPara
   const pagerParams = params.region !== "all" ? { region: params.region } : {};
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-12">
+    <main className="mx-auto max-w-3xl px-4 sm:px-6 py-12">
       <h1 className="text-3xl font-bold tracking-tight">Activity</h1>
       <p className="mt-1 text-sm text-muted-foreground">
         {online.toLocaleString()} online now · {total.toLocaleString()} players

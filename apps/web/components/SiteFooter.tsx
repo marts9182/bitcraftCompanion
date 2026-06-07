@@ -10,7 +10,7 @@ const GROUPS: { heading: string; links: [string, string][] }[] = [
 export function SiteFooter() {
   return (
     <footer className="mt-20 border-t border-border bg-background">
-      <div className="mx-auto max-w-6xl px-6 py-12">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 py-12">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <Link href="/" className="flex items-center gap-2.5" aria-label="BitCraft Companion — home">

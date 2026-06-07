@@ -33,7 +33,7 @@ export default async function CargoPage({ searchParams }: { searchParams: Promis
     itemListJsonLd(rows.map((r) => ({ name: r.name, url: `${SITE_URL}/cargo/${r.slug}` })), `${SITE_URL}/cargo`),
   ];
   return (
-    <main className="mx-auto max-w-4xl px-6 py-12">
+    <main className="mx-auto max-w-4xl px-4 sm:px-6 py-12">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(jsonLd) }} />
       <h1 className="text-3xl font-bold tracking-tight">Cargo</h1>
       <p className="mt-2 text-muted-foreground">{total.toLocaleString()} cargo</p>

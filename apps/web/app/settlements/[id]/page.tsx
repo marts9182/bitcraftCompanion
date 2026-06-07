@@ -20,7 +20,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   if (!s) return { title: "Settlement" };
   return {
     title: `${s.name} — Settlement`,
-    description: `BitCraft Online settlement ${s.name}: supplies, treasury, tiles, maintenance, members, and supply history.`,
+    description: `BitCraft Online settlement ${s.name}: supplies, treasury, tiles, members, and supply history.`,
     alternates: { canonical: `/settlements/${id}` },
   };
 }
@@ -52,7 +52,7 @@ export default async function SettlementPage({ params }: { params: Promise<{ id:
   const treasuryPoints = history.map((p) => ({ snapshotAt: p.snapshotAt, value: p.treasury }));
 
   return (
-    <main className="mx-auto max-w-4xl px-6 py-12">
+    <main className="mx-auto max-w-4xl px-4 sm:px-6 py-12">
       <nav className="text-sm text-muted-foreground">
         <Link href="/settlements" className="hover:underline">Settlements</Link> / <span>{s.name}</span>
       </nav>

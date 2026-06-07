@@ -17,7 +17,7 @@ const CARDS: [string, string, string][] = [
 
 export default function LeaderboardsHub() {
   return (
-    <main className="mx-auto max-w-3xl px-6 py-12">
+    <main className="mx-auto max-w-3xl px-4 sm:px-6 py-12">
       <h1 className="text-3xl font-bold tracking-tight">Leaderboards</h1>
       <p className="mt-2 text-muted-foreground">Live BitCraft rankings, refreshed continuously and filterable by region.</p>
       <div className="mt-8 grid gap-4 sm:grid-cols-2">

@@ -33,7 +33,7 @@ export default async function TagPage({ params }: { params: Promise<{ tag: strin
     { name: `#${t}`, url: `${SITE_URL}/blog/tags/${tag}` },
   ]);
   return (
-    <main className="mx-auto max-w-3xl px-6 py-12">
+    <main className="mx-auto max-w-3xl px-4 sm:px-6 py-12">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(jsonLd) }} />
       <nav className="text-sm text-muted-foreground">
         <Link href="/blog" className="hover:underline">

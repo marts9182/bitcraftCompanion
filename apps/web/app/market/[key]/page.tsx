@@ -57,7 +57,7 @@ export default async function MarketItemPage({ params }: { params: Promise<{ key
   const spread = item.lowestAsk != null && item.highestBid != null ? item.lowestAsk - item.highestBid : null;
 
   return (
-    <main className="mx-auto max-w-4xl px-6 py-12">
+    <main className="mx-auto max-w-4xl px-4 sm:px-6 py-12">
       <nav className="text-sm text-muted-foreground">
         <Link href="/market" className="hover:underline">Market</Link> / <span>{item.itemName}</span>
       </nav>

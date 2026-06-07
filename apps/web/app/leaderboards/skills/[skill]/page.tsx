@@ -47,7 +47,7 @@ export default async function SkillLeaderboard({
   };
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-12">
+    <main className="mx-auto max-w-3xl px-4 sm:px-6 py-12">
       <nav className="text-sm text-muted-foreground">
         <Link href="/leaderboards/skills" className="hover:underline">Skills</Link> / <span>{meta.name}</span>
       </nav>

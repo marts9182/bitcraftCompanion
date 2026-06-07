@@ -10,7 +10,7 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
   // eslint-disable-next-line no-console
   console.error(error);
   return (
-    <main className="mx-auto max-w-3xl px-6 py-24 text-center">
+    <main className="mx-auto max-w-3xl px-4 sm:px-6 py-24 text-center">
       <h1 className="text-3xl font-bold tracking-tight">Something went wrong</h1>
       <p className="mt-3 text-muted-foreground">An unexpected error occurred. Please try again.</p>
       <div className="mt-6 flex justify-center gap-3">

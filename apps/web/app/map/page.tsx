@@ -42,12 +42,12 @@ export default async function MapPage() {
   const settlements = claims.filter((c) => c.kind === "settlement").length;
   return (
     <main className="px-0 py-0">
-      <div className="mx-auto max-w-6xl px-6 pt-8">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 pt-8">
         <h1 className="text-3xl font-bold tracking-tight">World Map</h1>
         <p className="mt-1 text-sm text-muted-foreground">{regions.length} regions · {empires.length.toLocaleString()} empires · {settlements.toLocaleString()} settlements · {territory.length.toLocaleString()} controlled chunks</p>
         <ul className="sr-only">{regions.map((r) => <li key={r.id}>{r.name ?? `Region ${r.id}`}</li>)}</ul>
       </div>
-      <div className="mx-auto mt-4 max-w-6xl px-6 pb-12">
+      <div className="mx-auto mt-4 max-w-6xl px-4 sm:px-6 pb-12">
         <MapClient claims={claims} regions={regions} territory={territory} watchtowers={watchtowers} empires={empires} terrain={terrain} />
       </div>
     </main>

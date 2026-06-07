@@ -28,7 +28,7 @@ export default async function BuildingsPage({ searchParams }: { searchParams: Pr
     itemListJsonLd(rows.map((r) => ({ name: r.name, url: `${SITE_URL}/buildings/${r.slug}` })), `${SITE_URL}/buildings`),
   ];
   return (
-    <main className="mx-auto max-w-4xl px-6 py-12">
+    <main className="mx-auto max-w-4xl px-4 sm:px-6 py-12">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(jsonLd) }} />
       <h1 className="text-3xl font-bold tracking-tight">Buildings</h1>
       <p className="mt-2 text-muted-foreground">{total.toLocaleString()} buildings</p>

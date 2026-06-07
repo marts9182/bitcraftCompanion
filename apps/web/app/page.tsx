@@ -41,7 +41,7 @@ export default async function Home() {
       {/* Hero */}
       <section className="relative overflow-hidden border-b border-border">
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(120%_120%_at_70%_0%,color-mix(in_oklch,var(--primary)_18%,var(--background))_0%,var(--background)_55%)]" />
-        <div className="mx-auto max-w-6xl px-6 py-24 sm:py-32">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 py-24 sm:py-32">
           <h1 className="max-w-3xl font-[family-name:var(--font-display)] text-4xl font-bold leading-[1.05] tracking-tight sm:text-6xl">
             Master the supply economy.
           </h1>
@@ -58,7 +58,7 @@ export default async function Home() {
 
       {/* Live-stat strip */}
       <section className="border-b border-border bg-card/40">
-        <div className="mx-auto grid max-w-6xl grid-cols-2 px-6 sm:grid-cols-4">
+        <div className="mx-auto grid max-w-6xl grid-cols-2 px-4 sm:px-6 sm:grid-cols-4">
           {statItems.map(([label, value]) => (
             <div key={label} className="px-2 py-8 text-center">
               <div className="font-[family-name:var(--font-display)] text-3xl font-bold text-primary sm:text-4xl">
@@ -71,7 +71,7 @@ export default async function Home() {
       </section>
 
       {/* Feature tiles */}
-      <section className="mx-auto max-w-6xl px-6 py-16">
+      <section className="mx-auto max-w-6xl px-4 sm:px-6 py-16">
         <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold tracking-tight">
           Everything in BitCraft, in one place
         </h2>
@@ -93,7 +93,7 @@ export default async function Home() {
 
       {/* Latest from the blog */}
       {posts.length > 0 && (
-        <section className="mx-auto max-w-6xl px-6 pb-20">
+        <section className="mx-auto max-w-6xl px-4 sm:px-6 pb-20">
           <div className="flex items-baseline justify-between">
             <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold tracking-tight">Latest guides</h2>
             <Link href="/blog" className="text-sm font-medium text-accent-teal hover:underline">All posts →</Link>

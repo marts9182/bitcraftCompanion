@@ -48,7 +48,7 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
     articleJsonLd({ title: fm.title, description: fm.description, date: fm.date, author: fm.author }, url),
   ];
   return (
-    <main className="mx-auto max-w-3xl px-6 py-12">
+    <main className="mx-auto max-w-3xl px-4 sm:px-6 py-12">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(jsonLd) }} />
       <nav className="text-sm text-muted-foreground">
         <Link href="/blog" className="hover:underline">

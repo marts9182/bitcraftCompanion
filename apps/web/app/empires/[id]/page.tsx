@@ -40,7 +40,7 @@ export default async function EmpirePage({ params }: { params: Promise<{ id: str
   const { empire, towers, members } = data;
 
   return (
-    <main className="mx-auto max-w-4xl px-6 py-12">
+    <main className="mx-auto max-w-4xl px-4 sm:px-6 py-12">
       <nav className="text-sm text-muted-foreground">
         <Link href="/empires" className="hover:underline">Empires</Link> / <span>{empire.name}</span>
       </nav>

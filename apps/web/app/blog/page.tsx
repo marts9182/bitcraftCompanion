@@ -29,7 +29,7 @@ export default function BlogIndex() {
     ),
   ];
   return (
-    <main className="mx-auto max-w-3xl px-6 py-12">
+    <main className="mx-auto max-w-3xl px-4 sm:px-6 py-12">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(jsonLd) }} />
       <h1 className="text-3xl font-bold tracking-tight">Blog &amp; Guides</h1>
       <p className="mt-2 text-muted-foreground">Guides, how-tos, and updates.</p>

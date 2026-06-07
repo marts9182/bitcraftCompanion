@@ -45,7 +45,7 @@ export default async function MarketPage({ searchParams }: { searchParams: Promi
   };
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-12">
+    <main className="mx-auto max-w-5xl px-4 sm:px-6 py-12">
       <PageHeader title="Market" subtitle={`${total.toLocaleString()} traded items`} />
 
       <div className="mt-6 flex flex-wrap items-center gap-4">
