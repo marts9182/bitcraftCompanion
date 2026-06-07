@@ -42,6 +42,8 @@ export {
   PRICE_SENTINEL_CEILING,
 } from "./ingest/map-market";
 export type { MarketOrderRow, MarketplaceRow, MarketSaleRow } from "./ingest/map-market";
+export { mapSettlements } from "./ingest/map-settlements";
+export type { SettlementRow } from "./ingest/map-settlements";
 export {
   decodeLocationSum,
   chunkIndexToBounds,
