@@ -447,3 +447,56 @@ export const marketPriceHistory = pgTable(
     byItem: index("market_history_item_idx").on(t.itemId, t.itemType, t.snapshotAt),
   }),
 );
+
+/** One row per player settlement (a claim). Region-scoped clean-rebuild per snapshot. */
+export const settlements = pgTable(
+  "settlements",
+  {
+    entityId: text("entity_id").primaryKey(),
+    region: text("region").notNull(),
+    name: text("name").notNull(),
+    ownerPlayerEntityId: text("owner_player_entity_id"),
+    empireEntityId: text("empire_entity_id"),
+    x: integer("x").notNull().default(0),
+    z: integer("z").notNull().default(0),
+    dimension: integer("dimension").notNull().default(0),
+    numTiles: integer("num_tiles").notNull().default(0),
+    numTileNeighbors: integer("num_tile_neighbors").notNull().default(0),
+    supplies: bigint("supplies", { mode: "number" }).notNull().default(0),
+    suppliesPurchaseThreshold: bigint("supplies_purchase_threshold", { mode: "number" }).notNull().default(0),
+    suppliesPurchasePrice: bigint("supplies_purchase_price", { mode: "number" }).notNull().default(0),
+    buildingMaintenance: real("building_maintenance").notNull().default(0),
+    treasury: bigint("treasury", { mode: "number" }).notNull().default(0),
+    xpSinceMinting: bigint("xp_since_minting", { mode: "number" }).notNull().default(0),
+    canHouseStorehouse: boolean("can_house_storehouse").notNull().default(false),
+    membersDonations: bigint("members_donations", { mode: "number" }).notNull().default(0),
+    memberCount: integer("member_count").notNull().default(0),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    byRegion: index("settlements_region_idx").on(t.region),
+    byTiles: index("settlements_tiles_idx").on(t.numTiles),
+    bySupplies: index("settlements_supplies_idx").on(t.supplies),
+    byTreasury: index("settlements_treasury_idx").on(t.treasury),
+    byName: index("settlements_name_idx").on(t.name),
+    byOwner: index("settlements_owner_idx").on(t.ownerPlayerEntityId),
+    byEmpire: index("settlements_empire_idx").on(t.empireEntityId),
+  }),
+);
+
+/** Append-only supplies/treasury trend series. One slice per settlement per snapshot. */
+export const settlementSupplyHistory = pgTable(
+  "settlement_supply_history",
+  {
+    settlementEntityId: text("settlement_entity_id").notNull(),
+    snapshotAt: timestamp("snapshot_at").notNull(),
+    supplies: bigint("supplies", { mode: "number" }).notNull().default(0),
+    treasury: bigint("treasury", { mode: "number" }).notNull().default(0),
+    buildingMaintenance: real("building_maintenance").notNull().default(0),
+    numTiles: integer("num_tiles").notNull().default(0),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.settlementEntityId, t.snapshotAt] }),
+    byEntity: index("settlement_history_entity_idx").on(t.settlementEntityId, t.snapshotAt),
+  }),
+);
