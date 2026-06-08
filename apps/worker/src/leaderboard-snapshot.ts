@@ -399,6 +399,11 @@ async function main() {
     const settlementCount = (settlementRes as unknown as { count: number }[])[0]?.count ?? 0;
     console.log(`[lb-snapshot] settlements: ${settlementCount} player settlements + supply-history slice appended`);
 
+    // ── Prune trend history older than 90 days (keeps Neon under the free 0.5 GB tier). ──
+    await db.execute(sql`DELETE FROM market_price_history WHERE snapshot_at < now() - interval '90 days'`);
+    await db.execute(sql`DELETE FROM settlement_supply_history WHERE snapshot_at < now() - interval '90 days'`);
+    console.log("[lb-snapshot] pruned price/supply history older than 90 days");
+
     await db.update(schema.ingestionRuns).set({ status: "ok", finishedAt: new Date(), rowsUpserted: totalPlayers }).where(eq(schema.ingestionRuns.id, run!.id));
     await triggerRevalidate({ url: env.REVALIDATE_URL, secret: env.REVALIDATE_SECRET });
     console.log(`[lb-snapshot] OK — ${modules.length} player region(s) + ${emptyGridded}/${emptyModules.length} empty region(s) gridded (${discovered.length} discovered), ${totalPlayers} players${skillsLoaded ? "" : " (no skill_desc seen)"}`);
