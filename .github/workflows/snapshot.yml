@@ -1,7 +1,10 @@
 name: snapshot
 on:
-  schedule:
-    - cron: "*/30 * * * *"
+  # Scheduled runs are disabled until the site is live and the required
+  # secrets (DATABASE_URL, SPACETIME_*, REVALIDATE_*) are configured.
+  # Re-enable by uncommenting the schedule block below.
+  # schedule:
+  #   - cron: "*/30 * * * *"
   workflow_dispatch: {}
 
 # Never let two snapshots run at once.
