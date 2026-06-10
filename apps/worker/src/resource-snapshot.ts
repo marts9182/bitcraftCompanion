@@ -118,12 +118,17 @@ async function upsertCatalogs(
     spawnCounts: creatureCounts.get(c.enemyType) ?? {},
   }));
 
+  // When a counts map is empty (e.g. catalog run on a fresh clone with no
+  // position index on disk), keep the DB's existing spawn_counts instead of
+  // zeroing them — only a run that actually produced counts may overwrite.
+  const resourceSkip = resourceCounts.size === 0 ? ["id", "spawnCounts"] : ["id"];
+  const creatureSkip = creatureCounts.size === 0 ? ["enemyType", "spawnCounts"] : ["enemyType"];
   await db.transaction(async (tx) => {
     await inChunks(resourceRows, CHUNK, (slice) =>
       tx
         .insert(schema.resources)
         .values(slice)
-        .onConflictDoUpdate({ target: schema.resources.id, set: conflictUpdateSet(schema.resources, ["id"]) }),
+        .onConflictDoUpdate({ target: schema.resources.id, set: conflictUpdateSet(schema.resources, resourceSkip) }),
     );
     await inChunks(creatureRows, CHUNK, (slice) =>
       tx
@@ -131,7 +136,7 @@ async function upsertCatalogs(
         .values(slice)
         .onConflictDoUpdate({
           target: schema.creatures.enemyType,
-          set: conflictUpdateSet(schema.creatures, ["enemyType"]),
+          set: conflictUpdateSet(schema.creatures, creatureSkip),
         }),
     );
   });
@@ -201,7 +206,7 @@ interface CountIndex {
 async function loadCountsIndex(indexPath: string, label: string): Promise<Map<number, Record<string, number>>> {
   const existing = await readIndexFile<CountIndex>(indexPath);
   if (!existing) {
-    console.log(`[resource] no ${label} count index at ${indexPath} — spawn counts left empty`);
+    console.warn(`[resource] no ${label} count index at ${indexPath} — existing DB spawn counts will be preserved`);
     return new Map();
   }
   const counts = new Map<number, Record<string, number>>();
