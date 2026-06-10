@@ -98,6 +98,65 @@ export const buildings = pgTable(
   (t) => ({ slugIdx: uniqueIndex("buildings_slug_idx").on(t.slug) }),
 );
 
+/** Gatherable/world resource catalog (resource_desc). Spawn positions live in static files, not the DB. */
+export const resources = pgTable(
+  "resources",
+  {
+    id: integer("id").primaryKey(),
+    slug: text("slug").notNull(),
+    name: text("name").notNull(),
+    description: text("description").default("").notNull(),
+    category: text("category"),
+    tier: integer("tier"),
+    rarity: text("rarity").notNull().default("Default"),
+    maxHealth: integer("max_health"),
+    respawnSeconds: real("respawn_seconds"),
+    notRespawning: boolean("not_respawning").default(false).notNull(),
+    compendiumEntry: boolean("compendium_entry").default(true).notNull(),
+    iconAssetName: text("icon_asset_name"),
+    yields: jsonb("yields").default([]).notNull(), // [{itemId, qty}]
+    spawnCounts: jsonb("spawn_counts").default({}).notNull(), // {"7": 2993, …} region → live count
+    raw: jsonb("raw").notNull(),
+  },
+  (t) => ({
+    slugIdx: uniqueIndex("resources_slug_idx").on(t.slug),
+    categoryIdx: index("resources_category_idx").on(t.category),
+    tierIdx: index("resources_tier_idx").on(t.tier),
+  }),
+);
+
+/** Creature/enemy catalog (enemy_desc). enemy_type is the game's stable id. */
+export const creatures = pgTable(
+  "creatures",
+  {
+    enemyType: integer("enemy_type").primaryKey(),
+    slug: text("slug").notNull(),
+    name: text("name").notNull(),
+    description: text("description").default("").notNull(),
+    tier: integer("tier"),
+    rarity: text("rarity").notNull().default("Default"),
+    huntable: boolean("huntable").default(false).notNull(),
+    maxHealth: integer("max_health"),
+    minDamage: integer("min_damage"),
+    maxDamage: integer("max_damage"),
+    armor: integer("armor"),
+    accuracy: integer("accuracy"),
+    evasion: integer("evasion"),
+    attackLevel: integer("attack_level"),
+    defenseLevel: integer("defense_level"),
+    healthRegen: real("health_regen"),
+    dayDetectRange: integer("day_detect_range"),
+    dayAggroRange: integer("day_aggro_range"),
+    nightDetectRange: integer("night_detect_range"),
+    nightAggroRange: integer("night_aggro_range"),
+    iconAssetName: text("icon_asset_name"),
+    lootStacks: jsonb("loot_stacks").default([]).notNull(),
+    spawnCounts: jsonb("spawn_counts").default({}).notNull(),
+    raw: jsonb("raw").notNull(),
+  },
+  (t) => ({ slugIdx: uniqueIndex("creatures_slug_idx").on(t.slug) }),
+);
+
 export const recipes = pgTable(
   "recipes",
   {
