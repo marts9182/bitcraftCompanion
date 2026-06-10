@@ -56,6 +56,11 @@ export {
 export type { Bounds } from "./world/coords";
 export { watchtowerCentroids } from "./world/watchtowers";
 export type { Watchtower, WatchtowerChunkRow } from "./world/watchtowers";
+export {
+  RARITY_NAMES, decodeRarity as decodeResourceRarity, slugifyName, dedupeSlugs,
+  mapResourceDescRow, mapEnemyDescRow, packPositions, packMobilePositions,
+} from "./world/resources";
+export type { ResourceCatalogRow, CreatureCatalogRow } from "./world/resources";
 export { dominantBiome, BIOME_NAMES } from "./world/biomes";
 export { vividTerritoryColor } from "./world/empire-colors";
 export { classifyClaim } from "./world/claims";
