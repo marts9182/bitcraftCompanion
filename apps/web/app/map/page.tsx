@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { getMapClaims, getMapRegions, getTerritoryCells, getWatchtowers, getEmpireTerritories } from "@/lib/queries/map";
+import { getResourceMapCatalog } from "@/lib/queries/resources";
+import { getCreatureMapCatalog } from "@/lib/queries/creatures";
 import { MapClient } from "@/components/map/MapClient";
 
 export type TerrainOverlay = { region: number; url: string; bounds: [[number, number], [number, number]] };
@@ -36,8 +38,9 @@ export const metadata: Metadata = {
 };
 
 export default async function MapPage() {
-  const [claims, regions, territory, watchtowers, empires, terrain] = await Promise.all([
+  const [claims, regions, territory, watchtowers, empires, terrain, resourceCatalog, creatureCatalog] = await Promise.all([
     getMapClaims(), getMapRegions(), getTerritoryCells(), getWatchtowers(), getEmpireTerritories(), loadTerrain(),
+    getResourceMapCatalog(), getCreatureMapCatalog(),
   ]);
   const settlements = claims.filter((c) => c.kind === "settlement").length;
   return (
@@ -48,7 +51,7 @@ export default async function MapPage() {
         <ul className="sr-only">{regions.map((r) => <li key={r.id}>{r.name ?? `Region ${r.id}`}</li>)}</ul>
       </div>
       <div className="mx-auto mt-4 max-w-6xl px-4 sm:px-6 pb-12">
-        <MapClient claims={claims} regions={regions} territory={territory} watchtowers={watchtowers} empires={empires} terrain={terrain} />
+        <MapClient claims={claims} regions={regions} territory={territory} watchtowers={watchtowers} empires={empires} terrain={terrain} resourceCatalog={resourceCatalog} creatureCatalog={creatureCatalog} />
       </div>
     </main>
   );
