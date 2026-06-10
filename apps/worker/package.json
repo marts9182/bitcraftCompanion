@@ -19,10 +19,12 @@
     "@bcc/shared": "workspace:*",
     "dotenv": "^16.4.0",
     "drizzle-orm": "^0.36.0",
+    "pngjs": "^7.0.0",
     "ws": "^8.18.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "@types/pngjs": "^6.0.5",
     "@types/ws": "^8.5.12",
     "tsx": "^4.19.0"
   }
