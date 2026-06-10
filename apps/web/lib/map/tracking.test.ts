@@ -13,6 +13,16 @@ describe("track URL params", () => {
   it("serializes empty state to an empty object", () => {
     expect(serializeTrackParams({ resources: [], creatures: [], regions: [], roads: false })).toEqual({});
   });
+  it("dedupes repeated ids", () => {
+    expect(parseTrackParams({ resources: "23,23" }).resources).toEqual([23]);
+  });
+  it("caps each list at 16 ids", () => {
+    const twenty = Array.from({ length: 20 }, (_, i) => i + 1).join(",");
+    expect(parseTrackParams({ resources: twenty }).resources).toHaveLength(16);
+  });
+  it("parses an empty string param to an empty list", () => {
+    expect(parseTrackParams({ resources: "" }).resources).toEqual([]);
+  });
 });
 
 describe("decimate", () => {
