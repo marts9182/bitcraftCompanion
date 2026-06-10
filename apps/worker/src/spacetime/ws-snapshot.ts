@@ -81,7 +81,9 @@ export async function readSnapshot(
     const elapsed = () => `${Date.now() - startedAt}ms`;
     let settled = false;
 
-    const ws = new WebSocket(url, [WS_SUBPROTOCOL]);
+    // Some full-table snapshots (e.g. resource_state) exceed ws's 100 MiB
+    // default frame cap; 1 GiB keeps large one-shot pulls working.
+    const ws = new WebSocket(url, [WS_SUBPROTOCOL], { maxPayload: 1 << 30 });
     ws.binaryType = "arraybuffer";
 
     const finish = (fn: () => void) => {
@@ -131,6 +133,15 @@ export async function readSnapshot(
       const tag = messageTag(msg);
       tagsSeen.push(tag);
       console.log(`[snapshot] <- ${tag} (${elapsed()})`);
+
+      if (tag === "SubscriptionError") {
+        const detail = JSON.stringify((msg as Record<string, unknown>).SubscriptionError).slice(0, 600);
+        finish(() => {
+          ws.close();
+          reject(new Error(`Subscription rejected by server (${elapsed()}): ${detail}`));
+        });
+        return;
+      }
 
       const tables = extractTableInserts(msg);
       if (tables.size > 0 && tagsSeen.filter((t) => t === tag).length === 1) {
