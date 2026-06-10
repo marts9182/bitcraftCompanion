@@ -2,9 +2,13 @@ import { describe, it, expect } from "vitest";
 import { formatDuration } from "./format";
 
 describe("formatDuration", () => {
-  it("returns a dash for zero or negative", () => {
+  it("returns a dash for zero, negative, or null", () => {
     expect(formatDuration(0)).toBe("—");
     expect(formatDuration(-5)).toBe("—");
+    expect(formatDuration(null)).toBe("—");
+  });
+  it("formats whole hours without minutes", () => {
+    expect(formatDuration(10800)).toBe("3h");
   });
   it("formats seconds only", () => {
     expect(formatDuration(45)).toBe("45s");

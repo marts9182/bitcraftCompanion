@@ -1,5 +1,5 @@
 /** Format a duration in seconds as "1h 2m", "3m 30s", or "45s". */
-export function formatDuration(seconds: number): string {
+export function formatDuration(seconds: number | null): string {
   if (!seconds || seconds <= 0) return "—";
   const s = Math.round(seconds);
   const h = Math.floor(s / 3600);
