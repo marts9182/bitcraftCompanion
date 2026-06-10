@@ -4,6 +4,9 @@ import Link from "next/link";
 import { RarityBadge } from "@/components/compendium/RarityBadge";
 import { TierBadge } from "@/components/compendium/TierBadge";
 import { EntityIcon } from "@/components/compendium/EntityIcon";
+import { DropsList } from "@/components/compendium/DropsList";
+import { SpawnRegionsList } from "@/components/compendium/SpawnRegionsList";
+import { ResourceMapEmbed } from "@/components/map/ResourceMapEmbed";
 import { respawnLabel } from "@/components/compendium/ResourcesTable";
 import { getResourceBySlug, listAllResourceSlugs } from "@/lib/queries/resources";
 import { getItemsByIds } from "@/lib/queries/items";
@@ -57,10 +60,6 @@ export default async function ResourceDetailPage({ params }: { params: Promise<{
   ]);
   const itemById = new Map(yieldItems.map((i) => [i.id, i]));
   const cargoById = new Map(yieldCargo.map((c) => [c.id, c]));
-  const regionNames = new Map(regions.map((r) => [r.id, r.name]));
-  const spawns = Object.entries(spawnCounts)
-    .map(([regionId, count]) => ({ regionId: Number(regionId), count }))
-    .sort((a, b) => b.count - a.count);
 
   const url = `${SITE_URL}/resources/${resource.slug}`;
   const jsonLd = [
@@ -119,71 +118,32 @@ export default async function ResourceDetailPage({ params }: { params: Promise<{
 
       <section className="mt-8">
         <h2 className="mb-3 text-lg font-semibold">Yields when harvested</h2>
-        {yields.length === 0 ? (
-          <p className="text-muted-foreground">No recorded yields.</p>
-        ) : (
-          <ul className="space-y-2 text-sm">
-            {yields.map((y, i) => {
-              const item = itemById.get(y.id);
-              const cargo = cargoById.get(y.id);
-              const isCargo = y.refType === "cargo";
-              const resolved = isCargo ? (cargo ?? item) : (item ?? cargo);
-              const asCargo = isCargo ? cargo !== undefined : item === undefined && cargo !== undefined;
-              return (
-                <li key={`${y.id}-${i}`} className="flex items-center gap-2">
-                  {resolved ? (
-                    <>
-                      <EntityIcon
-                        assetName={resolved.iconAssetName}
-                        name={resolved.name}
-                        rarity={resolved.rarity}
-                        size={24}
-                      />
-                      <Link
-                        href={asCargo ? `/cargo/${resolved.slug}` : `/items/${resolved.slug}`}
-                        className="font-medium hover:underline"
-                      >
-                        {resolved.name}
-                      </Link>
-                    </>
-                  ) : (
-                    <span className="text-muted-foreground">Item #{y.id}</span>
-                  )}
-                  <span className="font-mono text-muted-foreground">× {y.qty}</span>
-                </li>
-              );
-            })}
-          </ul>
-        )}
+        <DropsList entries={yields} itemById={itemById} cargoById={cargoById} emptyText="No recorded yields." />
       </section>
 
       <section className="mt-8">
         <h2 className="mb-3 text-lg font-semibold">Spawns in</h2>
-        {spawns.length === 0 ? (
-          <p className="text-muted-foreground">No known overworld spawns.</p>
-        ) : (
-          <ul className="space-y-2 text-sm">
-            {spawns.map((s) => (
-              <li key={s.regionId}>
-                <Link
-                  href={`/map?resources=${resource.id}&regions=${s.regionId}`}
-                  className="hover:underline"
-                >
-                  <span className="font-medium">
-                    {regionNames.get(s.regionId) ?? `Region ${s.regionId}`}
-                  </span>
-                  <span className="text-muted-foreground">
-                    {" "}
-                    — {s.count.toLocaleString()} spawn points
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
+        <SpawnRegionsList
+          spawnCounts={spawnCounts}
+          regions={regions}
+          hrefFor={(regionId) => `/map?resources=${resource.id}&regions=${regionId}`}
+          emptyText="No known overworld spawns."
+        />
       </section>
 
-      {/* Task 13: embedded "Where to find it" map goes here */}
+      {/* Embedded finder map, pre-tracking this resource. Only when there are
+          spawns — otherwise the "Spawns in" empty state above already covers it. */}
+      {Object.keys(spawnCounts).length > 0 && (
+        <section className="mt-8">
+          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-lg font-semibold">Where to find it</h2>
+            <Link href={`/map?resources=${resource.id}`} className="text-sm text-primary hover:underline">
+              Open full map →
+            </Link>
+          </div>
+          <ResourceMapEmbed kind="resource" id={resource.id} />
+        </section>
+      )}
     </main>
   );
 }

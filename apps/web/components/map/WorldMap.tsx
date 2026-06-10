@@ -1,10 +1,10 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { MapContainer, LayersControl, LayerGroup, CircleMarker, Marker, Rectangle, Polyline, ImageOverlay, Popup, Tooltip, useMap } from "react-leaflet";
+import { MapContainer, LayersControl, LayerGroup, CircleMarker, Marker, Rectangle, Polyline, ImageOverlay, Popup, Tooltip, useMap, useMapEvents } from "react-leaflet";
 import { CRS, Icon, divIcon } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { ClaimPoint, RegionRect, TerritoryCell, Watchtower, EmpireTerritory } from "@/lib/queries/map";
-import type { TerrainOverlay } from "@/app/map/page";
+import type { TerrainOverlay, RoadOverlay } from "@/app/map/page";
 import { MapFinderPanel, type FinderResource, type FinderCreature, type TrackedRef } from "./MapFinderPanel";
 import { ResourcePointsLayer, type TrackedPoints } from "./ResourcePointsLayer";
 import { trackColor, MAX_TRACKED, serializeTrackParams, type TrackState } from "@/lib/map/tracking";
@@ -80,22 +80,54 @@ function FlyToRegion({ region, worldBounds }: { region: RegionRect | null; world
   const map = useMap();
   const first = useRef(true);
   useEffect(() => {
-    if (first.current) { first.current = false; return; } // skip initial mount
+    if (first.current) {
+      first.current = false;
+      // Deep links (/map?regions=7) must LAND framed on the region — jump
+      // instantly rather than animating a flight from the world view. When no
+      // region is set, MapContainer's `bounds` already shows the world.
+      if (region) map.fitBounds([pt(region.x0, region.z0), pt(region.x1, region.z1)], { padding: [40, 40], maxZoom: 2, animate: false });
+      return;
+    }
     if (region) map.flyToBounds([pt(region.x0, region.z0), pt(region.x1, region.z1)], { padding: [40, 40], maxZoom: 2 });
     else map.flyToBounds(worldBounds);
   }, [region, map, worldBounds]);
   return null;
 }
 
-export function WorldMap({ claims, regions, territory, watchtowers, empires, terrain, resourceCatalog, creatureCatalog, initialTracked, initialRegionId, initialRoads }: {
-  claims: ClaimPoint[]; regions: RegionRect[]; territory: TerritoryCell[]; watchtowers: Watchtower[]; empires: EmpireTerritory[]; terrain: TerrainOverlay[];
+// Mirrors the LayersControl "Roads" checkbox back into React state. Leaflet
+// owns the checkbox DOM, so listen for the map-level overlay toggle events.
+function RoadsToggleSync({ onChange }: { onChange: (on: boolean) => void }) {
+  useMapEvents({
+    overlayadd: (e) => { if (e.name === "Roads") onChange(true); },
+    overlayremove: (e) => { if (e.name === "Roads") onChange(false); },
+  });
+  return null;
+}
+
+// Persisted roads preference — used when the URL doesn't say (?roads=1 wins).
+const ROADS_STORAGE_KEY = "bcc.map.roads";
+
+export function WorldMap({ claims, regions, territory, watchtowers, empires, terrain, roads, resourceCatalog, creatureCatalog, initialTracked, initialRegionId, initialRoads, compact }: {
+  claims: ClaimPoint[]; regions: RegionRect[]; territory: TerritoryCell[]; watchtowers: Watchtower[]; empires: EmpireTerritory[]; terrain: TerrainOverlay[]; roads: RoadOverlay[];
   resourceCatalog: FinderResource[]; creatureCatalog: FinderCreature[]; initialTracked?: TrackedRef[]; initialRegionId?: number | null; initialRoads?: boolean;
+  /** Detail-page embed mode: shorter map, no category browse/biome key, and NO URL mirroring. */
+  compact?: boolean;
 }) {
   const [selectedId, setSelectedId] = useState<number | null>(initialRegionId ?? null);
   const [selectedBiome, setSelectedBiome] = useState<number | null>(null);
-  // Roads overlay flag — the layer itself lands in Task 13 (which adds the
-  // setter); until then the flag only round-trips through the shareable URL.
-  const [roadsOn] = useState<boolean>(initialRoads ?? false);
+  // Roads overlay flag. Precedence: ?roads=1 in the URL wins; otherwise the
+  // last persisted choice; otherwise off. Lazy initializer — this component is
+  // client-only (ssr:false), but guard `window` anyway for safety.
+  const [roadsOn, setRoadsOn] = useState<boolean>(() => {
+    if (initialRoads) return true;
+    if (typeof window === "undefined") return false;
+    try { return window.localStorage.getItem(ROADS_STORAGE_KEY) === "1"; } catch { return false; }
+  });
+  // Checkbox clicks land here (via RoadsToggleSync) — persist the choice.
+  const handleRoadsToggle = useCallback((on: boolean) => {
+    setRoadsOn(on);
+    try { window.localStorage.setItem(ROADS_STORAGE_KEY, on ? "1" : "0"); } catch { /* private mode etc. — non-fatal */ }
+  }, []);
   const [biomeGrids, setBiomeGrids] = useState<Map<number, BiomeGrid> | null>(null);
 
   // ── Resource/creature tracking (finder panel → canvas dots) ──────────────
@@ -187,7 +219,9 @@ export function WorldMap({ claims, regions, territory, watchtowers, empires, ter
 
   // Mirror tracking state into the URL (shallow replaceState — no navigation,
   // no scroll) so the current view is shareable and compendium links round-trip.
+  // Detail-page embeds must NEVER rewrite their host page's URL — skip entirely.
   useEffect(() => {
+    if (compact) return;
     const state: TrackState = {
       resources: tracked.filter((t) => t.kind === "resource").map((t) => t.id),
       creatures: tracked.filter((t) => t.kind === "creature").map((t) => t.id),
@@ -199,7 +233,7 @@ export function WorldMap({ claims, regions, territory, watchtowers, empires, ter
     // Preserve Next's internal history state — replacing it with null breaks
     // App Router back-navigation (soft nav falls back to a full reload).
     window.history.replaceState(window.history.state, "", qs ? `/map?${qs}` : "/map");
-  }, [tracked, selectedId, roadsOn]);
+  }, [tracked, selectedId, roadsOn, compact]);
 
   // Lazy-load the per-chunk biome grids the first time a biome is highlighted.
   useEffect(() => {
@@ -256,14 +290,16 @@ export function WorldMap({ claims, regions, territory, watchtowers, empires, ter
         )}
       </div>
 
-      {/* Finder panel — search, category browse, tracking chips. Lives off the map. */}
+      {/* Finder panel — search, category browse, tracking chips. Lives off the map.
+          Compact embeds drop category browse and copy-link (their URL isn't synced). */}
       <MapFinderPanel
         resources={resourceCatalog}
         creatures={creatureCatalog}
         tracked={tracked}
         onToggle={toggle}
         onClear={clearAll}
-        showCopyLink={tracked.length > 0 || selectedId !== null}
+        showCategoryBrowse={!compact}
+        showCopyLink={!compact && (tracked.length > 0 || selectedId !== null)}
       />
       {tracked.length > 0 && (
         <p className="mb-2 text-xs text-muted-foreground">
@@ -279,10 +315,11 @@ export function WorldMap({ claims, regions, territory, watchtowers, empires, ter
         preferCanvas
         minZoom={-3}
         maxZoom={6}
-        className="isolate h-[70vh] min-h-[420px] rounded-lg"
+        className={compact ? "isolate h-[50vh] rounded-lg" : "isolate h-[70vh] min-h-[420px] rounded-lg"}
         style={{ background: "var(--card)" }}
       >
         <FlyToRegion region={selected} worldBounds={worldBounds} />
+        {roads.length > 0 && <RoadsToggleSync onChange={handleRoadsToggle} />}
 
         {/* Biome terrain base (per-region images) — always-on bottom layer.
             Dimmed when a biome is highlighted so the highlight stands out. */}
@@ -339,6 +376,17 @@ export function WorldMap({ claims, regions, territory, watchtowers, empires, ter
             </LayerGroup>
           </LayersControl.Overlay>
 
+          {/* Paved roads (per-region rasters) — above terrain/biome highlights (zIndex 6).
+              `checked` is reactive in react-leaflet 5, so URL/localStorage state drives the
+              checkbox; user clicks flow back via RoadsToggleSync. */}
+          {roads.length > 0 && (
+            <LayersControl.Overlay name="Roads" checked={roadsOn}>
+              <LayerGroup>
+                {roads.map((r) => <ImageOverlay key={`road-${r.region}`} url={r.url} bounds={r.bounds} zIndex={6} />)}
+              </LayerGroup>
+            </LayersControl.Overlay>
+          )}
+
           {/* Settlements (real player claims) — off by default. */}
           <LayersControl.Overlay name={`Settlements (${settlements.length.toLocaleString()})`}>
             <LayerGroup>
@@ -384,7 +432,9 @@ export function WorldMap({ claims, regions, territory, watchtowers, empires, ter
         </LayersControl>
       </MapContainer>
 
-      {/* Biome key — click a biome to highlight it on the map. */}
+      {/* Biome key — click a biome to highlight it on the map. Hidden in compact
+          embeds (they carry no terrain, so there is nothing to highlight). */}
+      {!compact && (
       <div className="mt-2.5">
         <div className="mb-1.5 flex flex-wrap items-center gap-2.5">
           <span className="text-sm font-semibold text-muted-foreground">Biome key</span>
@@ -422,6 +472,7 @@ export function WorldMap({ claims, regions, territory, watchtowers, empires, ter
           })}
         </div>
       </div>
+      )}
     </div>
   );
 }

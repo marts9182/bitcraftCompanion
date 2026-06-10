@@ -1,7 +1,7 @@
 "use client";
 import dynamic from "next/dynamic";
 import type { ClaimPoint, RegionRect, TerritoryCell, Watchtower, EmpireTerritory } from "@/lib/queries/map";
-import type { TerrainOverlay } from "@/app/map/page";
+import type { TerrainOverlay, RoadOverlay } from "@/app/map/page";
 import type { FinderResource, FinderCreature, TrackedRef } from "./MapFinderPanel";
 
 // Leaflet touches `window` at import time, so the map must never render on the
@@ -17,8 +17,10 @@ const WorldMap = dynamic(() => import("./WorldMap").then((m) => m.WorldMap), {
 });
 
 export function MapClient(props: {
-  claims: ClaimPoint[]; regions: RegionRect[]; territory: TerritoryCell[]; watchtowers: Watchtower[]; empires: EmpireTerritory[]; terrain: TerrainOverlay[];
+  claims: ClaimPoint[]; regions: RegionRect[]; territory: TerritoryCell[]; watchtowers: Watchtower[]; empires: EmpireTerritory[]; terrain: TerrainOverlay[]; roads: RoadOverlay[];
   resourceCatalog: FinderResource[]; creatureCatalog: FinderCreature[]; initialTracked?: TrackedRef[]; initialRegionId?: number | null; initialRoads?: boolean;
+  /** Detail-page embed mode: shorter map, no category browse/biome key, and NO URL mirroring. */
+  compact?: boolean;
 }) {
   return <WorldMap {...props} />;
 }

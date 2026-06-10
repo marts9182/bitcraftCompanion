@@ -15,7 +15,7 @@ const hasSpawns = (spawnCounts: Record<string, number>): boolean => Object.keys(
  * browse-by-category (our differentiator — bitjita only has name search), and
  * the color-coded tracking chips that drive ResourcePointsLayer.
  */
-export function MapFinderPanel({ resources, creatures, tracked, onToggle, onClear, showCopyLink }: {
+export function MapFinderPanel({ resources, creatures, tracked, onToggle, onClear, showCopyLink, showCategoryBrowse = true }: {
   resources: FinderResource[];
   creatures: FinderCreature[];
   tracked: TrackedRef[];
@@ -23,6 +23,8 @@ export function MapFinderPanel({ resources, creatures, tracked, onToggle, onClea
   onClear: () => void;
   /** WorldMap mirrors tracking/region state into the URL — show "copy link" when there's a view worth sharing. */
   showCopyLink?: boolean;
+  /** Compact detail-page embeds drop the category-browse select (search + chips stay). */
+  showCategoryBrowse?: boolean;
 }) {
   const [q, setQ] = useState("");
   const [openCategory, setOpenCategory] = useState<string | null>(null);
@@ -143,15 +145,17 @@ export function MapFinderPanel({ resources, creatures, tracked, onToggle, onClea
         </div>
 
         {/* Browse by category — the thing bitjita's map doesn't have. */}
-        <select
-          value={openCategory ?? ""}
-          onChange={(e) => setOpenCategory(e.target.value || null)}
-          className="h-9 rounded-md border border-border bg-background px-2 text-sm text-foreground"
-          aria-label="Browse resources by category"
-        >
-          <option value="">Browse category…</option>
-          {categories.map(([c, n]) => <option key={c} value={c}>{c} ({n})</option>)}
-        </select>
+        {showCategoryBrowse && (
+          <select
+            value={openCategory ?? ""}
+            onChange={(e) => setOpenCategory(e.target.value || null)}
+            className="h-9 rounded-md border border-border bg-background px-2 text-sm text-foreground"
+            aria-label="Browse resources by category"
+          >
+            <option value="">Browse category…</option>
+            {categories.map(([c, n]) => <option key={c} value={c}>{c} ({n})</option>)}
+          </select>
+        )}
 
         {tracked.length > 0 && (
           <button type="button" onClick={onClear} className="h-9 text-primary underline">Clear all</button>

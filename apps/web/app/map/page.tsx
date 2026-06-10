@@ -9,6 +9,7 @@ import { MapClient } from "@/components/map/MapClient";
 import type { TrackedRef } from "@/components/map/MapFinderPanel";
 
 export type TerrainOverlay = { region: number; url: string; bounds: [[number, number], [number, number]] };
+export type RoadOverlay = TerrainOverlay;
 
 // Read the per-region terrain manifest written by scripts/render-terrain.py.
 // Returns [] when the render hasn't been run yet, so the map still works.
@@ -25,6 +26,28 @@ async function loadTerrain(): Promise<TerrainOverlay[]> {
       region: m.region,
       url: m.url,
       bounds: [[m.minZ + TERRAIN_DZ, m.minX + TERRAIN_DX], [m.maxZ + TERRAIN_DZ, m.maxX + TERRAIN_DX]],
+    }));
+  } catch {
+    return [];
+  }
+}
+
+// Read the per-region roads manifest written by the worker's roads stage
+// (resource-snapshot.ts: {v:1, regions:[{region,url,minX,minZ,maxX,maxZ}]}).
+// Returns [] when the stage hasn't been run, so the map still works. Road
+// pixels come from the same raw small-hex→chunk decode as claims, which lands
+// one chunk west of the empire/terrain chunk grid — nudge east to match
+// (same calibration as CLAIM_DX in lib/queries/map.ts and TERRAIN_DX above).
+const ROADS_DX = 1;
+const ROADS_DZ = 0;
+async function loadRoads(): Promise<RoadOverlay[]> {
+  try {
+    const raw = await readFile(path.join(process.cwd(), "public/map/roads/roads.json"), "utf8");
+    const manifest = JSON.parse(raw) as { regions?: Array<{ region: number; url: string; minX: number; minZ: number; maxX: number; maxZ: number }> };
+    return (manifest.regions ?? []).map((m) => ({
+      region: m.region,
+      url: m.url,
+      bounds: [[m.minZ + ROADS_DZ, m.minX + ROADS_DX], [m.maxZ + ROADS_DZ, m.maxX + ROADS_DX]],
     }));
   } catch {
     return [];
@@ -52,8 +75,8 @@ export default async function MapPage({ searchParams }: { searchParams: Promise<
   const initialRegionId = track.regions[0] ?? null;
   const initialRoads = track.roads;
 
-  const [claims, regions, territory, watchtowers, empires, terrain, resourceCatalog, creatureCatalog] = await Promise.all([
-    getMapClaims(), getMapRegions(), getTerritoryCells(), getWatchtowers(), getEmpireTerritories(), loadTerrain(),
+  const [claims, regions, territory, watchtowers, empires, terrain, roads, resourceCatalog, creatureCatalog] = await Promise.all([
+    getMapClaims(), getMapRegions(), getTerritoryCells(), getWatchtowers(), getEmpireTerritories(), loadTerrain(), loadRoads(),
     getResourceMapCatalog(), getCreatureMapCatalog(),
   ]);
   const settlements = claims.filter((c) => c.kind === "settlement").length;
@@ -65,7 +88,7 @@ export default async function MapPage({ searchParams }: { searchParams: Promise<
         <ul className="sr-only">{regions.map((r) => <li key={r.id}>{r.name ?? `Region ${r.id}`}</li>)}</ul>
       </div>
       <div className="mx-auto mt-4 max-w-6xl px-4 sm:px-6 pb-12">
-        <MapClient claims={claims} regions={regions} territory={territory} watchtowers={watchtowers} empires={empires} terrain={terrain} resourceCatalog={resourceCatalog} creatureCatalog={creatureCatalog} initialTracked={initialTracked} initialRegionId={initialRegionId} initialRoads={initialRoads} />
+        <MapClient claims={claims} regions={regions} territory={territory} watchtowers={watchtowers} empires={empires} terrain={terrain} roads={roads} resourceCatalog={resourceCatalog} creatureCatalog={creatureCatalog} initialTracked={initialTracked} initialRegionId={initialRegionId} initialRoads={initialRoads} />
       </div>
     </main>
   );

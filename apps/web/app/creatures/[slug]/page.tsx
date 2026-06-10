@@ -4,6 +4,9 @@ import Link from "next/link";
 import { RarityBadge } from "@/components/compendium/RarityBadge";
 import { TierBadge } from "@/components/compendium/TierBadge";
 import { EntityIcon } from "@/components/compendium/EntityIcon";
+import { DropsList, type DropEntry } from "@/components/compendium/DropsList";
+import { SpawnRegionsList } from "@/components/compendium/SpawnRegionsList";
+import { ResourceMapEmbed } from "@/components/map/ResourceMapEmbed";
 import { damageLabel } from "@/components/compendium/CreaturesTable";
 import { getCreatureBySlug, listAllCreatureSlugs } from "@/lib/queries/creatures";
 import { getItemsByIds } from "@/lib/queries/items";
@@ -15,21 +18,13 @@ import { SITE_URL } from "@/lib/seo";
 export const revalidate = 86400;
 export const dynamicParams = true;
 
-/** One parsed loot drop. `isCargo` comes from the stack's type tag (0 = item, 1 = cargo). */
-interface LootDrop {
-  id: number;
-  qty: number;
-  isCargo: boolean;
-  chance?: number;
-}
-
 /**
- * Parse the positional lootStacks arrays. Live shape per entry:
- *   [[variantTag, [id, qty, [typeTag, …], …]], probability]
+ * Parse the positional lootStacks arrays into DropsList entries. Live shape:
+ *   [[variantTag, [id, qty, [typeTag(0=item,1=cargo), …], …]], probability]
  * Malformed entries are skipped rather than crashing the page.
  */
-function parseLootStacks(lootStacks: unknown[]): LootDrop[] {
-  const drops: LootDrop[] = [];
+function parseLootStacks(lootStacks: unknown[]): DropEntry[] {
+  const drops: DropEntry[] = [];
   for (const entry of lootStacks) {
     if (!Array.isArray(entry) || !Array.isArray(entry[0])) continue;
     const payload = entry[0][1];
@@ -39,7 +34,7 @@ function parseLootStacks(lootStacks: unknown[]): LootDrop[] {
     drops.push({
       id,
       qty: typeof qty === "number" && Number.isFinite(qty) ? qty : 1,
-      isCargo: Array.isArray(typeTagged) && typeTagged[0] === 1,
+      refType: Array.isArray(typeTagged) && typeTagged[0] === 1 ? "cargo" : "item",
       chance: typeof entry[1] === "number" ? entry[1] : undefined,
     });
   }
@@ -52,10 +47,6 @@ function detectionCopy(detect: number | null, aggro: number | null): string {
   if (detect != null) return `Spots you from ${detect} tiles away.`;
   if (aggro != null) return `Attacks within ${aggro} tiles.`;
   return "No detection data.";
-}
-
-function chanceLabel(chance: number): string {
-  return `${(chance * 100).toLocaleString("en-US", { maximumFractionDigits: 2 })}% chance`;
 }
 
 export async function generateStaticParams() {
@@ -100,10 +91,6 @@ export default async function CreatureDetailPage({ params }: { params: Promise<{
   ]);
   const itemById = new Map(dropItems.map((i) => [i.id, i]));
   const cargoById = new Map(dropCargo.map((c) => [c.id, c]));
-  const regionNames = new Map(regions.map((r) => [r.id, r.name]));
-  const spawns = Object.entries(spawnCounts)
-    .map(([regionId, count]) => ({ regionId: Number(regionId), count }))
-    .sort((a, b) => b.count - a.count);
 
   const url = `${SITE_URL}/creatures/${creature.slug}`;
   const jsonLd = [
@@ -188,73 +175,32 @@ export default async function CreatureDetailPage({ params }: { params: Promise<{
         <h2 className="mb-3 text-lg font-semibold">
           {creature.huntable ? "Drops when hunted" : "Drops when slain"}
         </h2>
-        {drops.length === 0 ? (
-          <p className="text-muted-foreground">No recorded drops.</p>
-        ) : (
-          <ul className="space-y-2 text-sm">
-            {drops.map((d, i) => {
-              const item = itemById.get(d.id);
-              const cargo = cargoById.get(d.id);
-              const resolved = d.isCargo ? (cargo ?? item) : (item ?? cargo);
-              const asCargo = d.isCargo ? cargo !== undefined : item === undefined && cargo !== undefined;
-              return (
-                <li key={`${d.id}-${i}`} className="flex items-center gap-2">
-                  {resolved ? (
-                    <>
-                      <EntityIcon
-                        assetName={resolved.iconAssetName}
-                        name={resolved.name}
-                        rarity={resolved.rarity}
-                        size={24}
-                      />
-                      <Link
-                        href={asCargo ? `/cargo/${resolved.slug}` : `/items/${resolved.slug}`}
-                        className="font-medium hover:underline"
-                      >
-                        {resolved.name}
-                      </Link>
-                    </>
-                  ) : (
-                    <span className="text-muted-foreground">Item #{d.id}</span>
-                  )}
-                  <span className="font-mono text-muted-foreground">× {d.qty}</span>
-                  {d.chance != null && d.chance < 1 && (
-                    <span className="text-xs text-muted-foreground">({chanceLabel(d.chance)})</span>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        )}
+        <DropsList entries={drops} itemById={itemById} cargoById={cargoById} emptyText="No recorded drops." />
       </section>
 
       <section className="mt-8">
         <h2 className="mb-3 text-lg font-semibold">Spawns in</h2>
-        {spawns.length === 0 ? (
-          <p className="text-muted-foreground">No known overworld spawns.</p>
-        ) : (
-          <ul className="space-y-2 text-sm">
-            {spawns.map((s) => (
-              <li key={s.regionId}>
-                <Link
-                  href={`/map?creatures=${creature.enemyType}&regions=${s.regionId}`}
-                  className="hover:underline"
-                >
-                  <span className="font-medium">
-                    {regionNames.get(s.regionId) ?? `Region ${s.regionId}`}
-                  </span>
-                  <span className="text-muted-foreground">
-                    {" "}
-                    — {s.count.toLocaleString()} spawn points
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
+        <SpawnRegionsList
+          spawnCounts={spawnCounts}
+          regions={regions}
+          hrefFor={(regionId) => `/map?creatures=${creature.enemyType}&regions=${regionId}`}
+          emptyText="No known overworld spawns."
+        />
       </section>
 
-      {/* Task 13: embedded "Where to find it" map goes here */}
+      {/* Embedded finder map, pre-tracking this creature. Only when there are
+          spawns — otherwise the "Spawns in" empty state above already covers it. */}
+      {Object.keys(spawnCounts).length > 0 && (
+        <section className="mt-8">
+          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-lg font-semibold">Where to find it</h2>
+            <Link href={`/map?creatures=${creature.enemyType}`} className="text-sm text-primary hover:underline">
+              Open full map →
+            </Link>
+          </div>
+          <ResourceMapEmbed kind="creature" id={creature.enemyType} />
+        </section>
+      )}
     </main>
   );
 }
