@@ -48,10 +48,13 @@ Repo → Settings → Secrets and variables → Actions → New repository secre
 - `SPACETIME_TOKEN` (the dev token — must work headless)
 - `REVALIDATE_SECRET` (the SAME value as Netlify step 3)
 
-`.github/workflows/snapshot.yml` runs `leaderboard-snapshot` every 30 min and after each run POSTs `https://bitcraftcompanion.com/api/revalidate` so the live pages refresh.
+`.github/workflows/snapshot.yml` runs `leaderboard-snapshot` and after each run POSTs `https://bitcraftcompanion.com/api/revalidate` so the live pages refresh. **The 30-min schedule is currently commented out** (it was failing before secrets existed) — manual runs still work; you re-enable the schedule in step 7.
 
 ## 6. First snapshot (verify end to end)
 Repo → Actions → **snapshot** → Run workflow (`workflow_dispatch`). Watch the log for `[lb-snapshot] OK …`, `pruned price/supply history older than 90 days`, and a successful revalidate. Then load `https://bitcraftcompanion.com` and confirm fresh data.
+
+## 7. Re-enable the 30-min schedule
+Once a manual run succeeds, edit `.github/workflows/snapshot.yml`: uncomment the `schedule:` / `- cron: "*/30 * * * *"` lines, commit, and push. The worker then runs automatically every 30 minutes.
 
 ## Maintenance notes
 - **Snapshot cadence:** `*/30 * * * *` in `snapshot.yml`. Faster (e.g. 15 min) risks exceeding Neon's free compute budget (~190 h/mo, shared with web traffic) — don't, unless on a paid Neon plan.
