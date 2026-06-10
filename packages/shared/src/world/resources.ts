@@ -1,27 +1,10 @@
 // Mappers for the resource/creature finder (Phase A). Live row shapes verified
 // 2026-06-10 against bitcraft-live-7 — see docs/superpowers/plans/2026-06-10-resource-finder-map.md.
+// Slugs: use slugify/makeUniqueSlug from ingest (catalog consumers call makeUniqueSlug).
 
-export const RARITY_NAMES = ["Default", "Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythic"] as const;
+import { decodeRarity, toInt } from "../ingest/decode";
 
-/** Tagged enums arrive as [variantIndex, {}] over the v1.json subprotocol. */
-export function decodeRarity(v: unknown): string {
-  if (Array.isArray(v) && typeof v[0] === "number") return RARITY_NAMES[v[0]] ?? "Default";
-  return "Default";
-}
-
-export function slugifyName(name: string): string {
-  return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-}
-
-/** Suffix repeated slugs -2, -3, … preserving input order (live data has trailing-space dupes). */
-export function dedupeSlugs(slugs: string[]): string[] {
-  const seen = new Map<string, number>();
-  return slugs.map((s) => {
-    const n = (seen.get(s) ?? 0) + 1;
-    seen.set(s, n);
-    return n === 1 ? s : `${s}-${n}`;
-  });
-}
+const str = (v: unknown): string => (typeof v === "string" ? v : v == null ? "" : String(v));
 
 export interface ResourceCatalogRow {
   id: number; name: string; description: string; category: string | null;
@@ -35,20 +18,20 @@ export function mapResourceDescRow(r: Record<string, unknown>): ResourceCatalogR
   const yields = Array.isArray(r.on_destroy_yield)
     ? (r.on_destroy_yield as unknown[][])
         .filter((s) => Array.isArray(s) && typeof s[0] === "number")
-        .map((s) => ({ itemId: s[0] as number, qty: (s[1] as number) ?? 1 }))
+        .map((s) => ({ itemId: toInt(s[0])!, qty: toInt(s[1]) ?? 1 }))
     : [];
   return {
-    id: r.id as number,
-    name: String(r.name ?? "").trim(),
-    description: String(r.description ?? ""),
-    category: (r.tag as string) || null,
-    tier: (r.tier as number) ?? null,
+    id: toInt(r.id)!,
+    name: str(r.name).trim(),
+    description: str(r.description),
+    category: str(r.tag) || null,
+    tier: toInt(r.tier),
     rarity: decodeRarity(r.rarity),
-    maxHealth: (r.max_health as number) ?? null,
-    respawnSeconds: (r.scheduled_respawn_time as number) || null,
+    maxHealth: toInt(r.max_health),
+    respawnSeconds: toInt(r.scheduled_respawn_time) || null,
     notRespawning: Boolean(r.not_respawning),
     compendiumEntry: Boolean(r.compendium_entry),
-    iconAssetName: (r.icon_asset_name as string) || null,
+    iconAssetName: str(r.icon_asset_name) || null,
     yields,
     raw: r,
   };
@@ -67,26 +50,26 @@ export interface CreatureCatalogRow {
 
 export function mapEnemyDescRow(r: Record<string, unknown>): CreatureCatalogRow {
   return {
-    enemyType: r.enemy_type as number,
-    name: String(r.name ?? "").trim(),
-    description: String(r.description ?? ""),
-    tier: (r.tier as number) ?? null,
+    enemyType: toInt(r.enemy_type)!,
+    name: str(r.name).trim(),
+    description: str(r.description),
+    tier: toInt(r.tier),
     rarity: decodeRarity(r.rarity),
     huntable: Boolean(r.huntable),
-    maxHealth: (r.max_health as number) ?? null,
-    minDamage: (r.min_damage as number) ?? null,
-    maxDamage: (r.max_damage as number) ?? null,
-    armor: (r.armor as number) ?? null,
-    accuracy: (r.accuracy as number) ?? null,
-    evasion: (r.evasion as number) ?? null,
-    attackLevel: (r.attack_level as number) ?? null,
-    defenseLevel: (r.defense_level as number) ?? null,
-    healthRegen: (r.health_regen_quantity as number) ?? null,
-    dayDetectRange: (r.daytime_detect_range as number) ?? null,
-    dayAggroRange: (r.daytime_aggro_range as number) ?? null,
-    nightDetectRange: (r.nighttime_detect_range as number) ?? null,
-    nightAggroRange: (r.nighttime_aggro_range as number) ?? null,
-    iconAssetName: (r.icon_address as string) || null,
+    maxHealth: toInt(r.max_health),
+    minDamage: toInt(r.min_damage),
+    maxDamage: toInt(r.max_damage),
+    armor: toInt(r.armor),
+    accuracy: toInt(r.accuracy),
+    evasion: toInt(r.evasion),
+    attackLevel: toInt(r.attack_level),
+    defenseLevel: toInt(r.defense_level),
+    healthRegen: toInt(r.health_regen_quantity),
+    dayDetectRange: toInt(r.daytime_detect_range),
+    dayAggroRange: toInt(r.daytime_aggro_range),
+    nightDetectRange: toInt(r.nighttime_detect_range),
+    nightAggroRange: toInt(r.nighttime_aggro_range),
+    iconAssetName: str(r.icon_address) || null,
     lootStacks: r.extracted_item_stacks ?? [],
     raw: r,
   };

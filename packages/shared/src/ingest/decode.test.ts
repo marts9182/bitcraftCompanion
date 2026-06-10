@@ -15,6 +15,11 @@ describe("decodeRarity", () => {
   it("decodes a tagged object with numeric tag {\"3\": ...}", () => {
     expect(decodeRarity({ "3": [] })).toBe("Rare");
   });
+  it("decodes a wire-format tagged enum [variantIndex, {}]", () => {
+    expect(decodeRarity([1, {}])).toBe("Common");
+    expect(decodeRarity([6, {}])).toBe("Mythic");
+    expect(decodeRarity([99, {}])).toBe("Default");
+  });
   it("falls back to Default on unknown", () => {
     expect(decodeRarity(null)).toBe("Default");
   });
@@ -32,6 +37,10 @@ describe("slugify", () => {
   it("lowercases and hyphenates", () => {
     expect(slugify("Iron Ingot")).toBe("iron-ingot");
     expect(slugify("Tier 3 Axe!")).toBe("tier-3-axe");
+  });
+  it("strips dashes produced by leading/trailing whitespace", () => {
+    expect(slugify("Ancient Door   ")).toBe("ancient-door");
+    expect(slugify("  Ancient Door")).toBe("ancient-door");
   });
   it("strips accents from accented letters", () => {
     expect(slugify("Crème Brûlée")).toBe("creme-brulee");

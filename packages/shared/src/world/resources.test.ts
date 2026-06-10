@@ -1,27 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  RARITY_NAMES, decodeRarity, slugifyName, dedupeSlugs,
-  mapResourceDescRow, mapEnemyDescRow, packPositions, packMobilePositions,
-} from "./resources";
-
-describe("decodeRarity", () => {
-  it("maps tagged-enum variant index to name", () => {
-    expect(decodeRarity([1, {}])).toBe("Common");
-    expect(decodeRarity([6, {}])).toBe("Mythic");
-    expect(decodeRarity(undefined)).toBe("Default");
-  });
-});
-
-describe("slug pipeline", () => {
-  it("slugifies trimmed names", () => {
-    expect(slugifyName("Ancient Oak Tree")).toBe("ancient-oak-tree");
-    expect(slugifyName("Ancient Door   ")).toBe("ancient-door");
-  });
-  it("dedupes collisions with -2/-3 suffixes in input order", () => {
-    expect(dedupeSlugs(["ancient-door", "ancient-door", "ancient-door"]))
-      .toEqual(["ancient-door", "ancient-door-2", "ancient-door-3"]);
-  });
-});
+import { mapResourceDescRow, mapEnemyDescRow, packPositions, packMobilePositions } from "./resources";
 
 describe("mapResourceDescRow", () => {
   it("maps a live-shaped row to a catalog row", () => {
@@ -80,6 +58,7 @@ describe("packMobilePositions", () => {
       { entity_id: "e1", location_x: 10269000, location_z: 12504001, dimension: 1 },
       { entity_id: "e2", location_x: 1000, location_z: 2000, dimension: 5 }, // dropped
       { entity_id: "e3", location_x: 96000, location_z: 192000, dimension: 1 },
+      { entity_id: "e9", location_x: 5000, location_z: 7000, dimension: 1 }, // not in map — dropped
     ];
     expect(packMobilePositions(rows, enemyTypeByEntity)).toEqual({
       "18": [10269, 12504],

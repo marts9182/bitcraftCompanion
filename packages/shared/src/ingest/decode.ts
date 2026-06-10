@@ -3,6 +3,9 @@ export type Rarity = (typeof RARITIES)[number];
 
 /** Decode a SpacetimeDB rarity value (index, name, or tagged sum) to a Rarity. */
 export function decodeRarity(value: unknown): Rarity {
+  // Wire-format tagged enums arrive as [variantIndex, {}] over the v1.json subprotocol.
+  // Must precede the object branch: arrays are objects, and Object.keys([1,{}])[0] is "0".
+  if (Array.isArray(value) && typeof value[0] === "number") return RARITIES[value[0]] ?? "Default";
   if (typeof value === "number" && RARITIES[value]) return RARITIES[value];
   if (typeof value === "string" && (RARITIES as readonly string[]).includes(value)) return value as Rarity;
   if (value && typeof value === "object") {
