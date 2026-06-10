@@ -122,6 +122,7 @@ export const resources = pgTable(
     slugIdx: uniqueIndex("resources_slug_idx").on(t.slug),
     categoryIdx: index("resources_category_idx").on(t.category),
     tierIdx: index("resources_tier_idx").on(t.tier),
+    compendiumIdx: index("resources_compendium_idx").on(t.compendiumEntry),
   }),
 );
 
