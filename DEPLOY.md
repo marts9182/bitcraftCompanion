@@ -1,58 +1,61 @@
 # Deploy / Go-Live Runbook (free tier)
 
-BitCraft Companion runs at **$0**: web on **Vercel Hobby**, DB on **Neon free**, data worker on **GitHub Actions**, domain `bitcraftcompanion.com` on **Cloudflare**. Do these once, in order.
+BitCraft Companion runs at **$0**: web on **Netlify (free Starter)**, DB on **Neon free**, data worker on **GitHub Actions**, domain `bitcraftcompanion.com` on **Cloudflare**. Do these once, in order.
 
-## 0. Pre-flight: secret-history scan (before going public)
-Going public exposes ALL git history. Confirm no secret was ever committed.
+> Host note: we chose Netlify over Vercel because Netlify runs on Node, so the app's `postgres-js` → Neon stack works with zero code changes. (Vercel's free signup forced a paid team + its CLI was crashing.) The repo's `apps/web/netlify.toml` is already configured for the pnpm monorepo.
+
+## 0. Pre-flight: secret-history scan (already done / re-verify)
+Going public exposes ALL git history. Confirm no secret was ever committed:
 ```bash
 git log --all --full-history -- .env.local "**/.env.local"   # must print nothing
 ```
-Also let the existing `secrets.yml` (gitleaks) workflow run clean. If anything is found, scrub it (e.g. `git filter-repo`) or stay private (then change the snapshot cron to `0 */3 * * *` to fit the 2,000 free Actions min/month).
+`.env.local` is gitignored and was never committed; the `secrets.yml` (gitleaks) workflow gives ongoing coverage.
 
-## 1. Make the repo public
-GitHub → repo → Settings → General → Danger Zone → Change visibility → Public. (Unlocks unlimited free Actions for the 30-min snapshot.)
+## 1. Repo is public + pushed
+Already done: repo is public, `main` is pushed to `origin`. (Public unlocks unlimited free GitHub Actions for the worker.)
 
-## 2. Push the code
-```bash
-git push origin main
-```
-
-## 3. Database — Neon (already live)
+## 2. Database — Neon (already live)
 The Neon database is already provisioned and populated (~325 MB). Copy its pooled connection string for the env vars below. The worker's 90-day history pruning keeps it under the free 0.5 GB tier.
 
-## 4. Web app — Vercel Hobby
-1. Vercel → Add New Project → import `marts9182/bitcraftCompanion`.
-2. **Root Directory = `apps/web`** (Settings → General). Framework auto-detects Next.js; install runs from the repo root (pnpm workspace).
-3. Environment Variables (Production):
+## 3. Web app — Netlify (free)
+1. Go to **app.netlify.com** → sign up / log in **with GitHub** (no credit card; the free "Starter" tier is default — there's no team/Pro wall).
+2. **Add new site → Import an existing project → GitHub** → authorize if asked → pick **`marts9182/bitcraftCompanion`**.
+3. On the configure screen (Netlify detects the monorepo + Next.js):
+   - **Base directory:** leave **blank / repo root** (so pnpm installs the whole workspace).
+   - **Package directory** (a.k.a. the site's directory): **`apps/web`**.
+   - Build command + publish are read from `apps/web/netlify.toml` (`pnpm build` → `.next`); the **Next.js plugin** auto-installs. Don't override them.
+4. **Environment variables** → add these 4 (Site configuration → Environment variables, or during import under "Add environment variables"):
    - `DATABASE_URL` = the Neon connection string
    - `NEXT_PUBLIC_SITE_URL` = `https://bitcraftcompanion.com`
    - `NEXT_PUBLIC_ICON_BASE_URL` = `/icons`
-   - `REVALIDATE_SECRET` = a long random string (reuse it in step 6)
-4. Deploy. The SSG build takes ~7 min (within Hobby's 45-min limit).
+   - `REVALIDATE_SECRET` = a long random string (reuse it in step 5)
+5. **Deploy site.** First build takes ~7–10 min (it pre-renders ~21k pages). When done, open the temporary `*.netlify.app` URL and confirm the site loads.
+   - If the build fails, copy the error and we'll fix it (most likely a base/package-directory tweak).
 
-## 5. Domain — Cloudflare → Vercel
-1. Vercel project → Settings → Domains → add `bitcraftcompanion.com` and `www.bitcraftcompanion.com`; note the records Vercel shows.
-2. Cloudflare → DNS for the zone:
-   - `A` `@` → `76.76.21.21` (or the apex value Vercel shows)
-   - `CNAME` `www` → `cname.vercel-dns.com`
-   - Set both to **DNS only (grey cloud)** so Vercel issues/serves TLS without proxy conflicts.
-3. Wait for Vercel to verify + issue the certificate.
+## 4. Domain — Cloudflare → Netlify
+1. Netlify site → **Domain management → Add a domain** → `bitcraftcompanion.com`. Netlify shows the DNS target.
+2. In **Cloudflare DNS** for the zone (set both **DNS only / grey cloud** so Netlify issues TLS):
+   - `A` `@` → **`75.2.60.5`** (Netlify's load balancer)
+   - `CNAME` `www` → **`<your-site-name>.netlify.app`** (the name Netlify assigned)
+   - (Delete/replace any old apex/www records first.)
+3. Back in Netlify, wait for it to verify the domain and provision the Let's Encrypt certificate.
 
-## 6. Data worker — GitHub Actions secrets
+## 5. Data worker — GitHub Actions secrets
 Repo → Settings → Secrets and variables → Actions → New repository secret, add:
 - `DATABASE_URL` (same Neon string)
 - `SPACETIME_URI` (e.g. `wss://bitcraft-early-access.spacetimedb.com`)
 - `SPACETIME_MODULE` (e.g. `bitcraft-live-1`)
 - `SPACETIME_TOKEN` (the dev token — must work headless)
-- `REVALIDATE_SECRET` (the SAME value as Vercel step 4)
+- `REVALIDATE_SECRET` (the SAME value as Netlify step 3)
 
-`.github/workflows/snapshot.yml` runs `leaderboard-snapshot` every 30 min and after each run POSTs `/api/revalidate` so the live pages refresh.
+`.github/workflows/snapshot.yml` runs `leaderboard-snapshot` every 30 min and after each run POSTs `https://bitcraftcompanion.com/api/revalidate` so the live pages refresh.
 
-## 7. First snapshot (verify end to end)
+## 6. First snapshot (verify end to end)
 Repo → Actions → **snapshot** → Run workflow (`workflow_dispatch`). Watch the log for `[lb-snapshot] OK …`, `pruned price/supply history older than 90 days`, and a successful revalidate. Then load `https://bitcraftcompanion.com` and confirm fresh data.
 
 ## Maintenance notes
 - **Snapshot cadence:** `*/30 * * * *` in `snapshot.yml`. Faster (e.g. 15 min) risks exceeding Neon's free compute budget (~190 h/mo, shared with web traffic) — don't, unless on a paid Neon plan.
+- **Netlify free build minutes:** 300/month. The ~7-min build is fine for occasional code pushes; if you redeploy a lot, watch the usage.
 - **SpacetimeDB token:** if snapshots start failing with auth errors, the token lapsed — rotate the `SPACETIME_TOKEN` secret.
 - **GitHub schedules** auto-disable after 60 days of no repo activity; any commit re-arms them.
 - **DB size:** pruning bounds the history tables at 90 days; if Neon nears 0.5 GB, lower the interval in `leaderboard-snapshot.ts` or upgrade Neon.

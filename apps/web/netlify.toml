@@ -1,0 +1,11 @@
+# Netlify config for the web app (pnpm monorepo).
+# In the Netlify UI: Base directory = repo root (default) so pnpm installs the
+# whole workspace and resolves @bcc/shared; Package directory = apps/web (this dir).
+# The @netlify/plugin-nextjs plugin handles Next.js App Router SSR/ISR + the
+# /api/revalidate route handler.
+[build]
+  command = "pnpm build"
+  publish = ".next"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
