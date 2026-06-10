@@ -99,7 +99,8 @@ export function WorldMap({ claims, regions, territory, watchtowers, empires, ter
   const [tracked, setTracked] = useState<TrackedRef[]>(initialTracked ?? []);
   // Loaded spawn positions, keyed `{kind}:{id}:r{region}` (flat small-hex [x,z,…]).
   const [pointsByKey, setPointsByKey] = useState<Map<string, number[]>>(new Map());
-  // Keys already requested (in flight, loaded, or 404'd) — never refetched this mount.
+  // Keys already requested (in flight, loaded, or 404'd). 404s stay burned for
+  // the mount; network failures are evicted so a later effect run retries them.
   const requestedKeysRef = useRef<Set<string>>(new Set());
   // One enemy file per region holds ALL creature types — cache the whole-file
   // promise so N tracked creatures in a region cost one fetch, not N.
@@ -122,8 +123,9 @@ export function WorldMap({ claims, regions, territory, watchtowers, empires, ter
     return selectedId !== null ? ids.filter((id) => id === selectedId) : ids;
   }, [resourceById, creatureByType, regionIdSet, selectedId]);
 
-  // Lazily fetch position files for tracked refs. Errors are swallowed:
-  // a 404 just means no spawn data for that id/region.
+  // Lazily fetch position files for tracked refs. A 404 just means no spawn
+  // data for that id/region (key stays burned); a REJECTION is transient
+  // (network), so we evict the key/file-promise and a later effect run retries.
   useEffect(() => {
     for (const t of tracked) {
       for (const region of regionsFor(t)) {
@@ -135,17 +137,20 @@ export function WorldMap({ claims, regions, territory, watchtowers, empires, ter
           fetch(`${DATA_BASE}/resources/r${region}/${t.id}.json`)
             .then((r) => (r.ok ? (r.json() as Promise<{ xz?: number[] }>) : null))
             .then((j) => { if (j) store(j.xz ?? []); })
-            .catch(() => {});
+            .catch(() => { requestedKeysRef.current.delete(key); });
         } else {
           let file = enemyFilesRef.current.get(region);
           if (!file) {
             file = fetch(`/map/enemies/r${region}.json`)
               .then((r) => (r.ok ? (r.json() as Promise<{ types?: Record<string, number[]> }>) : null))
-              .then((j) => j?.types ?? {})
-              .catch(() => ({}) as Record<string, number[]>);
+              .then((j) => j?.types ?? {});
+            // Rejected file promise must not stay cached, or the region is burned.
+            file.catch(() => { enemyFilesRef.current.delete(region); });
             enemyFilesRef.current.set(region, file);
           }
-          file.then((types) => store(types[String(t.id)] ?? []));
+          file
+            .then((types) => store(types[String(t.id)] ?? []))
+            .catch(() => { requestedKeysRef.current.delete(key); });
         }
       }
     }
@@ -242,7 +247,7 @@ export function WorldMap({ claims, regions, territory, watchtowers, empires, ter
       />
       {tracked.length > 0 && (
         <p className="mb-2 text-xs text-muted-foreground">
-          Showing {shownPoints.toLocaleString()} spawn points{selectedId !== null ? " in the focused region" : ""}.
+          {shownPoints.toLocaleString()} spawn points tracked{selectedId !== null ? " in the focused region" : ""}.
         </p>
       )}
 

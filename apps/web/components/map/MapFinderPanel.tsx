@@ -66,7 +66,14 @@ export function MapFinderPanel({ resources, creatures, tracked, onToggle, onClea
   return (
     <div className="mb-2 rounded-lg border border-border bg-card p-3 text-sm">
       <div className="flex flex-wrap items-start gap-2">
-        <div className="relative w-full sm:w-80">
+        {/* onBlur (focusout) closes the dropdown when focus leaves the wrapper.
+            Result buttons preventDefault on mousedown so the input never blurs
+            mid-click — Safari doesn't focus buttons on click (relatedTarget would
+            be null), which would unmount the row before its click could fire. */}
+        <div
+          className="relative w-full sm:w-80"
+          onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setQ(""); }}
+        >
           <input
             ref={inputRef}
             value={q}
@@ -79,17 +86,23 @@ export function MapFinderPanel({ resources, creatures, tracked, onToggle, onClea
           {(results.res.length > 0 || results.cre.length > 0) && (
             <ul className="absolute z-[1200] mt-1 max-h-72 w-full overflow-auto rounded-md border border-border bg-card shadow-lg">
               {results.res.map((r) => {
-                const disabled = atCap && !isTracked("resource", r.id);
+                const on = isTracked("resource", r.id);
+                const disabled = atCap && !on;
                 return (
                   <li key={`r${r.id}`}>
                     <button
                       type="button"
                       disabled={disabled}
                       title={disabled ? capTitle : undefined}
+                      aria-pressed={on}
                       className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left hover:bg-background disabled:cursor-not-allowed disabled:opacity-50"
+                      onMouseDown={(e) => e.preventDefault()}
                       onClick={() => pick({ kind: "resource", id: r.id })}
                     >
-                      <span>{r.name}</span>
+                      <span className="flex items-center gap-1.5">
+                        {on && <span aria-hidden className="inline-block h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: trackColor(trackedIndex("resource", r.id)) }} />}
+                        {r.name}
+                      </span>
                       <span className="shrink-0 text-xs text-muted-foreground">
                         {[r.category, r.tier !== null ? `T${r.tier}` : null].filter(Boolean).join(" · ") || "Resource"}
                       </span>
@@ -98,17 +111,23 @@ export function MapFinderPanel({ resources, creatures, tracked, onToggle, onClea
                 );
               })}
               {results.cre.map((c) => {
-                const disabled = atCap && !isTracked("creature", c.enemyType);
+                const on = isTracked("creature", c.enemyType);
+                const disabled = atCap && !on;
                 return (
                   <li key={`c${c.enemyType}`}>
                     <button
                       type="button"
                       disabled={disabled}
                       title={disabled ? capTitle : undefined}
+                      aria-pressed={on}
                       className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left hover:bg-background disabled:cursor-not-allowed disabled:opacity-50"
+                      onMouseDown={(e) => e.preventDefault()}
                       onClick={() => pick({ kind: "creature", id: c.enemyType })}
                     >
-                      <span>{c.name}</span>
+                      <span className="flex items-center gap-1.5">
+                        {on && <span aria-hidden className="inline-block h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: trackColor(trackedIndex("creature", c.enemyType)) }} />}
+                        {c.name}
+                      </span>
                       <span className="shrink-0 text-xs text-muted-foreground">
                         {c.tier !== null ? `Creature · T${c.tier}` : "Creature"}
                       </span>
