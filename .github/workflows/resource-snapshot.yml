@@ -2,6 +2,10 @@ name: resource-snapshot
 on:
   workflow_dispatch: {}
 
+concurrency:
+  group: resource-snapshot
+  cancel-in-progress: false
+
 jobs:
   snapshot:
     runs-on: ubuntu-latest
@@ -41,4 +45,5 @@ jobs:
           git config user.name "bcc-worker" && git config user.email "actions@github.com"
           git add apps/web/public/map/enemies apps/web/public/map/roads
           git diff --cached --quiet || git commit -m "chore(map): refresh enemy + road overlays [skip ci]"
-          git push
+          # Explicit refspec: push back to whichever branch dispatched the run.
+          git push origin HEAD
