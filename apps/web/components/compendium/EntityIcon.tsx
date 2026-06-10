@@ -38,6 +38,7 @@ export function EntityIcon({
         height={size}
         loading="lazy"
         className="shrink-0 rounded object-contain"
+        style={{ width: size, height: size }}
       />
     );
   }

@@ -150,7 +150,7 @@ export function WorldMap({ claims, regions, territory, watchtowers, empires, ter
         preferCanvas
         minZoom={-3}
         maxZoom={6}
-        className="h-[70vh] min-h-[420px] rounded-lg"
+        className="isolate h-[70vh] min-h-[420px] rounded-lg"
         style={{ background: "var(--card)" }}
       >
         <FlyToRegion region={selected} worldBounds={worldBounds} />
