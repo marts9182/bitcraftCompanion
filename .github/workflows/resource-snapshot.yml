@@ -1,0 +1,44 @@
+name: resource-snapshot
+on:
+  workflow_dispatch: {}
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Run snapshot (all stages)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SPACETIME_URI: ${{ secrets.SPACETIME_URI }}
+          SPACETIME_MODULE: ${{ secrets.SPACETIME_MODULE }}
+          SPACETIME_TOKEN: ${{ secrets.SPACETIME_TOKEN }}
+          INGESTION_ENABLED: "true"
+        run: pnpm --filter @bcc/worker resource-snapshot all
+      - name: Push position files to data repo
+        env:
+          TOKEN: ${{ secrets.MAP_DATA_PUSH_TOKEN }}
+        run: |
+          git clone --depth 1 "https://x-access-token:${TOKEN}@github.com/${{ github.repository_owner }}/bitcraftcompanion-map-data.git" /tmp/map-data
+          rm -rf /tmp/map-data/resources
+          cp -r apps/worker/out/map-data/resources /tmp/map-data/resources
+          cd /tmp/map-data
+          git config user.name "bcc-worker" && git config user.email "actions@github.com"
+          git add -A
+          git diff --cached --quiet || git commit -m "resource positions $(date -u +%F)"
+          git push
+      - name: Commit enemies + roads to app repo
+        run: |
+          git config user.name "bcc-worker" && git config user.email "actions@github.com"
+          git add apps/web/public/map/enemies apps/web/public/map/roads
+          git diff --cached --quiet || git commit -m "chore(map): refresh enemy + road overlays [skip ci]"
+          git push
