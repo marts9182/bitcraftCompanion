@@ -7,6 +7,7 @@ import { EntityIcon } from "@/components/compendium/EntityIcon";
 import { respawnLabel } from "@/components/compendium/ResourcesTable";
 import { getResourceBySlug, listAllResourceSlugs } from "@/lib/queries/resources";
 import { getItemsByIds } from "@/lib/queries/items";
+import { getCargoByIds } from "@/lib/queries/cargo";
 import { getMapRegions } from "@/lib/queries/map";
 import { breadcrumbJsonLd, jsonLdScript, thingJsonLd } from "@/lib/jsonld";
 import { SITE_URL } from "@/lib/seo";
@@ -48,11 +49,16 @@ export default async function ResourceDetailPage({ params }: { params: Promise<{
 
   const yields = (resource.yields as ResourceYield[]) ?? [];
   const spawnCounts = (resource.spawnCounts as Record<string, number>) ?? {};
-  const [yieldItems, regions] = await Promise.all([
-    getItemsByIds(yields.map((y) => y.itemId)),
+  // Yield ids reference items OR cargo (trees yield trunks, which are cargo),
+  // so resolve against both tables; items win when an id exists in both.
+  const yieldIds = yields.map((y) => y.itemId);
+  const [yieldItems, yieldCargo, regions] = await Promise.all([
+    getItemsByIds(yieldIds),
+    getCargoByIds(yieldIds),
     getMapRegions(),
   ]);
   const itemById = new Map(yieldItems.map((i) => [i.id, i]));
+  const cargoById = new Map(yieldCargo.map((c) => [c.id, c]));
   const regionNames = new Map(regions.map((r) => [r.id, r.name]));
   const spawns = Object.entries(spawnCounts)
     .map(([regionId, count]) => ({ regionId: Number(regionId), count }))
@@ -121,18 +127,23 @@ export default async function ResourceDetailPage({ params }: { params: Promise<{
           <ul className="space-y-2 text-sm">
             {yields.map((y) => {
               const item = itemById.get(y.itemId);
+              const cargo = item ? undefined : cargoById.get(y.itemId);
+              const resolved = item ?? cargo;
               return (
                 <li key={y.itemId} className="flex items-center gap-2">
-                  {item ? (
+                  {resolved ? (
                     <>
                       <EntityIcon
-                        assetName={item.iconAssetName}
-                        name={item.name}
-                        rarity={item.rarity}
+                        assetName={resolved.iconAssetName}
+                        name={resolved.name}
+                        rarity={resolved.rarity}
                         size={24}
                       />
-                      <Link href={`/items/${item.slug}`} className="font-medium hover:underline">
-                        {item.name}
+                      <Link
+                        href={item ? `/items/${item.slug}` : `/cargo/${resolved.slug}`}
+                        className="font-medium hover:underline"
+                      >
+                        {resolved.name}
                       </Link>
                     </>
                   ) : (

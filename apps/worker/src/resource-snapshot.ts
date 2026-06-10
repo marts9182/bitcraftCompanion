@@ -194,6 +194,26 @@ interface CountIndex {
 }
 
 /**
+ * Load spawn counts from a previously written count index (catalog stage).
+ * Missing file → empty map (same as the pre-index behavior); the log line
+ * records which source fed the upsert so a stale/absent index is visible.
+ */
+async function loadCountsIndex(indexPath: string, label: string): Promise<Map<number, Record<string, number>>> {
+  const existing = await readIndexFile<CountIndex>(indexPath);
+  if (!existing) {
+    console.log(`[resource] no ${label} count index at ${indexPath} — spawn counts left empty`);
+    return new Map();
+  }
+  const counts = new Map<number, Record<string, number>>();
+  for (const [idStr, perRegion] of Object.entries(existing.counts)) counts.set(Number(idStr), perRegion);
+  console.log(
+    `[resource] loaded ${label} counts from ${indexPath} ` +
+      `(${counts.size} ids, regions [${existing.regions.join(",")}])`,
+  );
+  return counts;
+}
+
+/**
  * Merge per-region counts (keyed id → { region: count }) into the index file
  * at `indexPath`. Called after EACH region completes so a mid-run failure
  * never desyncs the index from the per-region files already written.
@@ -487,9 +507,12 @@ async function main() {
   if (stage === "catalog") {
     const db = createDb(env.DATABASE_URL);
     const { resources, creatures } = await pullCatalogs(conn);
-    // Spawn counts are produced by the positions/enemies stages; the catalog
-    // stage leaves them at their default {}.
-    await upsertCatalogs(db, resources, creatures, new Map(), new Map());
+    // Spawn counts are produced by the positions/enemies stages; reuse their
+    // on-disk indexes so a catalog-only run still upserts real counts
+    // (missing index → {} as before).
+    const resourceCounts = await loadCountsIndex(resolve(OUT_DATA, "resources/index.json"), "resource");
+    const creatureCounts = await loadCountsIndex(resolve(OUT_PUBLIC, "enemies/index.json"), "creature");
+    await upsertCatalogs(db, resources, creatures, resourceCounts, creatureCounts);
     console.log(`[resource] stage catalog done.`);
   } else if (stage === "positions") {
     await exportResourcePositions(conn);
