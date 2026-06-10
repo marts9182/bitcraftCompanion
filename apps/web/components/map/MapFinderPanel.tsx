@@ -15,15 +15,18 @@ const hasSpawns = (spawnCounts: Record<string, number>): boolean => Object.keys(
  * browse-by-category (our differentiator — bitjita only has name search), and
  * the color-coded tracking chips that drive ResourcePointsLayer.
  */
-export function MapFinderPanel({ resources, creatures, tracked, onToggle, onClear }: {
+export function MapFinderPanel({ resources, creatures, tracked, onToggle, onClear, showCopyLink }: {
   resources: FinderResource[];
   creatures: FinderCreature[];
   tracked: TrackedRef[];
   onToggle: (ref: TrackedRef) => void;
   onClear: () => void;
+  /** WorldMap mirrors tracking/region state into the URL — show "copy link" when there's a view worth sharing. */
+  showCopyLink?: boolean;
 }) {
   const [q, setQ] = useState("");
   const [openCategory, setOpenCategory] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Only entries with spawn data are trackable — the rest are noise here.
@@ -152,6 +155,19 @@ export function MapFinderPanel({ resources, creatures, tracked, onToggle, onClea
 
         {tracked.length > 0 && (
           <button type="button" onClick={onClear} className="h-9 text-primary underline">Clear all</button>
+        )}
+        {showCopyLink && (
+          <button
+            type="button"
+            onClick={() => {
+              navigator.clipboard.writeText(window.location.href)
+                .then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); })
+                .catch(() => {});
+            }}
+            className="h-9 text-primary underline"
+          >
+            {copied ? "Copied!" : "Copy link to view"}
+          </button>
         )}
       </div>
 

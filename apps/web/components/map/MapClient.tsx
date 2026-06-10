@@ -18,7 +18,7 @@ const WorldMap = dynamic(() => import("./WorldMap").then((m) => m.WorldMap), {
 
 export function MapClient(props: {
   claims: ClaimPoint[]; regions: RegionRect[]; territory: TerritoryCell[]; watchtowers: Watchtower[]; empires: EmpireTerritory[]; terrain: TerrainOverlay[];
-  resourceCatalog: FinderResource[]; creatureCatalog: FinderCreature[]; initialTracked?: TrackedRef[];
+  resourceCatalog: FinderResource[]; creatureCatalog: FinderCreature[]; initialTracked?: TrackedRef[]; initialRegionId?: number | null; initialRoads?: boolean;
 }) {
   return <WorldMap {...props} />;
 }

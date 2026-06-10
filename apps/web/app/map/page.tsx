@@ -4,7 +4,9 @@ import path from "node:path";
 import { getMapClaims, getMapRegions, getTerritoryCells, getWatchtowers, getEmpireTerritories } from "@/lib/queries/map";
 import { getResourceMapCatalog } from "@/lib/queries/resources";
 import { getCreatureMapCatalog } from "@/lib/queries/creatures";
+import { parseTrackParams } from "@/lib/map/tracking";
 import { MapClient } from "@/components/map/MapClient";
+import type { TrackedRef } from "@/components/map/MapFinderPanel";
 
 export type TerrainOverlay = { region: number; url: string; bounds: [[number, number], [number, number]] };
 
@@ -37,7 +39,18 @@ export const metadata: Metadata = {
   alternates: { canonical: "/map" },
 };
 
-export default async function MapPage() {
+export default async function MapPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const sp = await searchParams;
+  // Shareable tracking URLs: /map?resources=23&creatures=18&regions=7&roads=1.
+  // Order matters for chip colors — resources first, then creatures.
+  const track = parseTrackParams(sp);
+  const initialTracked: TrackedRef[] = [
+    ...track.resources.map((id) => ({ kind: "resource" as const, id })),
+    ...track.creatures.map((id) => ({ kind: "creature" as const, id })),
+  ];
+  const initialRegionId = track.regions[0] ?? null;
+  const initialRoads = track.roads;
+
   const [claims, regions, territory, watchtowers, empires, terrain, resourceCatalog, creatureCatalog] = await Promise.all([
     getMapClaims(), getMapRegions(), getTerritoryCells(), getWatchtowers(), getEmpireTerritories(), loadTerrain(),
     getResourceMapCatalog(), getCreatureMapCatalog(),
@@ -51,7 +64,7 @@ export default async function MapPage() {
         <ul className="sr-only">{regions.map((r) => <li key={r.id}>{r.name ?? `Region ${r.id}`}</li>)}</ul>
       </div>
       <div className="mx-auto mt-4 max-w-6xl px-4 sm:px-6 pb-12">
-        <MapClient claims={claims} regions={regions} territory={territory} watchtowers={watchtowers} empires={empires} terrain={terrain} resourceCatalog={resourceCatalog} creatureCatalog={creatureCatalog} />
+        <MapClient claims={claims} regions={regions} territory={territory} watchtowers={watchtowers} empires={empires} terrain={terrain} resourceCatalog={resourceCatalog} creatureCatalog={creatureCatalog} initialTracked={initialTracked} initialRegionId={initialRegionId} initialRoads={initialRoads} />
       </div>
     </main>
   );

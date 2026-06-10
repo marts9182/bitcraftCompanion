@@ -7,7 +7,7 @@ import type { ClaimPoint, RegionRect, TerritoryCell, Watchtower, EmpireTerritory
 import type { TerrainOverlay } from "@/app/map/page";
 import { MapFinderPanel, type FinderResource, type FinderCreature, type TrackedRef } from "./MapFinderPanel";
 import { ResourcePointsLayer, type TrackedPoints } from "./ResourcePointsLayer";
-import { trackColor, MAX_TRACKED } from "@/lib/map/tracking";
+import { trackColor, MAX_TRACKED, serializeTrackParams, type TrackState } from "@/lib/map/tracking";
 
 // Base URL for the static spawn-position files. NEXT_PUBLIC_ vars are inlined
 // at build time, so this must be read at module scope in a client file.
@@ -87,12 +87,15 @@ function FlyToRegion({ region, worldBounds }: { region: RegionRect | null; world
   return null;
 }
 
-export function WorldMap({ claims, regions, territory, watchtowers, empires, terrain, resourceCatalog, creatureCatalog, initialTracked }: {
+export function WorldMap({ claims, regions, territory, watchtowers, empires, terrain, resourceCatalog, creatureCatalog, initialTracked, initialRegionId, initialRoads }: {
   claims: ClaimPoint[]; regions: RegionRect[]; territory: TerritoryCell[]; watchtowers: Watchtower[]; empires: EmpireTerritory[]; terrain: TerrainOverlay[];
-  resourceCatalog: FinderResource[]; creatureCatalog: FinderCreature[]; initialTracked?: TrackedRef[];
+  resourceCatalog: FinderResource[]; creatureCatalog: FinderCreature[]; initialTracked?: TrackedRef[]; initialRegionId?: number | null; initialRoads?: boolean;
 }) {
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedId, setSelectedId] = useState<number | null>(initialRegionId ?? null);
   const [selectedBiome, setSelectedBiome] = useState<number | null>(null);
+  // Roads overlay flag — the layer itself lands in Task 13 (which adds the
+  // setter); until then the flag only round-trips through the shareable URL.
+  const [roadsOn] = useState<boolean>(initialRoads ?? false);
   const [biomeGrids, setBiomeGrids] = useState<Map<number, BiomeGrid> | null>(null);
 
   // ── Resource/creature tracking (finder panel → canvas dots) ──────────────
@@ -182,6 +185,20 @@ export function WorldMap({ claims, regions, territory, watchtowers, empires, ter
   }, []);
   const clearAll = useCallback(() => setTracked([]), []);
 
+  // Mirror tracking state into the URL (shallow replaceState — no navigation,
+  // no scroll) so the current view is shareable and compendium links round-trip.
+  useEffect(() => {
+    const state: TrackState = {
+      resources: tracked.filter((t) => t.kind === "resource").map((t) => t.id),
+      creatures: tracked.filter((t) => t.kind === "creature").map((t) => t.id),
+      regions: selectedId !== null ? [selectedId] : [],
+      roads: roadsOn,
+    };
+    // Keep commas literal — URL-safe in a query string, and the share link stays readable.
+    const qs = new URLSearchParams(serializeTrackParams(state)).toString().replace(/%2C/g, ",");
+    window.history.replaceState(null, "", qs ? `/map?${qs}` : "/map");
+  }, [tracked, selectedId, roadsOn]);
+
   // Lazy-load the per-chunk biome grids the first time a biome is highlighted.
   useEffect(() => {
     if (selectedBiome === null || biomeGrids) return;
@@ -244,6 +261,7 @@ export function WorldMap({ claims, regions, territory, watchtowers, empires, ter
         tracked={tracked}
         onToggle={toggle}
         onClear={clearAll}
+        showCopyLink={tracked.length > 0 || selectedId !== null}
       />
       {tracked.length > 0 && (
         <p className="mb-2 text-xs text-muted-foreground">
