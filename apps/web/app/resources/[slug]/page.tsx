@@ -15,9 +15,6 @@ import { SITE_URL } from "@/lib/seo";
 export const revalidate = 86400;
 export const dynamicParams = true;
 
-/** Shape of the resources.yields jsonb column. */
-type ResourceYield = { itemId: number; qty: number };
-
 export async function generateStaticParams() {
   const slugs = await listAllResourceSlugs();
   return slugs.map((slug) => ({ slug }));
@@ -47,8 +44,8 @@ export default async function ResourceDetailPage({ params }: { params: Promise<{
   const resource = await getResourceBySlug(slug);
   if (!resource) notFound();
 
-  const yields = (resource.yields as ResourceYield[]) ?? [];
-  const spawnCounts = (resource.spawnCounts as Record<string, number>) ?? {};
+  const yields = resource.yields;
+  const spawnCounts = resource.spawnCounts;
   // Yield ids reference items OR cargo (trees yield trunks, which are cargo),
   // so resolve against both tables; items win when an id exists in both.
   const yieldIds = yields.map((y) => y.itemId);
@@ -125,12 +122,12 @@ export default async function ResourceDetailPage({ params }: { params: Promise<{
           <p className="text-muted-foreground">No recorded yields.</p>
         ) : (
           <ul className="space-y-2 text-sm">
-            {yields.map((y) => {
+            {yields.map((y, i) => {
               const item = itemById.get(y.itemId);
               const cargo = item ? undefined : cargoById.get(y.itemId);
               const resolved = item ?? cargo;
               return (
-                <li key={y.itemId} className="flex items-center gap-2">
+                <li key={`${y.itemId}-${i}`} className="flex items-center gap-2">
                   {resolved ? (
                     <>
                       <EntityIcon

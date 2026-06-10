@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseListParams, PAGE_SIZE } from "./list-params";
+import { parseIntParam, parseListParams, PAGE_SIZE } from "./list-params";
 
 describe("parseListParams", () => {
   it("defaults to page 1 and empty filters", () => {
@@ -33,5 +33,24 @@ describe("parseListParams", () => {
 
   it("exposes PAGE_SIZE", () => {
     expect(PAGE_SIZE).toBe(50);
+  });
+});
+
+describe("parseIntParam", () => {
+  it("parses whole numbers, including negatives", () => {
+    expect(parseIntParam("3")).toBe(3);
+    expect(parseIntParam("-1")).toBe(-1);
+    expect(parseIntParam("0")).toBe(0);
+  });
+
+  it("returns undefined for missing values", () => {
+    expect(parseIntParam(undefined)).toBeUndefined();
+    expect(parseIntParam("")).toBeUndefined();
+  });
+
+  it("rejects non-integer garbage", () => {
+    expect(parseIntParam("3.5")).toBeUndefined();
+    expect(parseIntParam("12abc")).toBeUndefined();
+    expect(parseIntParam("abc")).toBeUndefined();
   });
 });

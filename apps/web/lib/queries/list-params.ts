@@ -40,3 +40,12 @@ export function parseListParams(raw: RawParams, allowedFilters: string[]): ListP
 
   return params;
 }
+
+/**
+ * Parse an optional integer query param (e.g. tier filters). Accepts an
+ * optionally negative whole number; anything else returns undefined. Pure.
+ */
+export function parseIntParam(value: string | undefined): number | undefined {
+  if (value === undefined || !/^-?\d+$/.test(value)) return undefined;
+  return parseInt(value, 10);
+}

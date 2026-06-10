@@ -9,7 +9,7 @@ import {
   listResources,
   type ResourceListParams,
 } from "@/lib/queries/resources";
-import { parseListParams } from "@/lib/queries/list-params";
+import { parseIntParam, parseListParams } from "@/lib/queries/list-params";
 import { breadcrumbJsonLd, itemListJsonLd, jsonLdScript } from "@/lib/jsonld";
 import { SITE_URL } from "@/lib/seo";
 
@@ -34,11 +34,10 @@ function Stat({ label, value }: { label: string; value: number }) {
 export default async function ResourcesPage({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
   const raw = parseListParams(sp, ["category", "tier"]);
-  const tierStr = raw.filters.tier;
   const params: ResourceListParams = {
     q: raw.q,
     category: raw.filters.category,
-    tier: tierStr !== undefined && /^-?\d+$/.test(tierStr) ? parseInt(tierStr, 10) : undefined,
+    tier: parseIntParam(raw.filters.tier),
     page: raw.page,
   };
 

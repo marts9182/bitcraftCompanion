@@ -114,8 +114,8 @@ export const resources = pgTable(
     notRespawning: boolean("not_respawning").default(false).notNull(),
     compendiumEntry: boolean("compendium_entry").default(true).notNull(),
     iconAssetName: text("icon_asset_name"),
-    yields: jsonb("yields").default([]).notNull(), // [{itemId, qty}]
-    spawnCounts: jsonb("spawn_counts").default({}).notNull(), // {"7": 2993, …} region → live count
+    yields: jsonb("yields").$type<Array<{ itemId: number; qty: number }>>().default([]).notNull(),
+    spawnCounts: jsonb("spawn_counts").$type<Record<string, number>>().default({}).notNull(), // {"7": 2993, …} region → live count
     raw: jsonb("raw").notNull(),
   },
   (t) => ({
@@ -151,8 +151,10 @@ export const creatures = pgTable(
     nightDetectRange: integer("night_detect_range"),
     nightAggroRange: integer("night_aggro_range"),
     iconAssetName: text("icon_asset_name"),
-    lootStacks: jsonb("loot_stacks").default([]).notNull(),
-    spawnCounts: jsonb("spawn_counts").default({}).notNull(),
+    // Positional arrays from the game's extracted_item_stacks:
+    // [[variantTag, [id, qty, [typeTag(0=item,1=cargo), …], …]], probability]
+    lootStacks: jsonb("loot_stacks").$type<unknown[]>().default([]).notNull(),
+    spawnCounts: jsonb("spawn_counts").$type<Record<string, number>>().default({}).notNull(),
     raw: jsonb("raw").notNull(),
   },
   (t) => ({ slugIdx: uniqueIndex("creatures_slug_idx").on(t.slug) }),

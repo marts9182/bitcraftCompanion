@@ -45,7 +45,7 @@ export interface CreatureCatalogRow {
   attackLevel: number | null; defenseLevel: number | null; healthRegen: number | null;
   dayDetectRange: number | null; dayAggroRange: number | null;
   nightDetectRange: number | null; nightAggroRange: number | null;
-  iconAssetName: string | null; lootStacks: unknown; raw: unknown;
+  iconAssetName: string | null; lootStacks: unknown[]; raw: unknown;
 }
 
 export function mapEnemyDescRow(r: Record<string, unknown>): CreatureCatalogRow {
@@ -70,7 +70,7 @@ export function mapEnemyDescRow(r: Record<string, unknown>): CreatureCatalogRow 
     nightDetectRange: toInt(r.nighttime_detect_range),
     nightAggroRange: toInt(r.nighttime_aggro_range),
     iconAssetName: str(r.icon_address) || null,
-    lootStacks: r.extracted_item_stacks ?? [],
+    lootStacks: Array.isArray(r.extracted_item_stacks) ? r.extracted_item_stacks : [],
     raw: r,
   };
 }
