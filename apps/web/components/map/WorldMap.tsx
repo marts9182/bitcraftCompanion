@@ -196,7 +196,9 @@ export function WorldMap({ claims, regions, territory, watchtowers, empires, ter
     };
     // Keep commas literal — URL-safe in a query string, and the share link stays readable.
     const qs = new URLSearchParams(serializeTrackParams(state)).toString().replace(/%2C/g, ",");
-    window.history.replaceState(null, "", qs ? `/map?${qs}` : "/map");
+    // Preserve Next's internal history state — replacing it with null breaks
+    // App Router back-navigation (soft nav falls back to a full reload).
+    window.history.replaceState(window.history.state, "", qs ? `/map?${qs}` : "/map");
   }, [tracked, selectedId, roadsOn]);
 
   // Lazy-load the per-chunk biome grids the first time a biome is highlighted.

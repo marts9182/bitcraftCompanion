@@ -31,7 +31,8 @@ async function loadTerrain(): Promise<TerrainOverlay[]> {
   }
 }
 
-export const revalidate = 300;
+// Awaiting searchParams makes this route dynamic (per-request) — the underlying
+// data queries keep their own caching; an ISR `revalidate` would be ignored here.
 
 export const metadata: Metadata = {
   title: "World Map",

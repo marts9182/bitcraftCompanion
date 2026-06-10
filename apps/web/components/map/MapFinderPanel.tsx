@@ -162,7 +162,9 @@ export function MapFinderPanel({ resources, creatures, tracked, onToggle, onClea
             onClick={() => {
               navigator.clipboard.writeText(window.location.href)
                 .then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); })
-                .catch(() => {});
+                // Clipboard can be unavailable (non-HTTPS, permission denied) —
+                // fall back to showing the URL so the user can copy it manually.
+                .catch(() => { window.prompt("Copy this link:", window.location.href); });
             }}
             className="h-9 text-primary underline"
           >
