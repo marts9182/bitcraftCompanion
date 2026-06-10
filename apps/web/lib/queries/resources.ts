@@ -1,4 +1,5 @@
 import "server-only";
+import { unstable_cache } from "next/cache";
 import { and, asc, eq, ilike, isNotNull, sql } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 
@@ -96,8 +97,12 @@ export async function getResourceStats(): Promise<{ total: number; categories: n
   return row;
 }
 
-/** Slim catalog of ALL resources (incl. non-compendium) for the map finder panel. */
-export async function getResourceMapCatalog() {
+/**
+ * Slim catalog of ALL resources (incl. non-compendium) for the map finder panel.
+ * unstable_cache'd (30 min = worker snapshot cadence): fetched by /map AND every
+ * ISR detail page via the map embed.
+ */
+export const getResourceMapCatalog = unstable_cache(async () => {
   const db = getDb();
   return db
     .select({
@@ -110,4 +115,4 @@ export async function getResourceMapCatalog() {
     })
     .from(schema.resources)
     .orderBy(asc(schema.resources.name));
-}
+}, ["resource-map-catalog"], { revalidate: 1800 });

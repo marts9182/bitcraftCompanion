@@ -1,4 +1,5 @@
 import "server-only";
+import { unstable_cache } from "next/cache";
 import { and, asc, eq, ilike, isNotNull, sql } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 
@@ -82,8 +83,12 @@ export async function getCreatureStats(): Promise<{ total: number; huntable: num
   return row;
 }
 
-/** Slim catalog of all creatures for the map finder panel. */
-export async function getCreatureMapCatalog() {
+/**
+ * Slim catalog of all creatures for the map finder panel.
+ * unstable_cache'd (30 min = worker snapshot cadence): fetched by /map AND every
+ * ISR detail page via the map embed.
+ */
+export const getCreatureMapCatalog = unstable_cache(async () => {
   const db = getDb();
   return db
     .select({
@@ -95,4 +100,4 @@ export async function getCreatureMapCatalog() {
     })
     .from(schema.creatures)
     .orderBy(asc(schema.creatures.name));
-}
+}, ["creature-map-catalog"], { revalidate: 1800 });

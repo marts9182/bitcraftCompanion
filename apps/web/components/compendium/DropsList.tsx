@@ -61,7 +61,7 @@ export function DropsList({ entries, itemById, cargoById, emptyText }: {
                 </Link>
               </>
             ) : (
-              <span className="text-muted-foreground">Item #{d.id}</span>
+              <span className="text-muted-foreground">{isCargo ? `Cargo #${d.id}` : `Item #${d.id}`}</span>
             )}
             <span className="font-mono text-muted-foreground">× {d.qty}</span>
             {d.chance != null && d.chance < 1 && (

@@ -6,12 +6,9 @@ import "leaflet/dist/leaflet.css";
 import type { ClaimPoint, RegionRect, TerritoryCell, Watchtower, EmpireTerritory } from "@/lib/queries/map";
 import type { TerrainOverlay, RoadOverlay } from "@/app/map/page";
 import { MapFinderPanel, type FinderResource, type FinderCreature, type TrackedRef } from "./MapFinderPanel";
-import { ResourcePointsLayer, type TrackedPoints } from "./ResourcePointsLayer";
-import { trackColor, MAX_TRACKED, serializeTrackParams, type TrackState } from "@/lib/map/tracking";
-
-// Base URL for the static spawn-position files. NEXT_PUBLIC_ vars are inlined
-// at build time, so this must be read at module scope in a client file.
-const DATA_BASE = process.env.NEXT_PUBLIC_MAP_DATA_BASE ?? "/map-data";
+import { ResourcePointsLayer } from "./ResourcePointsLayer";
+import { serializeTrackParams, type TrackState } from "@/lib/map/tracking";
+import { useTrackedPoints } from "@/lib/map/use-tracked-points";
 
 // CHUNK coordinates. CRS.Simple uses [lat,lng]; map game (x,z) -> [z, x]. The
 // terrain image is rendered north-up to match (renderer flips its rows), so the
@@ -94,12 +91,16 @@ function FlyToRegion({ region, worldBounds }: { region: RegionRect | null; world
   return null;
 }
 
+// The LayersControl overlay label doubles as the event-matching key in
+// RoadsToggleSync — share one const so the two can't drift apart.
+const ROADS_OVERLAY_NAME = "Roads";
+
 // Mirrors the LayersControl "Roads" checkbox back into React state. Leaflet
 // owns the checkbox DOM, so listen for the map-level overlay toggle events.
 function RoadsToggleSync({ onChange }: { onChange: (on: boolean) => void }) {
   useMapEvents({
-    overlayadd: (e) => { if (e.name === "Roads") onChange(true); },
-    overlayremove: (e) => { if (e.name === "Roads") onChange(false); },
+    overlayadd: (e) => { if (e.name === ROADS_OVERLAY_NAME) onChange(true); },
+    overlayremove: (e) => { if (e.name === ROADS_OVERLAY_NAME) onChange(false); },
   });
   return null;
 }
@@ -131,91 +132,9 @@ export function WorldMap({ claims, regions, territory, watchtowers, empires, ter
   const [biomeGrids, setBiomeGrids] = useState<Map<number, BiomeGrid> | null>(null);
 
   // ── Resource/creature tracking (finder panel → canvas dots) ──────────────
-  const [tracked, setTracked] = useState<TrackedRef[]>(initialTracked ?? []);
-  // Loaded spawn positions, keyed `{kind}:{id}:r{region}` (flat small-hex [x,z,…]).
-  const [pointsByKey, setPointsByKey] = useState<Map<string, number[]>>(new Map());
-  // Keys already requested (in flight, loaded, or 404'd). 404s stay burned for
-  // the mount; network failures are evicted so a later effect run retries them.
-  const requestedKeysRef = useRef<Set<string>>(new Set());
-  // One enemy file per region holds ALL creature types — cache the whole-file
-  // promise so N tracked creatures in a region cost one fetch, not N.
-  const enemyFilesRef = useRef<Map<number, Promise<Record<string, number[]>>>>(new Map());
-  // Results are keyed by immutable content (id+region), so they never go stale —
-  // only an unmount makes the setState unwanted.
-  const mountedRef = useRef(true);
-  useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
-
-  const resourceById = useMemo(() => new Map(resourceCatalog.map((r) => [r.id, r])), [resourceCatalog]);
-  const creatureByType = useMemo(() => new Map(creatureCatalog.map((c) => [c.enemyType, c])), [creatureCatalog]);
-  const regionIdSet = useMemo(() => new Set(regions.map((r) => r.id)), [regions]);
-
-  // A tracked entry only has data in the regions listed in its spawnCounts —
-  // intersect with known regions, and narrow to the focused region when set.
-  const regionsFor = useCallback((t: TrackedRef): number[] => {
-    const meta = t.kind === "resource" ? resourceById.get(t.id) : creatureByType.get(t.id);
-    if (!meta) return [];
-    const ids = Object.keys(meta.spawnCounts).map(Number).filter((id) => regionIdSet.has(id));
-    return selectedId !== null ? ids.filter((id) => id === selectedId) : ids;
-  }, [resourceById, creatureByType, regionIdSet, selectedId]);
-
-  // Lazily fetch position files for tracked refs. A 404 just means no spawn
-  // data for that id/region (key stays burned); a REJECTION is transient
-  // (network), so we evict the key/file-promise and a later effect run retries.
-  useEffect(() => {
-    for (const t of tracked) {
-      for (const region of regionsFor(t)) {
-        const key = `${t.kind}:${t.id}:r${region}`;
-        if (requestedKeysRef.current.has(key)) continue;
-        requestedKeysRef.current.add(key);
-        const store = (xz: number[]) => { if (mountedRef.current) setPointsByKey((m) => new Map(m).set(key, xz)); };
-        if (t.kind === "resource") {
-          fetch(`${DATA_BASE}/resources/r${region}/${t.id}.json`)
-            .then((r) => (r.ok ? (r.json() as Promise<{ xz?: number[] }>) : null))
-            .then((j) => { if (j) store(j.xz ?? []); })
-            .catch(() => { requestedKeysRef.current.delete(key); });
-        } else {
-          let file = enemyFilesRef.current.get(region);
-          if (!file) {
-            file = fetch(`/map/enemies/r${region}.json`)
-              .then((r) => (r.ok ? (r.json() as Promise<{ types?: Record<string, number[]> }>) : null))
-              .then((j) => j?.types ?? {});
-            // Rejected file promise must not stay cached, or the region is burned.
-            file.catch(() => { enemyFilesRef.current.delete(region); });
-            enemyFilesRef.current.set(region, file);
-          }
-          file
-            .then((types) => store(types[String(t.id)] ?? []))
-            .catch(() => { requestedKeysRef.current.delete(key); });
-        }
-      }
-    }
-  }, [tracked, regionsFor]);
-
-  // ResourcePointsLayer contract: `tracked` MUST be referentially stable — memoize.
-  const trackedPoints = useMemo<TrackedPoints[]>(() =>
-    tracked.map((t, i) => {
-      const parts: number[][] = [];
-      for (const region of regionsFor(t)) {
-        const part = pointsByKey.get(`${t.kind}:${t.id}:r${region}`);
-        if (part && part.length) parts.push(part);
-      }
-      // concat, not push(...spread): region arrays can be 100k+ numbers (stack limit).
-      const xz = parts.length === 1 ? parts[0]! : ([] as number[]).concat(...parts);
-      return { key: `${t.kind}:${t.id}`, color: trackColor(i), xz };
-    }),
-  [tracked, pointsByKey, regionsFor]);
-
-  const shownPoints = useMemo(() => trackedPoints.reduce((n, t) => n + Math.floor(t.xz.length / 2), 0), [trackedPoints]);
-
-  const toggle = useCallback((ref: TrackedRef) => {
-    setTracked((cur) => {
-      const exists = cur.some((t) => t.kind === ref.kind && t.id === ref.id);
-      if (exists) return cur.filter((t) => !(t.kind === ref.kind && t.id === ref.id));
-      if (cur.length >= MAX_TRACKED) return cur; // at cap — panel disables adds too
-      return [...cur, ref];
-    });
-  }, []);
-  const clearAll = useCallback(() => setTracked([]), []);
+  const { tracked, trackedPoints, shownPoints, toggle, clearAll } = useTrackedPoints({
+    resourceCatalog, creatureCatalog, regions, selectedId, initialTracked,
+  });
 
   // Mirror tracking state into the URL (shallow replaceState — no navigation,
   // no scroll) so the current view is shareable and compendium links round-trip.
@@ -315,7 +234,7 @@ export function WorldMap({ claims, regions, territory, watchtowers, empires, ter
         preferCanvas
         minZoom={-3}
         maxZoom={6}
-        className={compact ? "isolate h-[50vh] rounded-lg" : "isolate h-[70vh] min-h-[420px] rounded-lg"}
+        className={compact ? "isolate h-[50vh] min-h-[320px] rounded-lg" : "isolate h-[70vh] min-h-[420px] rounded-lg"}
         style={{ background: "var(--card)" }}
       >
         <FlyToRegion region={selected} worldBounds={worldBounds} />
@@ -331,32 +250,38 @@ export function WorldMap({ claims, regions, territory, watchtowers, empires, ter
         <ResourcePointsLayer tracked={trackedPoints} />
 
         <LayersControl position="topright">
-          {/* Empire borders + names — the headline overlay. */}
-          <LayersControl.Overlay name={`Empire borders (${empires.length})`} checked>
-            <LayerGroup>
-              {empires.map((e) => (
-                <Polyline
-                  key={e.id}
-                  positions={e.segments.map((s) => [pt(s[0][0], s[0][1]), pt(s[1][0], s[1][1])])}
-                  pathOptions={{ color: e.color, weight: 1.5, opacity: 0.85 }}
-                />
-              ))}
-              {empires.filter((e) => e.chunks >= EMPIRE_LABEL_MIN_CHUNKS).map((e) => (
-                <Marker key={`l-${e.id}`} position={pt(e.labelX, e.labelZ)} icon={emptyIcon} interactive={false}>
-                  <Tooltip permanent direction="center" className="empire-label">{e.name}</Tooltip>
-                </Marker>
-              ))}
-            </LayerGroup>
-          </LayersControl.Overlay>
+          {/* Empire borders + names — the headline overlay. Gated: compact embeds
+              pass empty arrays for the heavy layers, which must not surface as
+              broken "(0)" entries in the LayersControl. */}
+          {empires.length > 0 && (
+            <LayersControl.Overlay name={`Empire borders (${empires.length})`} checked>
+              <LayerGroup>
+                {empires.map((e) => (
+                  <Polyline
+                    key={e.id}
+                    positions={e.segments.map((s) => [pt(s[0][0], s[0][1]), pt(s[1][0], s[1][1])])}
+                    pathOptions={{ color: e.color, weight: 1.5, opacity: 0.85 }}
+                  />
+                ))}
+                {empires.filter((e) => e.chunks >= EMPIRE_LABEL_MIN_CHUNKS).map((e) => (
+                  <Marker key={`l-${e.id}`} position={pt(e.labelX, e.labelZ)} icon={emptyIcon} interactive={false}>
+                    <Tooltip permanent direction="center" className="empire-label">{e.name}</Tooltip>
+                  </Marker>
+                ))}
+              </LayerGroup>
+            </LayersControl.Overlay>
+          )}
 
           {/* Empire territory fill (the solid colours) — off by default; terrain is the base. */}
-          <LayersControl.Overlay name={`Empire territory fill (${territory.length.toLocaleString()})`}>
-            <LayerGroup>
-              {territory.map((c, i) => (
-                <Rectangle key={i} bounds={[pt(c.x0, c.z0), pt(c.x0 + 1, c.z0 + 1)]} pathOptions={{ stroke: false, fillColor: c.color, fillOpacity: 0.5 }} />
-              ))}
-            </LayerGroup>
-          </LayersControl.Overlay>
+          {territory.length > 0 && (
+            <LayersControl.Overlay name={`Empire territory fill (${territory.length.toLocaleString()})`}>
+              <LayerGroup>
+                {territory.map((c, i) => (
+                  <Rectangle key={i} bounds={[pt(c.x0, c.z0), pt(c.x0 + 1, c.z0 + 1)]} pathOptions={{ stroke: false, fillColor: c.color, fillOpacity: 0.5 }} />
+                ))}
+              </LayerGroup>
+            </LayersControl.Overlay>
+          )}
 
           {/* Region outlines + selected-region highlight. */}
           <LayersControl.Overlay name="Region outlines" checked>
@@ -380,7 +305,7 @@ export function WorldMap({ claims, regions, territory, watchtowers, empires, ter
               `checked` is reactive in react-leaflet 5, so URL/localStorage state drives the
               checkbox; user clicks flow back via RoadsToggleSync. */}
           {roads.length > 0 && (
-            <LayersControl.Overlay name="Roads" checked={roadsOn}>
+            <LayersControl.Overlay name={ROADS_OVERLAY_NAME} checked={roadsOn}>
               <LayerGroup>
                 {roads.map((r) => <ImageOverlay key={`road-${r.region}`} url={r.url} bounds={r.bounds} zIndex={6} />)}
               </LayerGroup>
@@ -415,20 +340,22 @@ export function WorldMap({ claims, regions, territory, watchtowers, empires, ter
             </LayerGroup>
           </LayersControl.Overlay>
 
-          {/* Watchtowers — off by default. */}
-          <LayersControl.Overlay name={`Watchtowers (${watchtowers.length.toLocaleString()})`}>
-            <LayerGroup>
-              {watchtowers.map((w) => (
-                <Marker key={w.id} position={pt(w.x, w.z)} icon={watchtowerIcon}>
-                  <Tooltip>
-                    <strong>Watchtower</strong>
-                    <br />
-                    {w.chunks.toLocaleString()} chunks covered
-                  </Tooltip>
-                </Marker>
-              ))}
-            </LayerGroup>
-          </LayersControl.Overlay>
+          {/* Watchtowers — off by default. Gated like the empire layers above. */}
+          {watchtowers.length > 0 && (
+            <LayersControl.Overlay name={`Watchtowers (${watchtowers.length.toLocaleString()})`}>
+              <LayerGroup>
+                {watchtowers.map((w) => (
+                  <Marker key={w.id} position={pt(w.x, w.z)} icon={watchtowerIcon}>
+                    <Tooltip>
+                      <strong>Watchtower</strong>
+                      <br />
+                      {w.chunks.toLocaleString()} chunks covered
+                    </Tooltip>
+                  </Marker>
+                ))}
+              </LayerGroup>
+            </LayersControl.Overlay>
+          )}
         </LayersControl>
       </MapContainer>
 
