@@ -74,7 +74,7 @@ export default async function ResourcesPage({ searchParams }: { searchParams: Pr
       />
       <h1 className="text-3xl font-bold tracking-tight">Resources</h1>
       <p className="mt-2 text-muted-foreground">{total.toLocaleString()} resources</p>
-      <div className="mt-6 grid grid-cols-3 gap-3">
+      <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Stat label="Resources" value={stats.total} />
         <Stat label="Categories" value={stats.categories} />
         <Stat label="Respawning" value={stats.respawning} />
