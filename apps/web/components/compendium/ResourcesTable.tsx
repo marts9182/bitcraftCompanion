@@ -6,7 +6,8 @@ import { MobileCard } from "@/components/mobile/MobileCard";
 import { formatDuration } from "@/lib/calculator/format";
 import type { ResourceRow } from "@/lib/queries/resources";
 
-function respawnLabel(r: ResourceRow): string {
+/** "Never" for non-respawning nodes, else humanized duration ("3h"), "—" if unknown. */
+export function respawnLabel(r: Pick<ResourceRow, "notRespawning" | "respawnSeconds">): string {
   if (r.notRespawning) return "Never";
   return formatDuration(r.respawnSeconds);
 }

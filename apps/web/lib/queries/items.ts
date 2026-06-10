@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq, ilike, sql } from "drizzle-orm";
+import { and, eq, ilike, inArray, sql } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import type { CraftGraph } from "./craft-graph";
 import { getCraftGraph } from "./craft-graph-db";
@@ -44,6 +44,23 @@ export async function getItemBySlug(slug: string): Promise<ItemRow | null> {
   const db = getDb();
   const [row] = await db.select().from(schema.items).where(eq(schema.items.slug, slug)).limit(1);
   return row ?? null;
+}
+
+/** Resolve item ids (e.g. resource yields) to slim rows for linking. */
+export async function getItemsByIds(ids: number[]) {
+  if (ids.length === 0) return [];
+  const db = getDb();
+  return db
+    .select({
+      id: schema.items.id,
+      slug: schema.items.slug,
+      name: schema.items.name,
+      tier: schema.items.tier,
+      rarity: schema.items.rarity,
+      iconAssetName: schema.items.iconAssetName,
+    })
+    .from(schema.items)
+    .where(inArray(schema.items.id, ids));
 }
 
 export async function listAllItemSlugs(): Promise<string[]> {
