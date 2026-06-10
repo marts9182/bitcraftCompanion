@@ -7,7 +7,10 @@ describe("mapResourceDescRow", () => {
       id: 23, name: "Ancient Oak Tree ", description: "d", max_health: 8000,
       tier: 6, tag: "Tree", rarity: [1, {}], compendium_entry: true,
       icon_asset_name: "GeneratedIcons/Other/AncientOak",
-      on_destroy_yield: [[6110011, 2, [0, []], [0, 0]]],
+      on_destroy_yield: [
+        [6110011, 2, [0, []], [0, 0]], // typeTag 0 → item
+        [1005, 1, [1, []], [0, 0]], // typeTag 1 → cargo (trunk)
+      ],
       scheduled_respawn_time: 10800, not_respawning: false,
     };
     const out = mapResourceDescRow(row);
@@ -15,7 +18,10 @@ describe("mapResourceDescRow", () => {
       id: 23, name: "Ancient Oak Tree", category: "Tree", tier: 6,
       rarity: "Common", maxHealth: 8000, respawnSeconds: 10800,
       notRespawning: false, compendiumEntry: true,
-      yields: [{ itemId: 6110011, qty: 2 }],
+      yields: [
+        { refType: "item", id: 6110011, qty: 2 },
+        { refType: "cargo", id: 1005, qty: 1 },
+      ],
     });
     expect(out.raw).toBe(row);
   });

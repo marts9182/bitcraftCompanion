@@ -114,7 +114,7 @@ export const resources = pgTable(
     notRespawning: boolean("not_respawning").default(false).notNull(),
     compendiumEntry: boolean("compendium_entry").default(true).notNull(),
     iconAssetName: text("icon_asset_name"),
-    yields: jsonb("yields").$type<Array<{ itemId: number; qty: number }>>().default([]).notNull(),
+    yields: jsonb("yields").$type<Array<{ refType: "item" | "cargo"; id: number; qty: number }>>().default([]).notNull(),
     spawnCounts: jsonb("spawn_counts").$type<Record<string, number>>().default({}).notNull(), // {"7": 2993, …} region → live count
     raw: jsonb("raw").notNull(),
   },

@@ -10,15 +10,22 @@ export interface ResourceCatalogRow {
   id: number; name: string; description: string; category: string | null;
   tier: number | null; rarity: string; maxHealth: number | null;
   respawnSeconds: number | null; notRespawning: boolean; compendiumEntry: boolean;
-  iconAssetName: string | null; yields: Array<{ itemId: number; qty: number }>;
+  iconAssetName: string | null;
+  yields: Array<{ refType: "item" | "cargo"; id: number; qty: number }>;
   raw: unknown;
 }
 
 export function mapResourceDescRow(r: Record<string, unknown>): ResourceCatalogRow {
+  // Yield entry shape: [id, qty, [typeTag, …], …] where typeTag 0 = item, 1 = cargo
+  // (same tagged-enum encoding as creature loot stacks — see creatures parseLootStacks).
   const yields = Array.isArray(r.on_destroy_yield)
     ? (r.on_destroy_yield as unknown[][])
         .filter((s) => Array.isArray(s) && typeof s[0] === "number")
-        .map((s) => ({ itemId: toInt(s[0])!, qty: toInt(s[1]) ?? 1 }))
+        .map((s) => ({
+          refType: (Array.isArray(s[2]) && s[2][0] === 1 ? "cargo" : "item") as "item" | "cargo",
+          id: toInt(s[0])!,
+          qty: toInt(s[1]) ?? 1,
+        }))
     : [];
   return {
     id: toInt(r.id)!,

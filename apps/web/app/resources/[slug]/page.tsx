@@ -46,9 +46,10 @@ export default async function ResourceDetailPage({ params }: { params: Promise<{
 
   const yields = resource.yields;
   const spawnCounts = resource.spawnCounts;
-  // Yield ids reference items OR cargo (trees yield trunks, which are cargo),
-  // so resolve against both tables; items win when an id exists in both.
-  const yieldIds = yields.map((y) => y.itemId);
+  // Yield ids carry an explicit item/cargo type tag (refType), and the two id
+  // spaces overlap, so resolve against the tagged table first and only fall
+  // back to the other when the id is missing there.
+  const yieldIds = yields.map((y) => y.id);
   const [yieldItems, yieldCargo, regions] = await Promise.all([
     getItemsByIds(yieldIds),
     getCargoByIds(yieldIds),
@@ -123,11 +124,13 @@ export default async function ResourceDetailPage({ params }: { params: Promise<{
         ) : (
           <ul className="space-y-2 text-sm">
             {yields.map((y, i) => {
-              const item = itemById.get(y.itemId);
-              const cargo = item ? undefined : cargoById.get(y.itemId);
-              const resolved = item ?? cargo;
+              const item = itemById.get(y.id);
+              const cargo = cargoById.get(y.id);
+              const isCargo = y.refType === "cargo";
+              const resolved = isCargo ? (cargo ?? item) : (item ?? cargo);
+              const asCargo = isCargo ? cargo !== undefined : item === undefined && cargo !== undefined;
               return (
-                <li key={`${y.itemId}-${i}`} className="flex items-center gap-2">
+                <li key={`${y.id}-${i}`} className="flex items-center gap-2">
                   {resolved ? (
                     <>
                       <EntityIcon
@@ -137,14 +140,14 @@ export default async function ResourceDetailPage({ params }: { params: Promise<{
                         size={24}
                       />
                       <Link
-                        href={item ? `/items/${item.slug}` : `/cargo/${resolved.slug}`}
+                        href={asCargo ? `/cargo/${resolved.slug}` : `/items/${resolved.slug}`}
                         className="font-medium hover:underline"
                       >
                         {resolved.name}
                       </Link>
                     </>
                   ) : (
-                    <span className="text-muted-foreground">Item #{y.itemId}</span>
+                    <span className="text-muted-foreground">Item #{y.id}</span>
                   )}
                   <span className="font-mono text-muted-foreground">× {y.qty}</span>
                 </li>
