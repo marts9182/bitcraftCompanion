@@ -30,6 +30,8 @@ apps/worker/.terrain-cache/
 # generated static map data (regenerate via worker resource-snapshot)
 apps/worker/out/
 apps/web/public/map-data/
+# atomic-write leftovers from resource-snapshot index merges
+apps/web/public/map/**/*.tmp
 
 # local debug screenshots
 .map-shot*.png

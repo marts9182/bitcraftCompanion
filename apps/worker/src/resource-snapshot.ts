@@ -43,6 +43,10 @@ const REGIONS = (process.env.RESOURCE_REGIONS ?? "7,8,9,12,13,14,17,18,19")
   .split(",")
   .map((s) => Number(s.trim()))
   .filter((n) => Number.isInteger(n) && n > 0);
+if (REGIONS.length === 0) {
+  // Guard: a malformed RESOURCE_REGIONS would otherwise no-op every stage and exit 0 (a green CI run that produced nothing).
+  throw new Error(`RESOURCE_REGIONS resolved to an empty region list: "${process.env.RESOURCE_REGIONS}"`);
+}
 const regionModule = (r: number) => `bitcraft-live-${r}`;
 
 // Static map-data outputs (used by the positions/enemies/roads stages).
