@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { buildPaletteResults, PALETTE_KIND_LABEL, type PaletteCatalogs } from "@/lib/palette";
 import { SUGGEST_KINDS, type SuggestEntry, type SuggestKind } from "@/lib/suggest";
+import { useHydrated } from "@/lib/use-hydrated";
 
 /**
  * Ctrl+K command palette: header chip + global keybindings + a modal search
@@ -63,25 +64,28 @@ export function CommandPalette() {
   const pathname = usePathname();
   const listId = useId();
   const [open, setOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useHydrated();
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
   // Bumped when a lazily fetched catalog lands so results recompute.
   const [catalogVersion, setCatalogVersion] = useState(0);
-  const [isMac, setIsMac] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const restoreFocusRef = useRef<HTMLElement | null>(null);
 
-  useEffect(() => {
-    setMounted(true);
-    setIsMac(/Mac|iPhone|iPad/.test(navigator.platform));
-  }, []);
+  // Derived during render: `mounted` is false on the server and during the
+  // hydration render, so navigator is only read client-side after hydration —
+  // same timing as the old setState-in-effect, minus the extra re-render.
+  const isMac = mounted && /Mac|iPhone|iPad/.test(navigator.platform);
 
   // Close on route change (covers navigations the palette didn't initiate).
-  useEffect(() => {
+  // State adjusted during render, per React docs:
+  // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
+  const [prevPath, setPrevPath] = useState(pathname);
+  if (prevPath !== pathname) {
+    setPrevPath(pathname);
     setOpen(false);
-  }, [pathname]);
+  }
 
   /** Open with a fresh query (state persists across closes — the portal unmounts, the component doesn't). */
   const openPalette = useCallback(() => {

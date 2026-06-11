@@ -74,6 +74,10 @@ export default async function SettlementPage({ params }: { params: Promise<{ id:
     getSettlementMembers(id),
     getSettlementHistory(id),
   ]);
+  // Server component: the depletion ETA is intentionally computed against the
+  // wall clock once per ISR render (staleness bounded by revalidate=1800).
+  // eslint-disable-next-line react-hooks/purity -- per-render timestamp is the intended semantics; no client re-renders here
+  const nowMs = Date.now();
 
   const suppliesPoints = history.map((p) => ({ snapshotAt: p.snapshotAt, value: p.supplies }));
   const treasuryPoints = history.map((p) => ({ snapshotAt: p.snapshotAt, value: p.treasury }));
@@ -81,7 +85,7 @@ export default async function SettlementPage({ params }: { params: Promise<{ id:
   const depletion = estimateDepletion(
     history.map((p) => ({ t: p.snapshotAt, supplies: p.supplies })),
     s.supplies,
-    Date.now(),
+    nowMs,
   );
 
   return (
