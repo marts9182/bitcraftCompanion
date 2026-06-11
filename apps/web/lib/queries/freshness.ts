@@ -5,11 +5,17 @@ import { getDb, schema } from "@/lib/db";
 
 /**
  * ISO timestamp of the most recent successful ingestion run, for the footer
- * freshness stamp. Cached 5 min — deliberately shorter than the 30-min
- * snapshot-cadence caches elsewhere, so a staleness display lags the truth by
- * at most ~5 min (a freshness indicator that is itself stale defeats its
- * purpose). Errors and an empty table both yield null (footer shows "—"):
- * the stamp must never take a page down.
+ * freshness stamp. The query result is cached 5 min, but the ISO string is
+ * captured into each page's HTML at generation time, so the displayed stamp
+ * can lag the truth by up to ~min(page ISR window since last render, 300 s
+ * query cache). Routes flushed on-demand via /api/revalidate stay near-fresh
+ * (the worker pings it after every snapshot, and the "ingestion-time" tag
+ * below flushes this cache in the same request); routes outside that flush
+ * (/resources/[slug], /creatures/[slug], /calculator/...) can serve a stamp
+ * as stale as their full ISR window (up to 86400 s). DataFreshness.tsx
+ * documents this page-render-time staleness as accepted. Errors and an empty
+ * table both yield null (footer shows "—"): the stamp must never take a page
+ * down.
  */
 export const getLastIngestionTime = unstable_cache(
   async (): Promise<string | null> => {
@@ -21,10 +27,11 @@ export const getLastIngestionTime = unstable_cache(
         .orderBy(desc(schema.ingestionRuns.finishedAt))
         .limit(1);
       return row?.finishedAt?.toISOString() ?? null;
-    } catch {
+    } catch (err) {
+      console.error("[freshness] getLastIngestionTime failed:", err);
       return null;
     }
   },
   ["last-ingestion-time"],
-  { revalidate: 300 },
+  { revalidate: 300, tags: ["ingestion-time"] },
 );

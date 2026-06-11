@@ -13,6 +13,9 @@ let timer: ReturnType<typeof setInterval> | undefined;
 
 function subscribe(listener: () => void): () => void {
   listeners.add(listener);
+  // Refresh before (re)starting the ticker: a subscriber arriving after a
+  // zero-listener gap must not read a snapshot as stale as that gap.
+  nowMs = Date.now();
   timer ??= setInterval(() => {
     nowMs = Date.now();
     listeners.forEach((l) => l());
@@ -57,5 +60,6 @@ export function DataFreshness({ updatedAtIso }: { updatedAtIso: string | null })
   if (!updatedAtIso) return <p>Game data updated —</p>;
   if (now === null) return <p>Game data updated …</p>;
   const then = new Date(updatedAtIso);
+  if (Number.isNaN(then.getTime())) return <p>Game data updated —</p>;
   return <p title={then.toLocaleString()}>Game data updated {formatTimeAgo(then.getTime(), now)}</p>;
 }

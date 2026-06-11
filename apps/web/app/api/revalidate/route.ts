@@ -1,4 +1,4 @@
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 /**
  * On-demand ISR revalidation. The worker POSTs here after an ingestion run.
@@ -39,6 +39,11 @@ export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as { all?: boolean; slugs?: string[] };
 
   if (body.all) {
+    // Flush the footer freshness stamp so it flips to "just now" right after
+    // each ingestion run instead of waiting out its 300 s query cache.
+    // ("max" profile: Next 16 requires one; it is the documented equivalent
+    // of the legacy single-arg revalidateTag for route-handler/webhook use.)
+    revalidateTag("ingestion-time", "max");
     revalidatePath("/compendium");
     for (const s of SECTIONS) {
       revalidatePath(`/${s}`);
