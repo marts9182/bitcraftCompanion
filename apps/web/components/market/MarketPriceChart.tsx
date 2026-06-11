@@ -1,6 +1,6 @@
 import type { PricePoint } from "@/lib/queries/market";
 
-/** Minimal lowest-ask / highest-bid line chart. Sparse at launch; fills in over time. */
+/** Minimal lowest-sell-price / highest-buy-price line chart. Sparse at launch; fills in over time. */
 export function MarketPriceChart({ points }: { points: PricePoint[] }) {
   const data = points.filter((p) => p.lowestAsk != null || p.highestBid != null);
   if (data.length < 2) {
@@ -20,15 +20,15 @@ export function MarketPriceChart({ points }: { points: PricePoint[] }) {
 
   return (
     <figure className="mt-3">
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full text-muted-foreground" role="img" aria-label="Price history (lowest ask and highest bid over time)">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full text-muted-foreground" role="img" aria-label="Price history (lowest sell price and highest buy price over time)">
         <polyline fill="none" stroke="#D5BB72" strokeWidth="2" points={line("lowestAsk")} />
         <polyline fill="none" stroke="#747184" strokeWidth="2" points={line("highestBid")} />
         <text x={4} y={14} className="fill-current text-[10px]">{max.toLocaleString()}</text>
         <text x={4} y={H - 4} className="fill-current text-[10px]">{min.toLocaleString()}</text>
       </svg>
       <figcaption className="mt-1 flex gap-4 text-xs text-muted-foreground">
-        <span><span className="inline-block h-2 w-3 align-middle" style={{ backgroundColor: "#D5BB72" }} /> Lowest ask</span>
-        <span><span className="inline-block h-2 w-3 align-middle" style={{ backgroundColor: "#747184" }} /> Highest bid</span>
+        <span><span className="inline-block h-2 w-3 align-middle" style={{ backgroundColor: "#D5BB72" }} /> Lowest sell price</span>
+        <span><span className="inline-block h-2 w-3 align-middle" style={{ backgroundColor: "#747184" }} /> Highest buy price</span>
       </figcaption>
     </figure>
   );

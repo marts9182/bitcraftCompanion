@@ -1,10 +1,11 @@
 import "server-only";
+import { unstable_cache } from "next/cache";
 import { and, asc, desc, eq, ilike, sql, count } from "drizzle-orm";
 import { PRICE_SENTINEL_CEILING } from "@bcc/shared";
 import { getDb, schema } from "@/lib/db";
 import { MARKET_PAGE_SIZE, type MarketListParams } from "@/lib/market/params";
 
-const { marketItemSummary, marketOrders, marketSales, marketPriceHistory, claims } = schema;
+const { marketItemSummary, marketOrders, marketSales, marketPriceHistory, marketTrades, claims } = schema;
 
 export type MarketSummaryRow = typeof marketItemSummary.$inferSelect;
 
@@ -104,6 +105,42 @@ export async function getRecentSales(itemType: number, itemId: number, limit = 2
     .orderBy(desc(marketSales.timestamp))
     .limit(limit);
 }
+
+export interface RecentTradeRow {
+  price: number;
+  quantity: number;
+  /** "partial" = certain trade (an order's qty decreased); "filled" = order vanished (trade-or-cancel, ambiguous). */
+  kind: "partial" | "filled";
+  /** Epoch ms — unstable_cache JSON-serializes results, so Dates would come back as strings on cache hits. */
+  observedAtMs: number;
+}
+
+/**
+ * Inferred trades for one item (diffed from order-book snapshots by the worker;
+ * closed listings carry no price, so this is the only per-trade price signal).
+ * Certain "partial" trades first, then newest first. unstable_cache'd at the
+ * worker snapshot cadence (30 min), matching the page revalidate.
+ * NB: market_trades.item_type is TEXT ("item"/"cargo") unlike market_orders' 0/1.
+ */
+export const getRecentTrades = unstable_cache(
+  async (itemType: number, itemId: number, limit = 20): Promise<RecentTradeRow[]> => {
+    const db = getDb();
+    const rows = await db
+      .select({ price: marketTrades.price, quantity: marketTrades.quantity, kind: marketTrades.kind, observedAt: marketTrades.observedAt })
+      .from(marketTrades)
+      .where(and(eq(marketTrades.itemType, itemType === 1 ? "cargo" : "item"), eq(marketTrades.itemId, itemId)))
+      .orderBy(sql`(${marketTrades.kind} = 'partial') desc`, desc(marketTrades.observedAt))
+      .limit(limit);
+    return rows.map((r) => ({
+      price: r.price,
+      quantity: r.quantity,
+      kind: r.kind === "partial" ? "partial" : "filled",
+      observedAtMs: r.observedAt.getTime(),
+    }));
+  },
+  ["market-recent-trades"],
+  { revalidate: 1800 },
+);
 
 export interface PricePoint { snapshotAt: Date; lowestAsk: number | null; highestBid: number | null; soldQtyRecent: number; }
 

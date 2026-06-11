@@ -11,7 +11,7 @@ export const revalidate = 1800;
 
 export const metadata: Metadata = {
   title: "Market",
-  description: "BitCraft Online market — lowest ask, highest bid, quantity, and recent sold volume per item across all regions.",
+  description: "BitCraft Online market — lowest sell price, highest buy price, quantity, and recent sold volume per item across all regions.",
   alternates: { canonical: "/market" },
 };
 
@@ -19,8 +19,8 @@ type Col = { key?: MarketSort; label: string; align?: "right" };
 const COLS: Col[] = [
   { label: "#" },
   { label: "Item" },
-  { key: "ask", label: "Lowest ask", align: "right" },
-  { key: "bid", label: "Highest bid", align: "right" },
+  { key: "ask", label: "Lowest sell price", align: "right" },
+  { key: "bid", label: "Highest buy price", align: "right" },
   { key: "askQty", label: "Available", align: "right" },
   { label: "Markets", align: "right" },
   { key: "sold", label: "Sold (24h)", align: "right" },
@@ -46,7 +46,14 @@ export default async function MarketPage({ searchParams }: { searchParams: Promi
 
   return (
     <main className="mx-auto max-w-5xl px-4 sm:px-6 py-12">
-      <PageHeader title="Market" subtitle={`${total.toLocaleString()} traded items`} />
+      <PageHeader
+        title="Market"
+        subtitle={
+          <>
+            {total.toLocaleString()} traded items · <Link href="/market/guide" className="hover:underline">How the market works →</Link>
+          </>
+        }
+      />
 
       <div className="mt-6 flex flex-wrap items-center gap-4">
         <form method="GET" action="/market" className="flex items-center gap-2 text-sm">
@@ -133,8 +140,8 @@ export default async function MarketPage({ searchParams }: { searchParams: Promi
             }
             subtitle={`${m.itemType === 1 ? "Cargo" : "Item"}${m.tier != null ? ` · Tier ${m.tier}` : ""}`}
             stats={[
-              { label: "Lowest ask", value: m.lowestAsk?.toLocaleString() ?? "—" },
-              { label: "Highest bid", value: m.highestBid?.toLocaleString() ?? "—" },
+              { label: "Lowest sell price", value: m.lowestAsk?.toLocaleString() ?? "—" },
+              { label: "Highest buy price", value: m.highestBid?.toLocaleString() ?? "—" },
               { label: "Sold (24h)", value: m.soldQtyRecent.toLocaleString() },
             ]}
           />
