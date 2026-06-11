@@ -23,9 +23,22 @@ const COLS: Col[] = [
   { label: "Empire" },
   { key: "tiles", label: "Tiles", align: "right" },
   { key: "supplies", label: "Supplies", align: "right" },
+  // Not sortable: depletion ETA is derived post-query from a cached slope map,
+  // while sorting/pagination happen in SQL — so this stays a badge-only column.
+  { label: "Runs out", align: "right" },
   { key: "treasury", label: "Treasury", align: "right" },
   { key: "members", label: "Members", align: "right" },
 ];
+
+/** Amber "{N}d" pill for settlements projected to run out of supplies inside 14 days. */
+function RunsOutBadge({ days }: { days: number | null }) {
+  if (days === null) return <span className="text-muted-foreground">—</span>;
+  return (
+    <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">
+      {days}d
+    </span>
+  );
+}
 
 export default async function SettlementsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const sp = await searchParams;
@@ -104,6 +117,7 @@ export default async function SettlementsPage({ searchParams }: { searchParams: 
               </td>
               <td className="py-2 pr-3 text-right font-mono">{s.numTiles.toLocaleString()}</td>
               <td className="py-2 pr-3 text-right font-mono">{s.supplies.toLocaleString()}</td>
+              <td className="py-2 pr-3 text-right"><RunsOutBadge days={s.runsOutDays} /></td>
               <td className="py-2 pr-3 text-right font-mono">{s.treasury.toLocaleString()}</td>
               <td className="py-2 text-right font-mono">{s.memberCount.toLocaleString()}</td>
             </tr>
@@ -126,6 +140,7 @@ export default async function SettlementsPage({ searchParams }: { searchParams: 
               { label: "Tiles", value: s.numTiles.toLocaleString() },
               { label: "Treasury", value: s.treasury.toLocaleString() },
               { label: "Members", value: s.memberCount.toLocaleString() },
+              ...(s.runsOutDays !== null ? [{ label: "Runs out", value: <RunsOutBadge days={s.runsOutDays} /> }] : []),
             ]}
           />
         ))}

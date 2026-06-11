@@ -5,6 +5,9 @@ import { SettlementTrendChart } from "@/components/settlements/SettlementTrendCh
 import {
   getSettlement, getSettlementMembers, getSettlementHistory, listSettlementIds,
 } from "@/lib/queries/settlements";
+import {
+  estimateDepletion, DEPLETION_BADGE_DAYS, DEPLETION_HORIZON_DAYS, type DepletionEstimate,
+} from "@/lib/settlements/depletion";
 import { formatGameCoords } from "@/lib/format";
 
 export const revalidate = 1800;
@@ -39,6 +42,37 @@ function Badge({ children }: { children: React.ReactNode }) {
   return <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">{children}</span>;
 }
 
+/** Short UTC date, matching the players page's last-seen idiom. */
+function fmtDate(ms: number): string {
+  return new Date(ms).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" });
+}
+
+/** One-line projection under the supplies chart; amber when run-out is under 14 days. */
+function DepletionNote({ est }: { est: DepletionEstimate }) {
+  if (est.daysLeft === null || est.etaMs === null) {
+    return (
+      <p className="mt-2 text-sm text-muted-foreground">
+        {est.slopePerDay > 0 ? "Supplies rising" : "Supplies stable"} over the last 7 days.
+      </p>
+    );
+  }
+  if (est.daysLeft > DEPLETION_HORIZON_DAYS) {
+    return (
+      <p className="mt-2 text-sm text-muted-foreground">
+        Supplies declining slowly — {DEPLETION_HORIZON_DAYS}+ days of runway at the current 7-day rate.
+      </p>
+    );
+  }
+  const n = Math.ceil(est.daysLeft);
+  const when = n <= 0 ? "today" : n === 1 ? "in 1 day" : `in ${n} days`;
+  const atRisk = est.daysLeft < DEPLETION_BADGE_DAYS;
+  return (
+    <p className={`mt-2 text-sm ${atRisk ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}>
+      Supplies run out ~{fmtDate(est.etaMs)} ({when}) at the current 7-day rate.
+    </p>
+  );
+}
+
 export default async function SettlementPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const s = await getSettlement(id);
@@ -51,6 +85,12 @@ export default async function SettlementPage({ params }: { params: Promise<{ id:
 
   const suppliesPoints = history.map((p) => ({ snapshotAt: p.snapshotAt, value: p.supplies }));
   const treasuryPoints = history.map((p) => ({ snapshotAt: p.snapshotAt, value: p.treasury }));
+  // Reuses the chart's history fetch — no extra query for the projection.
+  const depletion = estimateDepletion(
+    history.map((p) => ({ t: p.snapshotAt, supplies: p.supplies })),
+    s.supplies,
+    Date.now(),
+  );
 
   return (
     <main className="mx-auto max-w-4xl px-4 sm:px-6 py-12">
@@ -84,6 +124,7 @@ export default async function SettlementPage({ params }: { params: Promise<{ id:
 
       <section className="mt-10">
         <h2 className="text-xl font-semibold">Supplies history</h2>
+        {depletion && <DepletionNote est={depletion} />}
         <SettlementTrendChart points={suppliesPoints} label="Supplies" color="#D5BB72" />
       </section>
 
