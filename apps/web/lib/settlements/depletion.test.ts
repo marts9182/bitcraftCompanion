@@ -36,6 +36,28 @@ describe("estimateDepletion", () => {
     expect(estimateDepletion([...stale, { t: now, supplies: 1000 }], 1000, now)).toBeNull();
   });
 
+  it("produces an estimate from exactly 2 distinct in-window points", () => {
+    const pts = [
+      { t: now - 1 * DAY, supplies: 1100 },
+      { t: now, supplies: 1000 },
+    ];
+    const est = estimateDepletion(pts, 1000, now);
+    expect(est).not.toBeNull();
+    expect(est!.slopePerDay).toBeCloseTo(-100, 6);
+    expect(est!.daysLeft).toBeCloseTo(10, 6);
+  });
+
+  it("includes a sample exactly at the cutoff timestamp (inclusive >=)", () => {
+    // If t === now - 7d were excluded, only 1 in-window point would remain → null.
+    const pts = [
+      { t: now - DEPLETION_WINDOW_DAYS * DAY, supplies: 1700 },
+      { t: now, supplies: 1000 },
+    ];
+    const est = estimateDepletion(pts, 1000, now);
+    expect(est).not.toBeNull();
+    expect(est!.slopePerDay).toBeCloseTo(-100, 6);
+  });
+
   it("returns null when all in-window samples share one timestamp (zero t-variance)", () => {
     const pts = [
       { t: now, supplies: 100 },

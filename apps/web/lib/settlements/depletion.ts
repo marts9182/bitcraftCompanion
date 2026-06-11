@@ -4,6 +4,9 @@
 // snapshots (chosen over a two-point estimate for robustness to single-snapshot
 // noise like a big donation or purchase landing between samples). When the
 // slope is negative, ETA = now + currentSupplies / |slope|.
+//
+// JS twin of the grouped regr_slope query in lib/queries/settlements.ts
+// (getSupplyDepletionSlopes) — keep window + slope semantics in sync.
 
 export const DEPLETION_WINDOW_DAYS = 7;
 /** List badge threshold: only settlements projected to run out inside 14 days get flagged. */
@@ -70,6 +73,8 @@ export function estimateDepletion(
  * Whole-day count for the list's amber "{N}d" badge, or null when the
  * settlement isn't at risk (no ETA, or ETA at/beyond 14 days). Floored, so
  * "13d" reads "runs out in 13–14 days" and "0d" reads "runs out today".
+ * The detail page intentionally rounds the other way (it ceils, "within N
+ * days"), so a one-day difference between the two views is expected, not a bug.
  */
 export function depletionBadgeDays(daysLeft: number | null): number | null {
   if (daysLeft === null || daysLeft >= DEPLETION_BADGE_DAYS) return null;

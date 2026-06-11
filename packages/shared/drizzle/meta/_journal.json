@@ -99,6 +99,13 @@
       "when": 1781141275246,
       "tag": "0013_panoramic_enchantress",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1781184426976,
+      "tag": "0014_small_photon",
+      "breakpoints": true
     }
   ]
 }

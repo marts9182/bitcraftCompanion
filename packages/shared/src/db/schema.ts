@@ -581,5 +581,8 @@ export const settlementSupplyHistory = pgTable(
   (t) => ({
     pk: primaryKey({ columns: [t.settlementEntityId, t.snapshotAt] }),
     byEntity: index("settlement_history_entity_idx").on(t.settlementEntityId, t.snapshotAt),
+    // Serves the grouped depletion-slope scan's `snapshot_at >= cutoff` filter;
+    // the composite above leads with entity id so it can't.
+    bySnapshot: index("settlement_history_snapshot_idx").on(t.snapshotAt),
   }),
 );

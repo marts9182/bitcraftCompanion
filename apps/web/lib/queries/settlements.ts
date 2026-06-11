@@ -12,6 +12,9 @@ const { settlements, settlementSupplyHistory, claimMembers, players, empires } =
  * only (draining settlements). One grouped regr_slope scan covers every
  * settlement, so the list never runs per-row history queries; unstable_cache'd
  * at the worker snapshot cadence (30 min) like the map fetchers.
+ *
+ * SQL twin of estimateDepletion in lib/settlements/depletion.ts — keep window
+ * + slope semantics in sync.
  */
 const getSupplyDepletionSlopes = unstable_cache(
   async (): Promise<Record<string, number>> => {
@@ -65,8 +68,7 @@ export async function getSettlementsList(params: SettlementListParams): Promise<
     desc(settlements.numTiles);
 
   const [{ total }] = await db.select({ total: count() }).from(settlements).where(where);
-  const slopesPromise = getSupplyDepletionSlopes(); // cached at snapshot cadence; overlaps the row fetch
-  const rows = await db
+  const rowsQuery = db
     .select({
       entityId: settlements.entityId,
       name: settlements.name,
@@ -87,7 +89,16 @@ export async function getSettlementsList(params: SettlementListParams): Promise<
     .orderBy(orderBy, asc(settlements.name))
     .limit(SETTLEMENT_PAGE_SIZE)
     .offset((params.page - 1) * SETTLEMENT_PAGE_SIZE);
-  const slopes = await slopesPromise;
+  // Awaited together so a rows rejection can't leave the slopes promise as an
+  // unhandled rejection; the slopes side degrades to {} (badge-less list)
+  // rather than 500ing the page over a garnish badge.
+  const [rows, slopes] = await Promise.all([
+    rowsQuery,
+    getSupplyDepletionSlopes().catch((err) => {
+      console.error("[settlements] depletion slopes failed:", err);
+      return {} as Record<string, number>;
+    }),
+  ]);
   const withEta = rows.map((r) => {
     const slope = slopes[r.entityId];
     return { ...r, runsOutDays: slope !== undefined ? depletionBadgeDays(r.supplies / -slope) : null };

@@ -34,7 +34,10 @@ const COLS: Col[] = [
 function RunsOutBadge({ days }: { days: number | null }) {
   if (days === null) return <span className="text-muted-foreground">—</span>;
   return (
-    <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">
+    <span
+      title={`Projected to run out of supplies in ~${days} days at the current 7-day spend rate`}
+      className="rounded bg-amber-500/15 px-1.5 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400"
+    >
       {days}d
     </span>
   );

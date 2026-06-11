@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS "settlement_history_snapshot_idx" ON "settlement_supply_history" USING btree ("snapshot_at");
