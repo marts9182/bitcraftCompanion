@@ -2,6 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development. One task per dispatch; two-stage review each.
 
+**STATUS 2026-06-11: ALL TASKS COMPLETE (A–I), each implemented + spec-reviewed + quality-reviewed + fixes applied.**
+A `545ab5e` · B `fac0078`+`42b749a` · C `c8ff16d`+`66142bd` · D `0824957`+`db3a992` · E `dc7fb7e`+`17f57d8` · F `baba966`+`5fa3210` · G `9f1e44a`+`9d01958` · H `121b481`+`603e000` · I `dd8b271`. Final gates: 294 tests, typecheck, lint (zero errors after the react-hooks rules sweep — also fixed on main, `699ac5d`), production build. Playwright-verified: palette (H) and map popups (I). Remaining before merge: the pre-merge migration requirement below, plus owner review.
+
 **Goal:** Implement the 10 user-approved improvements from the Phase-A idea sweep (2026-06-10): market plain language, deals page, trade inference, command palette, depletion warnings, best-region callouts, recipes readable names, respawn-on-chips, freshness stamp, creature danger hints.
 
 **Branch:** `feature/bitjita-parity` (LOCAL ONLY — no pushes). All established patterns from Phase A apply: list pages mirror siblings, `unstable_cache` 1800 on snapshot-cadence queries, humanized units, Vitest for pure logic, playwright (neighbor project `C:\Sandbox\project-seven`) for visual checks, root `pnpm test` (NEVER `--filter @bcc/web test` — silent no-op).
