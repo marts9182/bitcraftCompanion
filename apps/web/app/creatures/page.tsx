@@ -81,7 +81,7 @@ export default async function CreaturesPage({ searchParams }: { searchParams: Pr
         <CompendiumFilters
           basePath="/creatures"
           fields={[
-            { name: "q", placeholder: "Search creatures…", className: "max-w-xs" },
+            { name: "q", placeholder: "Search creatures…", className: "max-w-xs", suggestKind: "creatures" },
             {
               name: "tier",
               placeholder: "All tiers",

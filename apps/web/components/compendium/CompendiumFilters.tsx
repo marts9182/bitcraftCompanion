@@ -2,6 +2,8 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
+import { TypeaheadSearch } from "./TypeaheadSearch";
+import type { SuggestKind } from "@/lib/suggest";
 
 export interface FilterField {
   name: string;
@@ -9,6 +11,8 @@ export interface FilterField {
   kind?: "text" | "select";
   options?: { value: string; label: string }[];
   className?: string;
+  /** Text fields only: upgrade to a TypeaheadSearch fed by /api/suggest/{suggestKind}. */
+  suggestKind?: SuggestKind;
 }
 
 export function CompendiumFilters({ basePath, fields }: { basePath: string; fields: FilterField[] }) {
@@ -44,6 +48,15 @@ export function CompendiumFilters({ basePath, fields }: { basePath: string; fiel
               </option>
             ))}
           </select>
+        ) : f.suggestKind ? (
+          <TypeaheadSearch
+            key={f.name}
+            kind={f.suggestKind}
+            name={f.name}
+            placeholder={f.placeholder}
+            defaultValue={sp.get(f.name) ?? ""}
+            className={f.className ?? "max-w-xs"}
+          />
         ) : (
           <Input
             key={f.name}

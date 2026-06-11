@@ -82,7 +82,7 @@ export default async function ResourcesPage({ searchParams }: { searchParams: Pr
         <CompendiumFilters
           basePath="/resources"
           fields={[
-            { name: "q", placeholder: "Search resources…", className: "max-w-xs" },
+            { name: "q", placeholder: "Search resources…", className: "max-w-xs", suggestKind: "resources" },
             {
               name: "category",
               placeholder: "All categories",

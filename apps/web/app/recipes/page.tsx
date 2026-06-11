@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { EntityTable } from "@/components/compendium/EntityTable";
 import { CompendiumFilters } from "@/components/compendium/CompendiumFilters";
 import { Pager } from "@/components/compendium/Pager";
-import { listRecipes } from "@/lib/queries/recipes";
+import { listRecipeOutputTiers, listRecipes } from "@/lib/queries/recipes";
 import { parseListParams } from "@/lib/queries/list-params";
 import { breadcrumbJsonLd, itemListJsonLd, jsonLdScript } from "@/lib/jsonld";
 import { SITE_URL } from "@/lib/seo";
@@ -17,9 +17,13 @@ type SP = Record<string, string | string[] | undefined>;
 
 export default async function RecipesPage({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
-  const params = parseListParams(sp, ["type"]);
-  const { rows, total, page, pageSize } = await listRecipes(params);
-  const flat: Record<string, string | undefined> = { q: params.q, type: params.filters.type };
+  const params = parseListParams(sp, ["type", "tier"]);
+  const [{ rows, total, page, pageSize }, tiers] = await Promise.all([listRecipes(params), listRecipeOutputTiers()]);
+  const flat: Record<string, string | undefined> = {
+    q: params.q,
+    type: params.filters.type,
+    tier: params.filters.tier,
+  };
   const jsonLd = [
     breadcrumbJsonLd([
       { name: "Home", url: `${SITE_URL}/` },
@@ -36,7 +40,7 @@ export default async function RecipesPage({ searchParams }: { searchParams: Prom
         <CompendiumFilters
           basePath="/recipes"
           fields={[
-            { name: "q", placeholder: "Search recipes…", className: "max-w-xs" },
+            { name: "q", placeholder: "Search recipes…", className: "max-w-xs", suggestKind: "recipes" },
             {
               name: "type",
               placeholder: "All types",
@@ -46,9 +50,21 @@ export default async function RecipesPage({ searchParams }: { searchParams: Prom
                 { value: "construction", label: "Construction" },
               ],
             },
+            {
+              name: "tier",
+              placeholder: "All tiers",
+              kind: "select",
+              options: tiers.map((t) => ({ value: String(t), label: `Tier ${t}` })),
+              className: "w-28",
+            },
           ]}
         />
-        <EntityTable rows={rows} basePath="/recipes" columns={["type"]} emptyLabel="No recipes match your search." />
+        <EntityTable
+          rows={rows.map((r) => ({ ...r, tier: r.outputTier }))}
+          basePath="/recipes"
+          columns={["tier", "type"]}
+          emptyLabel="No recipes match your search."
+        />
         <Pager page={page} total={total} pageSize={pageSize} searchParams={flat} basePath="/recipes" />
       </div>
     </main>

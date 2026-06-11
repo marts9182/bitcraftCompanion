@@ -50,7 +50,7 @@ export default async function ItemsPage({ searchParams }: { searchParams: Promis
         <CompendiumFilters
           basePath="/items"
           fields={[
-            { name: "q", placeholder: "Search items…", className: "max-w-xs" },
+            { name: "q", placeholder: "Search items…", className: "max-w-xs", suggestKind: "items" },
             { name: "tier", placeholder: "Tier", className: "w-24" },
             { name: "rarity", placeholder: "Rarity", className: "w-36" },
             { name: "tag", placeholder: "Tag", className: "w-40" },

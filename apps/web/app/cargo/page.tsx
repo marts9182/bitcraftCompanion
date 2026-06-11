@@ -41,7 +41,7 @@ export default async function CargoPage({ searchParams }: { searchParams: Promis
         <CompendiumFilters
           basePath="/cargo"
           fields={[
-            { name: "q", placeholder: "Search cargo…", className: "max-w-xs" },
+            { name: "q", placeholder: "Search cargo…", className: "max-w-xs", suggestKind: "cargo" },
             { name: "tier", placeholder: "Tier", className: "w-24" },
             { name: "rarity", placeholder: "Rarity", className: "w-36" },
             { name: "tag", placeholder: "Tag", className: "w-40" },
