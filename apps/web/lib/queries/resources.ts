@@ -112,7 +112,12 @@ export const getResourceMapCatalog = unstable_cache(async () => {
       category: schema.resources.category,
       tier: schema.resources.tier,
       spawnCounts: schema.resources.spawnCounts,
+      // Nulled for never-respawning nodes so the finder's "respawns Xs" chip
+      // tooltip can simply check for a value (and the payload stays one field).
+      respawnSeconds: sql<number | null>`case when ${schema.resources.notRespawning} then null else ${schema.resources.respawnSeconds} end`,
     })
     .from(schema.resources)
     .orderBy(asc(schema.resources.name));
-}, ["resource-map-catalog"], { revalidate: 1800 });
+  // Cache key versioned with the select shape — bump it whenever fields change
+  // so a stale cached shape can never be served to the new UI.
+}, ["resource-map-catalog-v2"], { revalidate: 1800 });

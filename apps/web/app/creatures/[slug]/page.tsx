@@ -9,6 +9,7 @@ import { SpawnRegionsList } from "@/components/compendium/SpawnRegionsList";
 import { ResourceMapEmbed } from "@/components/map/ResourceMapEmbed";
 import { damageLabel } from "@/components/compendium/CreaturesTable";
 import { getCreatureBySlug, listAllCreatureSlugs } from "@/lib/queries/creatures";
+import { dangerHint } from "@/lib/creature-danger";
 import { getItemsByIds } from "@/lib/queries/items";
 import { getCargoByIds } from "@/lib/queries/cargo";
 import { getMapRegions } from "@/lib/queries/map";
@@ -112,6 +113,7 @@ export default async function CreatureDetailPage({ params }: { params: Promise<{
     { label: "Defense level", value: creature.defenseLevel?.toLocaleString() ?? "—" },
     { label: "Health regen", value: creature.healthRegen != null ? `${creature.healthRegen.toFixed(1)}/s` : "—" },
   ];
+  const hint = dangerHint(creature);
 
   return (
     <main className="mx-auto max-w-3xl px-4 sm:px-6 py-12">
@@ -155,6 +157,7 @@ export default async function CreatureDetailPage({ params }: { params: Promise<{
             </div>
           ))}
         </dl>
+        {hint && <p className="mt-3 text-sm text-muted-foreground">{hint}</p>}
       </section>
 
       <section className="mt-8">

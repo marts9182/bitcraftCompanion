@@ -61,6 +61,11 @@ export default async function ResourceDetailPage({ params }: { params: Promise<{
   const itemById = new Map(yieldItems.map((i) => [i.id, i]));
   const cargoById = new Map(yieldCargo.map((c) => [c.id, c]));
 
+  // Best region to farm: the region with the most live spawn points.
+  const densest = Object.entries(spawnCounts)
+    .map(([regionId, count]) => ({ regionId: Number(regionId), count }))
+    .reduce<{ regionId: number; count: number } | null>((a, b) => (a && a.count >= b.count ? a : b), null);
+
   const url = `${SITE_URL}/resources/${resource.slug}`;
   const jsonLd = [
     breadcrumbJsonLd([
@@ -123,6 +128,15 @@ export default async function ResourceDetailPage({ params }: { params: Promise<{
 
       <section className="mt-8">
         <h2 className="mb-3 text-lg font-semibold">Spawns in</h2>
+        {densest && (
+          <p className="mb-3 text-sm text-muted-foreground">
+            Densest in{" "}
+            <span className="font-medium text-foreground">
+              {regions.find((r) => r.id === densest.regionId)?.name ?? `Region ${densest.regionId}`}
+            </span>{" "}
+            — {densest.count.toLocaleString()} spawn points.
+          </p>
+        )}
         <SpawnRegionsList
           spawnCounts={spawnCounts}
           regions={regions}

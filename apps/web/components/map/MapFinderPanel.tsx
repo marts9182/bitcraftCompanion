@@ -1,14 +1,19 @@
 "use client";
 import { useMemo, useRef, useState } from "react";
 import { trackColor, MAX_TRACKED } from "@/lib/map/tracking";
+import { formatDuration } from "@/lib/calculator/format";
 
 // Slim catalog shapes threaded page → MapClient → WorldMap → here. Defined ONCE
 // in this file; everyone else imports them.
-export interface FinderResource { id: number; slug: string; name: string; category: string | null; tier: number | null; spawnCounts: Record<string, number> }
+export interface FinderResource { id: number; slug: string; name: string; category: string | null; tier: number | null; spawnCounts: Record<string, number>; respawnSeconds: number | null }
 export interface FinderCreature { enemyType: number; slug: string; name: string; tier: number | null; spawnCounts: Record<string, number> }
 export interface TrackedRef { kind: "resource" | "creature"; id: number }
 
 const hasSpawns = (spawnCounts: Record<string, number>): boolean => Object.keys(spawnCounts).length > 0;
+
+/** Tooltip for resources with respawn data (catalog nulls it for never-respawning nodes). */
+const respawnTitle = (r: FinderResource): string | undefined =>
+  r.respawnSeconds != null && r.respawnSeconds > 0 ? `respawns ${formatDuration(r.respawnSeconds)}` : undefined;
 
 /**
  * Finder panel rendered ABOVE the map: name search (resources + creatures),
@@ -98,7 +103,7 @@ export function MapFinderPanel({ resources, creatures, tracked, onToggle, onClea
                     <button
                       type="button"
                       disabled={disabled}
-                      title={disabled ? capTitle : undefined}
+                      title={disabled ? capTitle : respawnTitle(r)}
                       aria-pressed={on}
                       className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left hover:bg-background disabled:cursor-not-allowed disabled:opacity-50"
                       onMouseDown={(e) => e.preventDefault()}
@@ -187,7 +192,7 @@ export function MapFinderPanel({ resources, creatures, tracked, onToggle, onClea
                 key={r.id}
                 type="button"
                 disabled={disabled}
-                title={disabled ? capTitle : undefined}
+                title={disabled ? capTitle : respawnTitle(r)}
                 onClick={() => onToggle({ kind: "resource", id: r.id })}
                 aria-pressed={on}
                 className={`rounded-full border px-2.5 py-0.5 text-xs disabled:cursor-not-allowed disabled:opacity-50 ${on ? "border-primary bg-primary/15" : "border-border hover:bg-background"}`}
