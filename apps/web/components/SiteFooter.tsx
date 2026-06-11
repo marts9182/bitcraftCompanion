@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { Logo } from "./Logo";
+import { DataFreshness } from "./DataFreshness";
+import { getLastIngestionTime } from "@/lib/queries/freshness";
 
 const GROUPS: { heading: string; links: [string, string][] }[] = [
   { heading: "Explore", links: [["/compendium", "Compendium"], ["/calculator", "Calculator"], ["/map", "Map"]] },
@@ -7,7 +9,11 @@ const GROUPS: { heading: string; links: [string, string][] }[] = [
   { heading: "More", links: [["/blog", "Blog"], ["/status", "Status"]] },
 ];
 
-export function SiteFooter() {
+export async function SiteFooter() {
+  // Server component: fetches the latest successful ingestion timestamp
+  // (unstable_cache, 5 min) and hands the ISO string to a client component
+  // that renders the relative time at view time — see DataFreshness for why.
+  const updatedAtIso = await getLastIngestionTime();
   return (
     <footer className="mt-20 border-t border-border bg-background">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 py-12">
@@ -42,6 +48,7 @@ export function SiteFooter() {
             <a href="mailto:support@bitcraftcompanion.com" className="transition-colors hover:text-foreground">support@bitcraftcompanion.com</a>
             <a href="mailto:privacy@bitcraftcompanion.com" className="transition-colors hover:text-foreground">privacy@bitcraftcompanion.com</a>
           </div>
+          <DataFreshness updatedAtIso={updatedAtIso} />
           <p>© 2026 BitCraft Companion · Not affiliated with BitCraft or Clockwork Labs.</p>
         </div>
       </div>

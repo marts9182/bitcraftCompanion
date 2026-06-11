@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatGameCoords } from "./format";
+import { formatGameCoords, formatTimeAgo } from "./format";
 
 // Expected values cross-checked against the live game via bitjita.com/claims/{id}
 // (claims in three different regions, 2026-06-10).
@@ -18,5 +18,35 @@ describe("formatGameCoords", () => {
 
   it("handles the origin", () => {
     expect(formatGameCoords(0, 0)).toBe("N0, E0");
+  });
+});
+
+describe("formatTimeAgo", () => {
+  const now = Date.UTC(2026, 5, 11, 12, 0, 0); // 2026-06-11T12:00:00Z
+
+  it("says 'just now' under a minute", () => {
+    expect(formatTimeAgo(now, now)).toBe("just now");
+    expect(formatTimeAgo(now - 59_000, now)).toBe("just now");
+  });
+
+  it("treats future timestamps (clock skew) as 'just now'", () => {
+    expect(formatTimeAgo(now + 90_000, now)).toBe("just now");
+  });
+
+  it("formats minutes", () => {
+    expect(formatTimeAgo(now - 60_000, now)).toBe("1m ago");
+    expect(formatTimeAgo(now - 23 * 60_000, now)).toBe("23m ago");
+    expect(formatTimeAgo(now - 59 * 60_000 - 59_000, now)).toBe("59m ago");
+  });
+
+  it("formats hours with a minute remainder", () => {
+    expect(formatTimeAgo(now - 3_600_000, now)).toBe("1h ago");
+    expect(formatTimeAgo(now - 3_600_000 - 2 * 60_000, now)).toBe("1h 2m ago");
+    expect(formatTimeAgo(now - 23 * 3_600_000, now)).toBe("23h ago");
+  });
+
+  it("formats whole days past 24h", () => {
+    expect(formatTimeAgo(now - 24 * 3_600_000, now)).toBe("1d ago");
+    expect(formatTimeAgo(now - 3 * 24 * 3_600_000 - 5 * 3_600_000, now)).toBe("3d ago");
   });
 });
