@@ -519,8 +519,8 @@ export const marketTrades = pgTable(
   {
     id: serial("id").primaryKey(),
     itemId: integer("item_id").notNull(),
-    itemType: text("item_type").notNull(), // "item" | "cargo"
-    region: integer("region").notNull(),
+    itemType: text("item_type").notNull(), // "item" | "cargo" — NB: market_orders.item_type is INTEGER (0/1); cast when joining
+    region: integer("region").notNull(), // NB: market_orders.region is TEXT; cast when joining
     price: bigint("price", { mode: "number" }).notNull(), // Hex Coins per unit
     quantity: integer("quantity").notNull(),
     side: text("side").notNull(), // "sell" | "buy" — which book the order was on
