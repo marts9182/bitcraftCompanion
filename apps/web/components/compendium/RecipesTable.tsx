@@ -6,7 +6,7 @@ import { MobileCard } from "@/components/mobile/MobileCard";
 import type { RecipeListRow } from "@/lib/queries/recipes";
 
 /** Small muted chip for the recipe's action verb ("Craft", "Bake", …). */
-function VerbBadge({ verb }: { verb: string }) {
+export function VerbBadge({ verb }: { verb: string }) {
   return (
     <span className="inline-flex items-center rounded bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
       {verb}

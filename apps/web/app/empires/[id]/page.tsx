@@ -92,7 +92,12 @@ export default async function EmpirePage({ params }: { params: Promise<{ id: str
               <tbody>
                 {towers.map((t) => (
                   <tr key={t.entityId} className="border-t border-border">
-                    <td className="py-2 pr-3 font-mono text-muted-foreground">{towerCoords(t.chunkIndex)}</td>
+                    <td
+                      className="py-2 pr-3 font-mono text-muted-foreground"
+                      title="Approximate — center of the territory chunk"
+                    >
+                      {towerCoords(t.chunkIndex)}
+                    </td>
                     <td className="py-2 pr-3 text-right font-mono">{t.energy.toLocaleString()}</td>
                     <td className="py-2 pr-3 text-right font-mono">{t.upkeep.toLocaleString()}</td>
                     <td className="py-2 text-right">{t.active ? "✓" : "—"}</td>

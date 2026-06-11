@@ -4,7 +4,8 @@ import { getSuggestCatalog } from "@/lib/queries/suggest";
 /**
  * Slim suggestion catalog for the TypeaheadSearch inputs:
  * GET /api/suggest/{items|cargo|recipes|resources|creatures}
- * → { v: 1, entries: [{ name, slug, tier }] }
+ * → { v: 1, entries: [{ name, slug, tier }] } — recipe entries also carry an
+ * optional `verb` ("Craft", "Bake", …) to disambiguate duplicate output names.
  * DB work is unstable_cache'd per kind (30 min); browsers/CDN may hold the
  * response for 15 min on top.
  */

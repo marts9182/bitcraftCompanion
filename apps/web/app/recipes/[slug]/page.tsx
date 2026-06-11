@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { RecipeTypeBadge } from "@/components/compendium/RecipeTypeBadge";
+import { VerbBadge } from "@/components/compendium/RecipesTable";
 import { StackList } from "@/components/compendium/CraftGraphSection";
 import { getRecipeBySlug, getRecipePrimaryOutput, getRecipeStacks, listAllRecipeSlugs } from "@/lib/queries/recipes";
 import { breadcrumbJsonLd, thingJsonLd, jsonLdScript } from "@/lib/jsonld";
@@ -60,9 +61,7 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ s
       </nav>
       <h1 className="mt-4 text-3xl font-bold tracking-tight">{title}</h1>
       <div className="mt-2 flex flex-wrap items-center gap-3 text-sm">
-        <span className="inline-flex items-center rounded bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
-          {verb}
-        </span>
+        <VerbBadge verb={verb} />
         <RecipeTypeBadge type={r.type} />
         {r.timeRequirement != null && <span className="text-muted-foreground">{r.timeRequirement}s</span>}
         {r.staminaRequirement != null && <span className="text-muted-foreground">{r.staminaRequirement} stamina</span>}

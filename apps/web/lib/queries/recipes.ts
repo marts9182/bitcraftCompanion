@@ -3,7 +3,7 @@ import { unstable_cache } from "next/cache";
 import { eq, sql } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { getRecipeStacks } from "./craft-graph-db";
-import { PAGE_SIZE, type ListParams } from "./list-params";
+import { PAGE_SIZE, parseIntParam, type ListParams } from "./list-params";
 import { recipeVerb } from "@/lib/recipes";
 import type { SuggestEntry } from "@/lib/suggest";
 
@@ -26,26 +26,49 @@ export interface RecipeListResult {
   pageSize: number;
 }
 
+/*
+ * Shared fragments of the primary-output query, interpolated into BOTH the
+ * PRIMARY_OUT CTE (list path) and getRecipePrimaryOutput (detail path). The
+ * two query shapes are deliberately separate rather than the detail path
+ * reusing the CTE: Postgres won't reliably push `WHERE r.id = $1` into a
+ * DISTINCT ON CTE, so the detail page keeps its own targeted query.
+ */
+const PRIMARY_OUT_COLS = sql`
+      COALESCE(i.name, c.name) AS out_name,
+      COALESCE(i.icon_asset_name, c.icon_asset_name) AS out_icon,
+      COALESCE(i.tier, c.tier) AS out_tier,
+      COALESCE(i.rarity, c.rarity, 'Default') AS out_rarity`;
+const PRIMARY_OUT_FROM = sql`
+    FROM recipes r
+    JOIN recipe_outputs ro ON ro.recipe_id = r.id
+    LEFT JOIN items i ON ro.ref_type = 'item' AND i.id = ro.ref_id
+    LEFT JOIN cargo c ON ro.ref_type = 'cargo' AND c.id = ro.ref_id`;
+/*
+ * Resolvable outputs first (false sorts before true), so a recipe whose
+ * top-quantity output is an unresolvable ghost id still resolves to a name
+ * via its next resolvable output instead of vanishing under the makeable
+ * filter; then highest quantity, then ref_id + ref_type so the pick is
+ * fully deterministic (an item row and a cargo row can share ref_id).
+ */
+const PRIMARY_OUT_TIEBREAK = sql`(COALESCE(i.id, c.id) IS NULL), ro.quantity DESC, ro.ref_id, ro.ref_type`;
+
 /**
- * Each recipe's PRIMARY output = its highest-quantity output stack (tiebreak:
- * lowest ref_id), joined to items/cargo for name/icon/tier/rarity. Recipe
- * names are unresolved localization templates ("Craft {0}"), so the output is
- * the only readable title. Postgres `DISTINCT ON (r.id)` + the ORDER BY picks
- * exactly one row per recipe.
+ * Each recipe's PRIMARY output = its highest-quantity resolvable output stack
+ * (see PRIMARY_OUT_TIEBREAK), joined to items/cargo for name/icon/tier/rarity.
+ * Recipe names are unresolved localization templates ("Craft {0}"), so the
+ * output is the only readable title. Postgres `DISTINCT ON (r.id)` + the
+ * ORDER BY picks exactly one row per recipe.
+ *
+ * Cost note: listRecipes runs this DISTINCT ON join twice per request
+ * (count + page), uncached — fine at ~8.2k recipes (tens of ms warm). If
+ * recipes grow ~10x or this shows in Neon metrics, denormalize the primary
+ * output's name/tier into the recipes table at snapshot time instead.
  */
 const PRIMARY_OUT = sql`
   WITH primary_out AS (
     SELECT DISTINCT ON (r.id)
-      r.id, r.slug, r.name AS template, r.type,
-      COALESCE(i.name, c.name) AS out_name,
-      COALESCE(i.icon_asset_name, c.icon_asset_name) AS out_icon,
-      COALESCE(i.tier, c.tier) AS out_tier,
-      COALESCE(i.rarity, c.rarity, 'Default') AS out_rarity
-    FROM recipes r
-    JOIN recipe_outputs ro ON ro.recipe_id = r.id
-    LEFT JOIN items i ON ro.ref_type = 'item' AND i.id = ro.ref_id
-    LEFT JOIN cargo c ON ro.ref_type = 'cargo' AND c.id = ro.ref_id
-    ORDER BY r.id, ro.quantity DESC, ro.ref_id
+      r.id, r.slug, r.name AS template, r.type,${PRIMARY_OUT_COLS}${PRIMARY_OUT_FROM}
+    ORDER BY r.id, ${PRIMARY_OUT_TIEBREAK}
   )`;
 
 /**
@@ -71,8 +94,8 @@ export async function listRecipes(params: ListParams): Promise<RecipeListResult>
   const conds = [MAKEABLE];
   const type = params.filters.type;
   if (type === "crafting" || type === "construction") conds.push(sql`type = ${type}`);
-  const tierNum = params.filters.tier && /^-?\d+$/.test(params.filters.tier) ? parseInt(params.filters.tier, 10) : NaN;
-  if (Number.isInteger(tierNum)) conds.push(sql`out_tier = ${tierNum}`);
+  const tierNum = parseIntParam(params.filters.tier);
+  if (tierNum !== undefined) conds.push(sql`out_tier = ${tierNum}`);
   if (params.q) conds.push(sql`out_name ILIKE ${"%" + params.q + "%"}`);
   const where = sql.join(conds, sql` AND `);
 
@@ -143,18 +166,13 @@ export async function getRecipePrimaryOutput(
   recipeId: number,
 ): Promise<{ name: string; iconAssetName: string | null; tier: number | null; rarity: string } | null> {
   const db = getDb();
+  // Same shape as the PRIMARY_OUT CTE but targeted at one recipe — Postgres
+  // won't reliably push WHERE id=$1 into a DISTINCT ON CTE, hence the
+  // duplication; the shared PRIMARY_OUT_* fragments keep both in sync.
   const res = (await db.execute(sql`
-    SELECT DISTINCT ON (r.id)
-      COALESCE(i.name, c.name) AS out_name,
-      COALESCE(i.icon_asset_name, c.icon_asset_name) AS out_icon,
-      COALESCE(i.tier, c.tier) AS out_tier,
-      COALESCE(i.rarity, c.rarity, 'Default') AS out_rarity
-    FROM recipes r
-    JOIN recipe_outputs ro ON ro.recipe_id = r.id
-    LEFT JOIN items i ON ro.ref_type = 'item' AND i.id = ro.ref_id
-    LEFT JOIN cargo c ON ro.ref_type = 'cargo' AND c.id = ro.ref_id
+    SELECT DISTINCT ON (r.id)${PRIMARY_OUT_COLS}${PRIMARY_OUT_FROM}
     WHERE r.id = ${recipeId}
-    ORDER BY r.id, ro.quantity DESC, ro.ref_id
+    ORDER BY r.id, ${PRIMARY_OUT_TIEBREAK}
   `)) as unknown as { out_name: string | null; out_icon: string | null; out_tier: number | null; out_rarity: string }[];
   const row = res[0];
   if (!row || row.out_name == null) return null;
