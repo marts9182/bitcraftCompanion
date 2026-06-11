@@ -101,6 +101,9 @@ export async function getResourceStats(): Promise<{ total: number; categories: n
  * Slim catalog of ALL resources (incl. non-compendium) for the map finder panel.
  * unstable_cache'd (30 min = worker snapshot cadence): fetched by /map AND every
  * ISR detail page via the map embed.
+ *
+ * Cache key versioned with the select shape — bump it whenever fields change
+ * so a stale cached shape can never be served to the new UI.
  */
 export const getResourceMapCatalog = unstable_cache(async () => {
   const db = getDb();
@@ -118,6 +121,4 @@ export const getResourceMapCatalog = unstable_cache(async () => {
     })
     .from(schema.resources)
     .orderBy(asc(schema.resources.name));
-  // Cache key versioned with the select shape — bump it whenever fields change
-  // so a stale cached shape can never be served to the new UI.
 }, ["resource-map-catalog-v2"], { revalidate: 1800 });

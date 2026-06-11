@@ -13,7 +13,7 @@ const hasSpawns = (spawnCounts: Record<string, number>): boolean => Object.keys(
 
 /** Tooltip for resources with respawn data (catalog nulls it for never-respawning nodes). */
 const respawnTitle = (r: FinderResource): string | undefined =>
-  r.respawnSeconds != null && r.respawnSeconds > 0 ? `respawns ${formatDuration(r.respawnSeconds)}` : undefined;
+  r.respawnSeconds != null && r.respawnSeconds > 0 ? `Respawns ${formatDuration(r.respawnSeconds)}` : undefined;
 
 /**
  * Finder panel rendered ABOVE the map: name search (resources + creatures),

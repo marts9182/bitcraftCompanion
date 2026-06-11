@@ -128,7 +128,9 @@ export default async function ResourceDetailPage({ params }: { params: Promise<{
 
       <section className="mt-8">
         <h2 className="mb-3 text-lg font-semibold">Spawns in</h2>
-        {densest && (
+        {/* Only worth calling out when there are multiple regions to compare —
+            with a single region it would just repeat the row below. */}
+        {densest && Object.keys(spawnCounts).length > 1 && (
           <p className="mb-3 text-sm text-muted-foreground">
             Densest in{" "}
             <span className="font-medium text-foreground">

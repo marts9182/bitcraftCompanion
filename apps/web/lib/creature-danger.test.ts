@@ -21,4 +21,10 @@ describe("dangerHint", () => {
   it("returns null when no combat levels are recorded", () => {
     expect(dangerHint({ attackLevel: null, defenseLevel: null })).toBeNull();
   });
+  it("treats level 0 as unknown rather than hinting at level-0 gear", () => {
+    expect(dangerHint({ attackLevel: 0, defenseLevel: 0 })).toBeNull();
+    expect(dangerHint({ attackLevel: 0, defenseLevel: 15 })).toBe(
+      "Combat level 15 — bring gear around level 15 or higher.",
+    );
+  });
 });
