@@ -13,6 +13,16 @@ export interface MemberRow {
 
 type Sort = "rank" | "energy" | "name";
 
+function Th({ s, label, align, sort, setSort }: { s: Sort; label: string; align?: "right"; sort: Sort; setSort: (s: Sort) => void }) {
+  return (
+    <th className={`py-2 pr-3 ${align === "right" ? "text-right" : ""}`}>
+      <button type="button" onClick={() => setSort(s)} className={`hover:underline ${sort === s ? "text-foreground font-medium" : ""}`}>
+        {label}{sort === s ? " ▾" : ""}
+      </button>
+    </th>
+  );
+}
+
 export function EmpireMembers({ members }: { members: MemberRow[] }) {
   const [q, setQ] = useState("");
   const [noblesOnly, setNoblesOnly] = useState(false);
@@ -28,14 +38,6 @@ export function EmpireMembers({ members }: { members: MemberRow[] }) {
     );
     return r;
   }, [members, q, noblesOnly, sort]);
-
-  const Th = ({ s, label, align }: { s: Sort; label: string; align?: "right" }) => (
-    <th className={`py-2 pr-3 ${align === "right" ? "text-right" : ""}`}>
-      <button type="button" onClick={() => setSort(s)} className={`hover:underline ${sort === s ? "text-foreground font-medium" : ""}`}>
-        {label}{sort === s ? " ▾" : ""}
-      </button>
-    </th>
-  );
 
   return (
     <div>
@@ -61,9 +63,9 @@ export function EmpireMembers({ members }: { members: MemberRow[] }) {
         <table className="mt-3 w-full text-sm">
           <thead className="text-left text-muted-foreground">
             <tr>
-              <Th s="rank" label="#" />
-              <Th s="name" label="Player" />
-              <Th s="energy" label="Donated energy" align="right" />
+              <Th s="rank" label="#" sort={sort} setSort={setSort} />
+              <Th s="name" label="Player" sort={sort} setSort={setSort} />
+              <Th s="energy" label="Donated energy" align="right" sort={sort} setSort={setSort} />
             </tr>
           </thead>
           <tbody>

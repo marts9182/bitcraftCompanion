@@ -29,8 +29,10 @@ export function EntityIcon({
 }) {
   const url = iconUrl(assetName);
   if (url) {
-    // eslint-disable-next-line @next/next/no-img-element -- icon set is external/optional; avoids next/image remote config
     return (
+      // Plain <img> on purpose: icons come from an external game-asset host, and
+      // next/image would route them through Netlify's paid image CDN.
+      // eslint-disable-next-line @next/next/no-img-element
       <img
         src={url}
         alt={name}

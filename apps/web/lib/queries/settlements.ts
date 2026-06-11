@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, desc, eq, ilike, sql, count } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, count } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { SETTLEMENT_PAGE_SIZE, type SettlementListParams } from "@/lib/settlements/params";
 

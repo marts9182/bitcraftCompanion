@@ -10,10 +10,13 @@ export function NavDropdown({ label, items, pathname }: { label: string; items: 
   const ref = useRef<HTMLDivElement>(null);
   const groupActive = items.some((i) => isActive(pathname, i.href));
 
-  // Close on route change.
-  useEffect(() => {
+  // Close on route change (state adjusted during render, per React docs:
+  // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes).
+  const [prevPath, setPrevPath] = useState(pathname);
+  if (prevPath !== pathname) {
+    setPrevPath(pathname);
     setOpen(false);
-  }, [pathname]);
+  }
 
   // Close on outside-click and Escape.
   useEffect(() => {

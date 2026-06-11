@@ -7,20 +7,43 @@ import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { ThemeToggle } from "./ThemeToggle";
 import { NAV, isNavGroup, isActive, type NavLink } from "./nav-items";
+import { useHydrated } from "@/lib/use-hydrated";
+
+function Section({ label, links, pathname }: { label: string; links: NavLink[]; pathname: string }) {
+  return (
+    <div className="mb-2">
+      <div className="px-1 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</div>
+      {links.map((l) => (
+        <Link
+          key={l.href}
+          href={l.href}
+          aria-current={isActive(pathname, l.href) ? "page" : undefined}
+          className={
+            "block py-2.5 font-[family-name:var(--font-display)] text-2xl font-semibold tracking-tight transition-colors " +
+            (isActive(pathname, l.href) ? "text-primary" : "text-foreground hover:text-primary")
+          }
+        >
+          {l.label}
+        </Link>
+      ))}
+    </div>
+  );
+}
 
 export function MobileNav() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useHydrated();
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => setMounted(true), []);
-
-  // Close on route change.
-  useEffect(() => {
+  // Close on route change (state adjusted during render, per React docs:
+  // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes).
+  const [prevPath, setPrevPath] = useState(pathname);
+  if (prevPath !== pathname) {
+    setPrevPath(pathname);
     setOpen(false);
-  }, [pathname]);
+  }
 
   // While open: lock body scroll, Escape to close, focus the close button, trap Tab.
   useEffect(() => {
@@ -57,27 +80,6 @@ export function MobileNav() {
   const topLinks = NAV.filter((e): e is NavLink => !isNavGroup(e) && e.href !== "/blog");
   const groups = NAV.filter(isNavGroup);
   const blog = NAV.find((e) => !isNavGroup(e) && (e as NavLink).href === "/blog") as NavLink | undefined;
-
-  function Section({ label, links }: { label: string; links: NavLink[] }) {
-    return (
-      <div className="mb-2">
-        <div className="px-1 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</div>
-        {links.map((l) => (
-          <Link
-            key={l.href}
-            href={l.href}
-            aria-current={isActive(pathname, l.href) ? "page" : undefined}
-            className={
-              "block py-2.5 font-[family-name:var(--font-display)] text-2xl font-semibold tracking-tight transition-colors " +
-              (isActive(pathname, l.href) ? "text-primary" : "text-foreground hover:text-primary")
-            }
-          >
-            {l.label}
-          </Link>
-        ))}
-      </div>
-    );
-  }
 
   return (
     <>
@@ -116,11 +118,11 @@ export function MobileNav() {
               </button>
             </div>
             <nav aria-label="Mobile" className="flex-1 overflow-y-auto px-6 pb-12">
-              <Section label="Browse" links={topLinks} />
+              <Section label="Browse" links={topLinks} pathname={pathname} />
               {groups.map((g) => (
-                <Section key={g.label} label={g.label} links={g.items} />
+                <Section key={g.label} label={g.label} links={g.items} pathname={pathname} />
               ))}
-              {blog && <Section label="More" links={[blog]} />}
+              {blog && <Section label="More" links={[blog]} pathname={pathname} />}
             </nav>
           </div>,
           document.body,
