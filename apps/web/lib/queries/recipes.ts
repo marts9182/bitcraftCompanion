@@ -1,4 +1,5 @@
 import "server-only";
+import { unstable_cache } from "next/cache";
 import { and, eq, getTableColumns, ilike, sql } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { getRecipeStacks } from "./craft-graph-db";
@@ -25,6 +26,10 @@ export interface RecipeListResult {
  * The correlated outer reference is written literally as `recipes.id`:
  * interpolating ${schema.recipes.id} renders the UNQUALIFIED `"id"` in
  * single-table selects, which is ambiguous inside the subquery (i.id / c.id).
+ *
+ * Cost note: tier-filtered requests evaluate this per row (~8.2k recipes,
+ * tens of ms warm). If recipes grow ~10x or this shows in Neon metrics,
+ * denormalize an indexed `output_tier` column at snapshot time instead.
  */
 export const recipeOutputTierSql = sql<number | null>`(
   select max(coalesce(i.tier, c.tier))
@@ -58,23 +63,29 @@ export async function listRecipes(params: ListParams): Promise<RecipeListResult>
 /**
  * Distinct derived output tiers (≥ 0) for the data-driven Tier filter select.
  * Computed over per-recipe MAX so every option is guaranteed to match rows.
+ * Cached: a GROUP BY over all recipe_outputs, and the answer only changes at
+ * snapshot cadence (same pattern as the map/suggest caches).
  */
-export async function listRecipeOutputTiers(): Promise<number[]> {
-  const db = getDb();
-  const rows = (await db.execute(sql`
-    select distinct s.tier
-    from (
-      select max(coalesce(i.tier, c.tier)) as tier
-      from recipe_outputs ro
-      left join items i on ro.ref_type = 'item' and ro.ref_id = i.id
-      left join cargo c on ro.ref_type = 'cargo' and ro.ref_id = c.id
-      group by ro.recipe_id
-    ) s
-    where s.tier is not null and s.tier >= 0
-    order by s.tier
-  `)) as unknown as { tier: number }[];
-  return rows.map((r) => r.tier);
-}
+export const listRecipeOutputTiers = unstable_cache(
+  async (): Promise<number[]> => {
+    const db = getDb();
+    const rows = (await db.execute(sql`
+      select distinct s.tier
+      from (
+        select max(coalesce(i.tier, c.tier)) as tier
+        from recipe_outputs ro
+        left join items i on ro.ref_type = 'item' and ro.ref_id = i.id
+        left join cargo c on ro.ref_type = 'cargo' and ro.ref_id = c.id
+        group by ro.recipe_id
+      ) s
+      where s.tier is not null and s.tier >= 0
+      order by s.tier
+    `)) as unknown as { tier: number }[];
+    return rows.map((r) => r.tier);
+  },
+  ["recipe-output-tiers"],
+  { revalidate: 1800 },
+);
 
 export async function getRecipeBySlug(slug: string): Promise<RecipeRow | null> {
   const db = getDb();
