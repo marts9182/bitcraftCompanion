@@ -239,6 +239,15 @@ async function main() {
         }
         // Inferred trades are append-only; written before market_orders is replaced below.
         await inChunks(tradeRows, CHUNK, (s) => tx.insert(schema.marketTrades).values(s));
+        // Reserve capsules are computed cross-region AFTER this loop (step 2c), so the
+        // empire rebuild below must carry the CURRENT totals through. Without this every
+        // region pass zeroed reserve_capsules until 2c ran minutes later (readers saw
+        // transient zeros), and a run dying mid-loop left them zeroed until the next
+        // successful run.
+        const prevReserves = new Map(
+          (await tx.select({ id: schema.empires.entityId, caps: schema.empires.reserveCapsules }).from(schema.empires))
+            .map((r) => [r.id, r.caps] as const),
+        );
         // Clear this region's rows first so departed entities don't linger.
         await tx.delete(schema.playerSkills).where(eq(schema.playerSkills.region, region));
         await tx.delete(schema.empireMembers).where(eq(schema.empireMembers.region, region));
@@ -254,7 +263,7 @@ async function main() {
         await inChunks(playerRows, CHUNK, (s) =>
           tx.insert(schema.players).values(s).onConflictDoUpdate({ target: schema.players.entityId, set: conflictUpdateSet(schema.players, ["entityId"]) }),
         );
-        await inChunks(empires, CHUNK, (s) =>
+        await inChunks(empires.map((e) => ({ ...e, reserveCapsules: prevReserves.get(e.entityId) ?? 0 })), CHUNK, (s) =>
           tx.insert(schema.empires).values(s).onConflictDoUpdate({ target: schema.empires.entityId, set: conflictUpdateSet(schema.empires, ["entityId"]) }),
         );
         await inChunks(playerSkillRows, CHUNK, (s) =>
@@ -317,14 +326,17 @@ async function main() {
     });
     console.log(`[lb-snapshot] roster fill: ${rosterRows.length} roster players (non-residents inserted with region="")`);
 
-    // ── 2c. Reserve capsules: write the cross-region totals. Per-region empire
-    // upserts reset reserve_capsules to 0 (it isn't on the empire row), so apply
-    // the accumulated total once here, after all regions.
+    // ── 2c. Reserve capsules: write the cross-region totals. The region passes carry
+    // the previous totals through their rebuilds, so reset + apply the fresh totals in
+    // ONE transaction here: atomic for readers (no zeroed/partial state is ever
+    // visible) and empires that emptied their reserves drop back to 0.
     await db.transaction(async (tx) => {
+      await tx.update(schema.empires).set({ reserveCapsules: 0 });
       for (const [empireId, caps] of allReserveCapsules)
         await tx.update(schema.empires).set({ reserveCapsules: caps }).where(eq(schema.empires.entityId, empireId));
     });
-    console.log(`[lb-snapshot] reserve capsules: ${allReserveCapsules.size} empires hold Hexite Capsules in reserves`);
+    const totalReserveCaps = [...allReserveCapsules.values()].reduce((a, b) => a + b, 0);
+    console.log(`[lb-snapshot] reserve capsules: ${allReserveCapsules.size} empires hold ${totalReserveCaps} Hexite Capsules in reserves`);
 
     // ── 3. Grid-only pass for empty (zero-player) regions ─────────────────────
     // These modules have a world_region_state grid but no residents. Subscribe
