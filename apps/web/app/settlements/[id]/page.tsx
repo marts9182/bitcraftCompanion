@@ -5,6 +5,7 @@ import { SettlementTrendChart } from "@/components/settlements/SettlementTrendCh
 import {
   getSettlement, getSettlementMembers, getSettlementHistory, listSettlementIds,
 } from "@/lib/queries/settlements";
+import { formatGameCoords } from "@/lib/format";
 
 export const revalidate = 300;
 export const dynamicParams = true;
@@ -113,7 +114,7 @@ export default async function SettlementPage({ params }: { params: Promise<{ id:
       <section className="mt-10 text-sm text-muted-foreground">
         <h2 className="text-xl font-semibold text-foreground">Location</h2>
         <p className="mt-3">
-          x {s.x.toLocaleString()}, z {s.z.toLocaleString()} (dimension {s.dimension}) ·{" "}
+          {formatGameCoords(s.x, s.z)} ·{" "}
           <Link href="/map" className="hover:underline">View on map →</Link>
         </p>
       </section>

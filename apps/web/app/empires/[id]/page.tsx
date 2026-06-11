@@ -1,9 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { vividTerritoryColor } from "@bcc/shared";
+import { vividTerritoryColor, chunkIndexToCoord, SMALL_HEX_PER_CHUNK } from "@bcc/shared";
 import { getEmpireDetail, listEmpireIds } from "@/lib/queries/leaderboards";
 import { EmpireMembers } from "@/components/empires/EmpireMembers";
+import { formatGameCoords } from "@/lib/format";
+
+/** Tower position in the game's N/E convention — the center of its territory chunk. */
+function towerCoords(chunkIndex: string): string {
+  const { cx, cz } = chunkIndexToCoord(chunkIndex);
+  return formatGameCoords((cx + 0.5) * SMALL_HEX_PER_CHUNK, (cz + 0.5) * SMALL_HEX_PER_CHUNK);
+}
 
 export const revalidate = 300;
 export const dynamicParams = true;
@@ -85,7 +92,7 @@ export default async function EmpirePage({ params }: { params: Promise<{ id: str
               <tbody>
                 {towers.map((t) => (
                   <tr key={t.entityId} className="border-t border-border">
-                    <td className="py-2 pr-3 font-mono text-muted-foreground">{t.chunkIndex}</td>
+                    <td className="py-2 pr-3 font-mono text-muted-foreground">{towerCoords(t.chunkIndex)}</td>
                     <td className="py-2 pr-3 text-right font-mono">{t.energy.toLocaleString()}</td>
                     <td className="py-2 pr-3 text-right font-mono">{t.upkeep.toLocaleString()}</td>
                     <td className="py-2 text-right">{t.active ? "✓" : "—"}</td>
