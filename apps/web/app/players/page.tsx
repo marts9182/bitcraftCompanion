@@ -6,7 +6,7 @@ import { MobileCard } from "@/components/mobile/MobileCard";
 import { LB_PAGE_SIZE } from "@/lib/leaderboards/params";
 import { getPlayersList, listRegions, type PlayerSort } from "@/lib/queries/leaderboards";
 
-export const revalidate = 60;
+export const revalidate = 1800;
 
 export const metadata: Metadata = {
   title: "Players",

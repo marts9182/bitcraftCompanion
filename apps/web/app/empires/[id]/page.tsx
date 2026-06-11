@@ -5,7 +5,7 @@ import { vividTerritoryColor } from "@bcc/shared";
 import { getEmpireDetail, listEmpireIds } from "@/lib/queries/leaderboards";
 import { EmpireMembers } from "@/components/empires/EmpireMembers";
 
-export const revalidate = 300;
+export const revalidate = 1800;
 export const dynamicParams = true;
 
 export async function generateStaticParams() {

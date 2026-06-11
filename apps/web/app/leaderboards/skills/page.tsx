@@ -6,7 +6,7 @@ import { parseLeaderboardParams, LB_PAGE_SIZE, SKILL_SORTS } from "@/lib/leaderb
 import { getTotalLeaderboard, listRegions, listSkills } from "@/lib/queries/leaderboards";
 import { MobileCard } from "@/components/mobile/MobileCard";
 
-export const revalidate = 60;
+export const revalidate = 1800;
 
 export const metadata: Metadata = {
   title: "Skills Leaderboard",

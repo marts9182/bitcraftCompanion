@@ -4,7 +4,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { getHomeStats } from "@/lib/queries/home";
 import { getAllPosts } from "@/lib/blog/posts";
 
-export const revalidate = 300;
+export const revalidate = 1800;
 
 export const metadata: Metadata = {
   title: "BitCraft Companion — live markets, settlements & maps for BitCraft Online",

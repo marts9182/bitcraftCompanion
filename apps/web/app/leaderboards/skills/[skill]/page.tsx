@@ -7,7 +7,7 @@ import { parseLeaderboardParams, LB_PAGE_SIZE } from "@/lib/leaderboards/params"
 import { getSkillLeaderboard, listRegions, listSkills } from "@/lib/queries/leaderboards";
 import { MobileCard } from "@/components/mobile/MobileCard";
 
-export const revalidate = 60;
+export const revalidate = 1800;
 export const dynamicParams = true;
 
 export async function generateStaticParams() {

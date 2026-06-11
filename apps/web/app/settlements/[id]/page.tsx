@@ -6,7 +6,7 @@ import {
   getSettlement, getSettlementMembers, getSettlementHistory, listSettlementIds,
 } from "@/lib/queries/settlements";
 
-export const revalidate = 300;
+export const revalidate = 1800;
 export const dynamicParams = true;
 
 export async function generateStaticParams() {
