@@ -47,24 +47,29 @@ export function NavDropdown({ label, items, pathname }: { label: string; items: 
         {label}
         <ChevronDown className={"h-3.5 w-3.5 transition-transform " + (open ? "rotate-180" : "")} />
       </button>
-      {open && (
-        <div role="menu" className="absolute right-0 top-full mt-1 min-w-44 overflow-hidden rounded-lg border border-border bg-popover py-1 shadow-lg">
-          {items.map((i) => (
-            <Link
-              key={i.href}
-              href={i.href}
-              role="menuitem"
-              aria-current={isActive(pathname, i.href) ? "page" : undefined}
-              className={
-                "block px-3 py-2 text-sm transition-colors " +
-                (isActive(pathname, i.href) ? "text-primary" : "text-foreground hover:bg-muted")
-              }
-            >
-              {i.label}
-            </Link>
-          ))}
-        </div>
-      )}
+      {/* Always in the DOM (hidden when closed) so group links are crawlable in server HTML. */}
+      <div
+        role="menu"
+        className={
+          (open ? "" : "hidden ") +
+          "absolute right-0 top-full mt-1 min-w-44 overflow-hidden rounded-lg border border-border bg-popover py-1 shadow-lg"
+        }
+      >
+        {items.map((i) => (
+          <Link
+            key={i.href}
+            href={i.href}
+            role="menuitem"
+            aria-current={isActive(pathname, i.href) ? "page" : undefined}
+            className={
+              "block px-3 py-2 text-sm transition-colors " +
+              (isActive(pathname, i.href) ? "text-primary" : "text-foreground hover:bg-muted")
+            }
+          >
+            {i.label}
+          </Link>
+        ))}
+      </div>
     </div>
   );
 }

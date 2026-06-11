@@ -5,7 +5,7 @@ import { SITE_URL } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "Compendium",
-  description: "Browse the BitCraft Online compendium: items, cargo, buildings, and recipes.",
+  description: "Browse the BitCraft Online compendium: items, cargo, buildings, recipes, resources, and creatures.",
   alternates: { canonical: "/compendium" },
 };
 
@@ -14,6 +14,8 @@ const SECTIONS = [
   { href: "/cargo", title: "Cargo", desc: "Bulky goods and animal bodies." },
   { href: "/buildings", title: "Buildings", desc: "Stations and structures." },
   { href: "/recipes", title: "Recipes", desc: "Crafting and construction recipes." },
+  { href: "/resources", title: "Resources", desc: "Gathering nodes — where to find every tree, ore, and plant." },
+  { href: "/creatures", title: "Creatures", desc: "Combat stats, loot, and spawn locations." },
 ];
 
 export default function CompendiumHub() {

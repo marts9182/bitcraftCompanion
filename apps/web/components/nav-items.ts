@@ -17,7 +17,18 @@ export function isActive(pathname: string, href: string): boolean {
 }
 
 export const NAV: NavEntry[] = [
-  { href: "/compendium", label: "Compendium" },
+  {
+    label: "Compendium",
+    items: [
+      { href: "/compendium", label: "Overview" },
+      { href: "/items", label: "Items" },
+      { href: "/cargo", label: "Cargo" },
+      { href: "/buildings", label: "Buildings" },
+      { href: "/recipes", label: "Recipes" },
+      { href: "/resources", label: "Resources" },
+      { href: "/creatures", label: "Creatures" },
+    ],
+  },
   { href: "/calculator", label: "Calculator" },
   { href: "/map", label: "Map" },
   {

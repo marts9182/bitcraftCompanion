@@ -17,7 +17,7 @@ const FEATURES: { href: string; title: string; desc: string }[] = [
   { href: "/market", title: "Market", desc: "Live order books, prices, and sold volume across every region." },
   { href: "/map", title: "World map", desc: "Interactive map of empires, territories, settlements, and biomes." },
   { href: "/settlements", title: "Settlements", desc: "Player claims ranked by tiles, supplies, and treasury." },
-  { href: "/compendium", title: "Compendium", desc: "Every item, cargo, building, and recipe with real game icons." },
+  { href: "/compendium", title: "Compendium", desc: "Every item, cargo, building, recipe, resource, and creature with real game icons." },
   { href: "/calculator", title: "Calculator", desc: "Expand any recipe into a full shopping list of raw materials." },
   { href: "/empires", title: "Empires", desc: "Empire power, treasury, members, and territory at a glance." },
 ];
