@@ -92,9 +92,12 @@ export function useTrackedPoints({ resourceCatalog, creatureCatalog, regions, se
       }
       // concat, not push(...spread): region arrays can be 100k+ numbers (stack limit).
       const xz = parts.length === 1 ? parts[0]! : ([] as number[]).concat(...parts);
-      return { key: `${t.kind}:${t.id}`, color: trackColor(i), xz };
+      const meta = t.kind === "resource" ? resourceById.get(t.id) : creatureByType.get(t.id);
+      // Same fallback the panel chips use for an unknown id.
+      const name = meta?.name ?? `${t.kind} ${t.id}`;
+      return { key: `${t.kind}:${t.id}`, color: trackColor(i), name, xz };
     }),
-  [tracked, pointsByKey, regionsFor]);
+  [tracked, pointsByKey, regionsFor, resourceById, creatureByType]);
 
   const shownPoints = useMemo(() => trackedPoints.reduce((n, t) => n + Math.floor(t.xz.length / 2), 0), [trackedPoints]);
 

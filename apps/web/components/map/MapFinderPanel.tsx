@@ -2,6 +2,7 @@
 import { useMemo, useRef, useState } from "react";
 import { trackColor, MAX_TRACKED } from "@/lib/map/tracking";
 import { formatDuration } from "@/lib/calculator/format";
+import { copyText } from "@/lib/clipboard";
 
 // Slim catalog shapes threaded page → MapClient → WorldMap → here. Defined ONCE
 // in this file; everyone else imports them.
@@ -169,11 +170,8 @@ export function MapFinderPanel({ resources, creatures, tracked, onToggle, onClea
           <button
             type="button"
             onClick={() => {
-              navigator.clipboard.writeText(window.location.href)
-                .then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); })
-                // Clipboard can be unavailable (non-HTTPS, permission denied) —
-                // fall back to showing the URL so the user can copy it manually.
-                .catch(() => { window.prompt("Copy this link:", window.location.href); });
+              void copyText(window.location.href, "Copy this link:")
+                .then((ok) => { if (ok) { setCopied(true); setTimeout(() => setCopied(false), 1500); } });
             }}
             className="h-9 text-primary underline"
           >
