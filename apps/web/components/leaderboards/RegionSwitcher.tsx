@@ -19,7 +19,7 @@ export function RegionSwitcher({ regions, current }: { regions: { region: string
         value={current}
         onChange={(e) => onChange(e.target.value)}
         aria-label="Region"
-        className="h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+        className="h-9 rounded-md border border-border bg-card px-3 text-sm text-foreground"
       >
         <option value="all">All regions</option>
         {regions.map((r) => (

@@ -49,7 +49,7 @@ function TreeNode({ node, subgraph, selections, onSelect }: TreeProps) {
             value={selectedId}
             onChange={(e) => onSelect(key, Number(e.target.value))}
             aria-label={`Recipe for ${node.name}`}
-            className="ml-auto h-7 rounded border border-input bg-transparent px-2 text-xs"
+            className="ml-auto h-7 rounded border border-border bg-card px-2 text-xs text-foreground"
           >
             {recipes.map((r) => (
               <option key={r.id} value={r.id}>

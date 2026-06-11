@@ -52,6 +52,8 @@
 }
 
 :root {
+  /* Make native form controls (select popups, scrollbars) follow the theme. */
+  color-scheme: light;
   --background: #F6F2E9;
   --foreground: #2A2632;
   --card: #FFFFFF;
@@ -89,6 +91,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   --background: #1D1B22;
   --foreground: #E9DFC4;
   --card: #2E2B3B;

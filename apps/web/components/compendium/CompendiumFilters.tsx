@@ -39,7 +39,7 @@ export function CompendiumFilters({ basePath, fields }: { basePath: string; fiel
             name={f.name}
             aria-label={f.placeholder}
             defaultValue={sp.get(f.name) ?? ""}
-            className={`h-9 rounded-md border border-input bg-transparent px-3 text-sm ${f.className ?? ""}`}
+            className={`h-9 rounded-md border border-border bg-card px-3 text-sm text-foreground ${f.className ?? ""}`}
           >
             <option value="">{f.placeholder}</option>
             {(f.options ?? []).map((o) => (
