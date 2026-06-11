@@ -421,13 +421,18 @@ export const marketOrders = pgTable(
   }),
 );
 
-/** Marketplace buildings (region-scoped clean-rebuild). Coordinates deferred (v1). */
+/** Marketplace buildings (region-scoped clean-rebuild). x/z are small-hex world
+ *  coords from marketplace_state.location — nullable: rows ingested before the
+ *  coordinate columns existed (or with undecodable locations) stay null until
+ *  the next snapshot rebuild fills them. */
 export const marketplaces = pgTable(
   "marketplaces",
   {
     buildingEntityId: text("building_entity_id").primaryKey(),
     claimEntityId: text("claim_entity_id"),
     region: text("region").notNull(),
+    x: integer("x"),
+    z: integer("z"),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
   (t) => ({

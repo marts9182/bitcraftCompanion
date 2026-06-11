@@ -50,7 +50,8 @@ export default async function MarketPage({ searchParams }: { searchParams: Promi
         title="Market"
         subtitle={
           <>
-            {total.toLocaleString()} traded items · <Link href="/market/guide" className="hover:underline">How the market works →</Link>
+            {total.toLocaleString()} traded items · <Link href="/market/deals" className="hover:underline">Find deals →</Link> ·{" "}
+            <Link href="/market/guide" className="hover:underline">How the market works →</Link>
           </>
         }
       />

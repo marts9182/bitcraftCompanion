@@ -35,6 +35,7 @@ export const NAV: NavEntry[] = [
     label: "Data",
     items: [
       { href: "/market", label: "Market" },
+      { href: "/market/deals", label: "Market deals" },
       { href: "/settlements", label: "Settlements" },
       { href: "/empires", label: "Empires" },
       { href: "/players", label: "Players" },

@@ -41,9 +41,17 @@ describe("mapMarketOrders", () => {
 });
 
 describe("mapMarketplaces", () => {
-  it("maps building/claim/region with big-int-safe ids", () => {
+  it("maps building/claim/region with big-int-safe ids; nulls coords when location is absent", () => {
     const rows = mapMarketplaces([{ building_entity_id: "72057594000000001", claim_entity_id: "8" }], "7");
-    expect(rows).toEqual([{ buildingEntityId: "72057594000000001", claimEntityId: "8", region: "7" }]);
+    expect(rows).toEqual([{ buildingEntityId: "72057594000000001", claimEntityId: "8", region: "7", x: null, z: null }]);
+  });
+
+  it("decodes the location Sum into small-hex x/z", () => {
+    const rows = mapMarketplaces(
+      [{ building_entity_id: "1", claim_entity_id: "8", location: [0, { x: 24594, z: 15592, dimension: 1 }] }],
+      "7",
+    );
+    expect(rows[0]).toMatchObject({ x: 24594, z: 15592 });
   });
 
   it("skips rows with no building id", () => {

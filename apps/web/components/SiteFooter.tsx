@@ -5,7 +5,7 @@ import { getLastIngestionTime } from "@/lib/queries/freshness";
 
 const GROUPS: { heading: string; links: [string, string][] }[] = [
   { heading: "Explore", links: [["/compendium", "Compendium"], ["/calculator", "Calculator"], ["/map", "Map"]] },
-  { heading: "Live data", links: [["/market", "Market"], ["/settlements", "Settlements"], ["/empires", "Empires"], ["/players", "Players"], ["/leaderboards", "Leaderboards"]] },
+  { heading: "Live data", links: [["/market", "Market"], ["/market/deals", "Market deals"], ["/settlements", "Settlements"], ["/empires", "Empires"], ["/players", "Players"], ["/leaderboards", "Leaderboards"]] },
   { heading: "More", links: [["/blog", "Blog"], ["/status", "Status"]] },
 ];
 

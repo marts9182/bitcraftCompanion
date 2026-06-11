@@ -1,4 +1,5 @@
 import { toInt } from "./decode";
+import { decodeLocationSum } from "../world/coords";
 
 type Raw = Record<string, unknown>;
 const idStr = (v: unknown): string => (v == null ? "" : String(v));
@@ -69,15 +70,21 @@ export interface MarketplaceRow {
   buildingEntityId: string;
   claimEntityId: string;
   region: string;
+  /** Small-hex world coords from marketplace_state.location (null when undecodable). */
+  x: number | null;
+  z: number | null;
 }
 export function mapMarketplaces(rows: Raw[], region: string): MarketplaceRow[] {
   const out: MarketplaceRow[] = [];
   for (const r of rows) {
     if (r.building_entity_id == null) continue;
+    const loc = decodeLocationSum(r.location);
     out.push({
       buildingEntityId: idStr(r.building_entity_id),
       claimEntityId: idStr(r.claim_entity_id),
       region,
+      x: loc?.x ?? null,
+      z: loc?.z ?? null,
     });
   }
   return out;
