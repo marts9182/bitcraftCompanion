@@ -6,7 +6,7 @@ import { LB_PAGE_SIZE } from "@/lib/leaderboards/params";
 import { getEmpiresList, type EmpireSort } from "@/lib/queries/leaderboards";
 import { MobileCard } from "@/components/mobile/MobileCard";
 
-export const revalidate = 60;
+export const revalidate = 1800;
 
 export const metadata: Metadata = {
   title: "Empires",

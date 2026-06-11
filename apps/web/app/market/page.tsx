@@ -7,7 +7,7 @@ import { MobileCard } from "@/components/mobile/MobileCard";
 import { getMarketList } from "@/lib/queries/market";
 import { MARKET_PAGE_SIZE, marketKey, parseMarketParams, type MarketSort } from "@/lib/market/params";
 
-export const revalidate = 60;
+export const revalidate = 1800;
 
 export const metadata: Metadata = {
   title: "Market",

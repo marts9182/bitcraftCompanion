@@ -12,7 +12,7 @@ function towerCoords(chunkIndex: string): string {
   return formatGameCoords((cx + 0.5) * SMALL_HEX_PER_CHUNK, (cz + 0.5) * SMALL_HEX_PER_CHUNK);
 }
 
-export const revalidate = 300;
+export const revalidate = 1800;
 export const dynamicParams = true;
 
 export async function generateStaticParams() {

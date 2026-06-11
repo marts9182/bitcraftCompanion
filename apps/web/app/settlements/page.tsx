@@ -6,7 +6,7 @@ import { MobileCard } from "@/components/mobile/MobileCard";
 import { getSettlementsList } from "@/lib/queries/settlements";
 import { SETTLEMENT_PAGE_SIZE, parseSettlementParams, type SettlementSort } from "@/lib/settlements/params";
 
-export const revalidate = 60;
+export const revalidate = 1800;
 
 export const metadata: Metadata = {
   title: "Settlements",
