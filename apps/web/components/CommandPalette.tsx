@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { buildPaletteResults, PALETTE_KIND_LABEL, type PaletteCatalogs } from "@/lib/palette";
-import { SUGGEST_KINDS, SUGGEST_MIN_QUERY, type SuggestEntry, type SuggestKind } from "@/lib/suggest";
+import { SUGGEST_KINDS, type SuggestEntry, type SuggestKind } from "@/lib/suggest";
 
 /**
  * Ctrl+K command palette: header chip + global keybindings + a modal search
@@ -14,8 +14,8 @@ import { SUGGEST_KINDS, SUGGEST_MIN_QUERY, type SuggestEntry, type SuggestKind }
  * follow-up, see lib/palette.ts).
  *
  * Catalogs are lazily fetched ON OPEN, once per session, cached module-level
- * so reopening (or other palette instances) never refetches. Filtering is
- * pure client-side (buildPaletteResults → filterSuggestions).
+ * so reopening never refetches (single-mount assumption — see the cache note
+ * below). Filtering is pure client-side (buildPaletteResults → filterSuggestions).
  *
  * The modal portals to document.body — the sticky header's backdrop-filter
  * creates a containing block that traps position:fixed children (same bug
@@ -29,6 +29,11 @@ import { SUGGEST_KINDS, SUGGEST_MIN_QUERY, type SuggestEntry, type SuggestKind }
  */
 
 // ---- module-level catalog cache (one fetch per kind per session) ----------
+// Single-mount assumption: the header renders exactly one CommandPalette, so
+// onLoaded only ever needs to reach that instance (a second instance opening
+// during an in-flight fetch would never be notified — the inflight guard
+// skips its registration). Catalogs are cached for the whole session with no
+// staleness handling; the game data behind them is static enough.
 const catalogCache = new Map<SuggestKind, SuggestEntry[]>();
 const inflight = new Set<SuggestKind>();
 
@@ -104,8 +109,9 @@ export function CommandPalette() {
   }, [open, openPalette]);
 
   // While open: kick off catalog fetches, remember + move focus, lock body
-  // scroll, trap Tab inside the dialog (Escape is handled on the dialog
-  // itself — focus always lives inside it).
+  // scroll, handle Escape + trap Tab at the document level (like MobileNav) —
+  // clicking a non-interactive part of the dialog (list padding, empty-state
+  // text) blurs focus to <body>, where dialog-scoped handlers never fire.
   useEffect(() => {
     if (!open) return;
     ensureCatalogs(() => setCatalogVersion((v) => v + 1));
@@ -114,7 +120,19 @@ export function CommandPalette() {
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setOpen(false);
+        return;
+      }
       if (e.key === "Tab" && dialogRef.current) {
+        // Focus escaped the dialog (blurred to <body>) — pull it back to the
+        // input instead of letting Tab reach the page behind the modal.
+        if (!dialogRef.current.contains(document.activeElement)) {
+          e.preventDefault();
+          inputRef.current?.focus();
+          return;
+        }
         const els = dialogRef.current.querySelectorAll<HTMLElement>("input,a[href],button:not([disabled]):not([tabindex='-1'])");
         if (els.length === 0) return;
         const first = els[0];
@@ -165,7 +183,7 @@ export function CommandPalette() {
       <button
         type="button"
         onClick={openPalette}
-        aria-label="Search the site (Ctrl+K)"
+        aria-label={`Search the site (${isMac ? "⌘K" : "Ctrl+K"})`}
         aria-haspopup="dialog"
         aria-expanded={open}
         className="inline-flex h-9 items-center gap-2 rounded-md px-2 text-sm text-muted-foreground transition-colors hover:text-foreground sm:border sm:border-border sm:bg-background/60 sm:px-2.5"
@@ -193,10 +211,7 @@ export function CommandPalette() {
               aria-label="Site search"
               className="mx-auto flex max-h-[70vh] w-full max-w-xl flex-col overflow-hidden rounded-lg border border-border bg-card shadow-2xl"
               onKeyDown={(e) => {
-                if (e.key === "Escape") {
-                  e.preventDefault();
-                  setOpen(false);
-                } else if (e.key === "ArrowDown") {
+                if (e.key === "ArrowDown") {
                   e.preventDefault();
                   if (results.length > 0) setActive(Math.min(activeIdx + 1, results.length - 1));
                 } else if (e.key === "ArrowUp") {
@@ -219,7 +234,8 @@ export function CommandPalette() {
                   autoComplete="off"
                   role="combobox"
                   aria-expanded={results.length > 0}
-                  aria-controls={listId}
+                  // Only reference the listbox while it is actually rendered.
+                  aria-controls={results.length > 0 ? listId : undefined}
                   aria-autocomplete="list"
                   aria-activedescendant={activeIdx >= 0 ? `${listId}-${activeIdx}` : undefined}
                   className="h-12 w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
@@ -262,7 +278,7 @@ export function CommandPalette() {
                 </ul>
               ) : (
                 <p className="px-4 py-6 text-center text-sm text-muted-foreground">
-                  {query.trim().length >= SUGGEST_MIN_QUERY
+                  {query.trim().length > 0
                     ? `No matches for “${query.trim()}”.`
                     : "Type to search pages, items, cargo, recipes, resources and creatures."}
                 </p>

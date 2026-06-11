@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { filterSuggestions, isSuggestKind, SUGGEST_MAX_RESULTS, type SuggestEntry } from "./suggest";
+import { PALETTE_PAGE_MIN_QUERY } from "./palette";
 
 const e = (name: string, tier: number | null = null): SuggestEntry => ({
   name,
@@ -41,8 +42,8 @@ describe("filterSuggestions", () => {
   });
 
   it("honors a custom minQuery (palette pages filter from 1 char)", () => {
-    expect(filterSuggestions(catalog, "z", undefined, 1).map((s) => s.name)).toEqual(["Zinc Ore"]);
-    expect(filterSuggestions(catalog, "", undefined, 1)).toEqual([]);
+    expect(filterSuggestions(catalog, "z", undefined, PALETTE_PAGE_MIN_QUERY).map((s) => s.name)).toEqual(["Zinc Ore"]);
+    expect(filterSuggestions(catalog, "", undefined, PALETTE_PAGE_MIN_QUERY)).toEqual([]);
   });
 
   it("caps results (default 10) even when prefix matches alone exceed the cap", () => {

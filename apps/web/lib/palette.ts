@@ -41,6 +41,8 @@ export const PALETTE_KIND_LABEL: Record<PaletteKind, string> = {
 
 export const PALETTE_PAGE_CAP = 6;
 export const PALETTE_KIND_CAP = 4;
+/** Pages filter from a single character — the page list is tiny, unlike the suggest catalogs (SUGGEST_MIN_QUERY = 2). */
+export const PALETTE_PAGE_MIN_QUERY = 1;
 
 /** Pages reachable from the palette but absent from the header nav. */
 const EXTRA_PAGES: NavLink[] = [
@@ -94,7 +96,7 @@ export function buildPaletteResults(
     return pageEntries.map((p) => ({ kind: "page", label: p.name, href: p.slug, tier: null }));
   }
 
-  const results: PaletteResult[] = filterSuggestions(pageEntries, trimmed, PALETTE_PAGE_CAP, 1).map((p) => ({
+  const results: PaletteResult[] = filterSuggestions(pageEntries, trimmed, PALETTE_PAGE_CAP, PALETTE_PAGE_MIN_QUERY).map((p) => ({
     kind: "page",
     label: p.name,
     href: p.slug,
