@@ -19,6 +19,7 @@ const LIVE_PATHS = [
   "/leaderboards/activity",
   "/leaderboards/skills",
   "/market",
+  "/market/deals",
   "/players",
   "/empires",
   "/settlements",
@@ -44,6 +45,9 @@ export async function POST(req: Request) {
     // ("max" profile: Next 16 requires one; it is the documented equivalent
     // of the legacy single-arg revalidateTag for route-handler/webhook use.)
     revalidateTag("ingestion-time", "max");
+    // Flush the deals crossed-pairs scan so /market/deals reflects the fresh
+    // order book immediately instead of waiting out its 1800 s query cache.
+    revalidateTag("market-deals", "max");
     revalidatePath("/compendium");
     for (const s of SECTIONS) {
       revalidatePath(`/${s}`);

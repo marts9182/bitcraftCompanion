@@ -16,7 +16,11 @@ import {
  * page is showing 10× its display cap (DEALS_CAP=200) of the most profitable
  * pairs, so misses are marginal by construction.
  */
+// unstable_cache per-entry budget is ~2 MB; 2000 rows ≈ 1 MB serialized — keep headroom before raising.
 const RAW_CAP = 2000;
+
+/** Max routes kept per (item_id, item_type) so one hot item can't flood RAW_CAP. */
+const PER_ITEM_CAP = 50;
 
 interface RawPairRow {
   item_id: number;
@@ -65,7 +69,7 @@ const fetchCrossedPairs = unstable_cache(
   async (): Promise<RawPairRow[]> => {
     const db = getDb();
     const rows = (await db.execute(sql`
-      WITH crossed AS (
+      WITH pairs AS (
         SELECT
           s.item_id, s.item_type,
           s.price::int AS pay_price, b.price::int AS receive_price,
@@ -81,7 +85,31 @@ const fetchCrossedPairs = unstable_cache(
           AND s.price > 0 AND s.price < ${PRICE_SENTINEL_CEILING}
           AND b.price < ${PRICE_SENTINEL_CEILING}
           AND s.quantity > 0 AND b.quantity > 0
-        ORDER BY profit_total DESC
+      ),
+      -- Dedupe: keep only the BEST (highest-profit) pair per physical route
+      -- (item × buy marketplace × sell marketplace). The raw self-join emits
+      -- one row per order×order combination, so a single order's inventory
+      -- would otherwise be double-counted across adjacent near-duplicate rows.
+      deduped AS (
+        SELECT DISTINCT ON (item_id, item_type, buy_claim_id, sell_claim_id) *
+        FROM pairs
+        ORDER BY item_id, item_type, buy_claim_id, sell_claim_id,
+                 profit_total DESC, receive_price DESC, pay_price ASC
+      ),
+      -- Bound per item: at most PER_ITEM_CAP routes per (item_id, item_type)
+      -- before the global cap, so one hot item can't flood RAW_CAP and crowd
+      -- every other item out of the scan.
+      crossed AS (
+        SELECT * FROM (
+          SELECT d.*, row_number() OVER (
+            PARTITION BY item_id, item_type
+            ORDER BY profit_total DESC, buy_claim_id, sell_claim_id
+          ) AS item_rank
+          FROM deduped d
+        ) ranked
+        WHERE item_rank <= ${PER_ITEM_CAP}
+        -- Deterministic tiebreakers keep the RAW_CAP boundary stable between snapshots.
+        ORDER BY profit_total DESC, item_id, item_type, buy_claim_id, sell_claim_id
         LIMIT ${RAW_CAP}
       )
       SELECT
@@ -98,12 +126,12 @@ const fetchCrossedPairs = unstable_cache(
       LEFT JOIN claims sc ON sc.entity_id = c.sell_claim_id
       LEFT JOIN map_claims bmc ON bmc.entity_id = c.buy_claim_id
       LEFT JOIN map_claims smc ON smc.entity_id = c.sell_claim_id
-      ORDER BY c.profit_total DESC
+      ORDER BY c.profit_total DESC, c.item_id, c.item_type, c.buy_claim_id, c.sell_claim_id
     `)) as unknown as RawPairRow[];
     return rows;
   },
   ["market-deals-crossed-pairs"],
-  { revalidate: 1800 },
+  { revalidate: 1800, tags: ["market-deals"] },
 );
 
 export interface DealsResult {

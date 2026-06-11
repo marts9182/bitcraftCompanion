@@ -180,6 +180,12 @@ describe("parseDealsParams", () => {
     expect(parseDealsParams({ maxPct: "" }).maxPct).toBeUndefined();
   });
 
+  it("a present-but-garbage maxPct keeps the protective default cap (never disables it)", () => {
+    expect(parseDealsParams({ maxPct: "abc" }).maxPct).toBe(DEFAULT_MAX_PROFIT_PCT);
+    expect(parseDealsParams({ maxPct: "-5" }).maxPct).toBe(DEFAULT_MAX_PROFIT_PCT);
+    expect(parseDealsParams({ maxPct: "0" }).maxPct).toBe(DEFAULT_MAX_PROFIT_PCT);
+  });
+
   it("ignores garbage and non-positive values", () => {
     expect(parseDealsParams({ minQty: "abc", minPct: "-5", maxDistance: "0" })).toEqual({ maxPct: DEFAULT_MAX_PROFIT_PCT });
   });

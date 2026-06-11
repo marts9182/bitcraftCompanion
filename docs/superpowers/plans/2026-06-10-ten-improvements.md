@@ -69,4 +69,6 @@ Map spawn dots (`apps/web/components/map/ResourcePointsLayer.tsx`) are a single 
 
 ---
 
+**Pre-merge requirement (added during Task G review):** migrations 0014 (settlement_history_snapshot_idx) and 0015 (marketplaces.x/z) MUST be applied to the production Neon DB BEFORE merging this branch to main — the scheduled worker inserts x/z immediately after merge and will fail every 30-min run until 0015 exists; both are additive and safe to apply any time. (db:push is broken in this repo — apply the generated SQL files directly.)
+
 **Execution order:** A (time-sensitive) → B → C → D → E → F → G → H → I. Each task: implement (fresh subagent, full context in prompt) → spec review → quality review → fixes. Final: full verification (root tests, `pnpm -r typecheck`, `pnpm --filter @bcc/web build`), update spec checkboxes, report.

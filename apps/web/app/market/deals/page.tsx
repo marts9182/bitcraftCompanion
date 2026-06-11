@@ -12,7 +12,7 @@ export const revalidate = 1800;
 export const metadata: Metadata = {
   title: "Market deals",
   description:
-    "BitCraft Online arbitrage finder — buy low at one settlement, sell high at another. Profit, distance, and profit-per-tile for every crossed order pair.",
+    "BitCraft Online arbitrage finder — buy low at one settlement, sell high at another. Profit, distance, and profit-per-tile for the most profitable crossed order pairs.",
   alternates: { canonical: "/market/deals" },
 };
 
@@ -79,7 +79,7 @@ function dealSentence(d: Deal): string {
 export default async function MarketDealsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const sp = await searchParams;
   const filters = parseDealsParams(sp);
-  const { deals, matching, hasDistances } = await getDeals(filters);
+  const { deals, matching, hasDistances, scanTruncated, totalCrossed } = await getDeals(filters);
 
   return (
     <main className="mx-auto max-w-6xl px-4 sm:px-6 py-12">
@@ -220,6 +220,12 @@ export default async function MarketDealsPage({ searchParams }: { searchParams: 
         </p>
       )}
 
+      {scanTruncated && (
+        <p className="mt-4 text-xs text-muted-foreground">
+          Scanned the top {totalCrossed.toLocaleString()} crossed routes by profit — narrow filters may miss smaller deals.
+        </p>
+      )}
+
       <section className="mt-10 text-xs text-muted-foreground">
         <h2 className="text-sm font-semibold text-foreground">How these deals work</h2>
         <ul className="mt-2 list-disc space-y-1 pl-5">
@@ -239,6 +245,11 @@ export default async function MarketDealsPage({ searchParams }: { searchParams: 
             max-distance filter.
           </li>
           <li>“Instant flip” rows have both orders at the same marketplace — no travel, so profit per tile doesn’t apply.</li>
+          <li>
+            The scan keeps the top 2,000 crossed routes by total profit (best route per item-and-marketplace pair, at
+            most 50 routes per item). When that cap is hit, smaller deals exist below the cut — narrow filters may
+            miss them.
+          </li>
           <li>
             Order data refreshes about every 30 minutes; an order can fill or be cancelled in between, so check prices
             in game before hauling. The map link frames the route’s start region — per-route pins are on the roadmap.

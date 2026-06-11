@@ -144,8 +144,9 @@ function positiveNum(v: string | string[] | undefined): number | undefined {
 
 /**
  * GET-form params → DealFilters. maxPct semantics: ABSENT → DEFAULT_MAX_PROFIT_PCT
- * (stale-trap protection on by default); present-but-empty → cap disabled (the
- * user cleared the field); numeric → that value.
+ * (stale-trap protection on by default); present-but-EMPTY → cap disabled (the
+ * user cleared the field); numeric → that value; present-but-garbage ("abc",
+ * non-positive) → DEFAULT_MAX_PROFIT_PCT (never let junk disable the protective cap).
  */
 export function parseDealsParams(sp: SP): DealFilters {
   const filters: DealFilters = {};
@@ -155,7 +156,12 @@ export function parseDealsParams(sp: SP): DealFilters {
   if (minPct !== undefined) filters.minPct = minPct;
   if ("maxPct" in sp) {
     const maxPct = positiveNum(sp.maxPct);
-    if (maxPct !== undefined) filters.maxPct = maxPct;
+    if (maxPct !== undefined) {
+      filters.maxPct = maxPct;
+    } else if (one(sp.maxPct) !== "") {
+      // Unparsable but not the deliberate cleared-field "" → keep the cap.
+      filters.maxPct = DEFAULT_MAX_PROFIT_PCT;
+    }
   } else {
     filters.maxPct = DEFAULT_MAX_PROFIT_PCT;
   }
