@@ -6,6 +6,7 @@ import { Logo } from "./Logo";
 import { ThemeToggle } from "./ThemeToggle";
 import { MobileNav } from "./MobileNav";
 import { NavDropdown } from "./NavDropdown";
+import { CommandPalette } from "./CommandPalette";
 import { NAV, isNavGroup, isActive } from "./nav-items";
 
 export function SiteHeader() {
@@ -49,6 +50,7 @@ export function SiteHeader() {
         </nav>
 
         <div className="ml-auto flex items-center gap-1 lg:ml-0">
+          <CommandPalette />
           <ThemeToggle />
           <MobileNav />
         </div>

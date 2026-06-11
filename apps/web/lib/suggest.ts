@@ -37,15 +37,17 @@ export const SUGGEST_MAX_RESULTS = 10;
 /**
  * Case-insensitive substring match over a name catalog, prefix matches ranked
  * before mid-string matches (catalogs arrive name-sorted, so each bucket stays
- * alphabetical). Capped. Pure.
+ * alphabetical). Capped. Pure. `minQuery` is overridable for tiny catalogs
+ * (the command palette filters its ~16 static pages from a single character).
  */
 export function filterSuggestions(
   entries: SuggestEntry[],
   query: string,
   cap: number = SUGGEST_MAX_RESULTS,
+  minQuery: number = SUGGEST_MIN_QUERY,
 ): SuggestEntry[] {
   const needle = query.trim().toLowerCase();
-  if (needle.length < SUGGEST_MIN_QUERY) return [];
+  if (needle.length < minQuery) return [];
   const prefix: SuggestEntry[] = [];
   const rest: SuggestEntry[] = [];
   for (const e of entries) {

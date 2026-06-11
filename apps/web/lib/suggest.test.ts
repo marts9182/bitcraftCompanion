@@ -40,6 +40,11 @@ describe("filterSuggestions", () => {
     expect(filterSuggestions(catalog, "obsidian")).toEqual([]);
   });
 
+  it("honors a custom minQuery (palette pages filter from 1 char)", () => {
+    expect(filterSuggestions(catalog, "z", undefined, 1).map((s) => s.name)).toEqual(["Zinc Ore"]);
+    expect(filterSuggestions(catalog, "", undefined, 1)).toEqual([]);
+  });
+
   it("caps results (default 10) even when prefix matches alone exceed the cap", () => {
     const many = Array.from({ length: 30 }, (_, i) => e(`Iron Thing ${String(i).padStart(2, "0")}`, 1));
     expect(filterSuggestions(many, "iron")).toHaveLength(SUGGEST_MAX_RESULTS);
