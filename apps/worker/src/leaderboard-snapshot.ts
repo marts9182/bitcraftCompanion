@@ -9,6 +9,7 @@ import {
   usernamesById, onlineEntityIds, activeRegionIds, buildRegionPlayerRows,
   mapClaimLocalRows, mapChunkRows, mapRegionRows, buildEmpireColors, regionNamesById, type MapChunkRow, type MapRegionRow,
   mapMarketOrders, mapMarketplaces, mapClosedListings, PRICE_SENTINEL_CEILING,
+  inferTrades, type OrderLike,
   mapSettlements,
 } from "@bcc/shared";
 import { readSnapshot } from "./spacetime/ws-snapshot";
@@ -184,6 +185,37 @@ async function main() {
       );
       totalPlayers += playerRows.length;
 
+      // Trade inference: diff the PREVIOUS snapshot's order book (still in the DB) against
+      // the incoming one BEFORE market_orders is overwritten below — closed_listing_state
+      // carries NO price, so this diff is the only per-trade price signal. Sentinel-priced
+      // placeholder orders are excluded, same as the summary aggregates. All refs are
+      // per-region loop locals, so memory stays bounded.
+      const prevOrders: OrderLike[] = (
+        await db
+          .select({
+            id: schema.marketOrders.entityId,
+            itemId: schema.marketOrders.itemId,
+            itemType: schema.marketOrders.itemType,
+            region: schema.marketOrders.region,
+            price: schema.marketOrders.price,
+            quantity: schema.marketOrders.quantity,
+            side: schema.marketOrders.side,
+          })
+          .from(schema.marketOrders)
+          .where(eq(schema.marketOrders.region, region))
+      ).map((o) => ({ ...o, side: o.side as "sell" | "buy" }));
+      const tradeRows = inferTrades(prevOrders, marketOrderRows.map((o) => ({ ...o, id: o.entityId })))
+        .filter((t) => t.price < PRICE_SENTINEL_CEILING)
+        .map((t) => ({
+          itemId: t.itemId,
+          itemType: t.itemType === 1 ? "cargo" : "item",
+          region: Number.parseInt(region, 10) || 0,
+          price: t.price,
+          quantity: t.quantity,
+          side: t.side,
+          kind: t.kind,
+        }));
+
       // Map layers: claims (per-region, with names from claim_state), chunks + regions (replicated).
       const claimNameMap = new Map(norm(r, "claim_state").map((c) => [String(c.entity_id), String(c.name ?? "")] as const));
       const claimMemberRows = dedupeBy(mapClaimMembers(norm(r, "claim_member_state"), region, claimNameMap), (m) => `${m.claimEntityId}:${m.playerEntityId}`);
@@ -205,6 +237,8 @@ async function main() {
           );
           skillsLoaded = true;
         }
+        // Inferred trades are append-only; written before market_orders is replaced below.
+        await inChunks(tradeRows, CHUNK, (s) => tx.insert(schema.marketTrades).values(s));
         // Clear this region's rows first so departed entities don't linger.
         await tx.delete(schema.playerSkills).where(eq(schema.playerSkills.region, region));
         await tx.delete(schema.empireMembers).where(eq(schema.empireMembers.region, region));
@@ -264,7 +298,7 @@ async function main() {
           .values({ region, module: moduleName, name: `Region ${region}` })
           .onConflictDoUpdate({ target: schema.regions.region, set: { module: moduleName, updatedAt: new Date() } });
       });
-      console.log(`[lb-snapshot]   region ${region}: players=${playerRows.length} skills=${playerSkillRows.length} empires=${empires.length} claims=${claimRows.length} mapClaims=${mapClaimData.length} orders=${marketOrderRows.length} sales=${marketSaleRows.length} settlements=${settlementRows.length}`);
+      console.log(`[lb-snapshot]   region ${region}: players=${playerRows.length} skills=${playerSkillRows.length} empires=${empires.length} claims=${claimRows.length} mapClaims=${mapClaimData.length} orders=${marketOrderRows.length} inferredTrades=${tradeRows.length} sales=${marketSaleRows.length} settlements=${settlementRows.length}`);
     }
 
     // ── 2b. Roster fill: every player in the GLOBAL username roster that isn't a
@@ -401,8 +435,9 @@ async function main() {
 
     // ── Prune trend history older than 90 days (keeps Neon under the free 0.5 GB tier). ──
     await db.execute(sql`DELETE FROM market_price_history WHERE snapshot_at < now() - interval '90 days'`);
+    await db.execute(sql`DELETE FROM market_trades WHERE observed_at < now() - interval '90 days'`);
     await db.execute(sql`DELETE FROM settlement_supply_history WHERE snapshot_at < now() - interval '90 days'`);
-    console.log("[lb-snapshot] pruned price/supply history older than 90 days");
+    console.log("[lb-snapshot] pruned price/trade/supply history older than 90 days");
 
     await db.update(schema.ingestionRuns).set({ status: "ok", finishedAt: new Date(), rowsUpserted: totalPlayers }).where(eq(schema.ingestionRuns.id, run!.id));
     await triggerRevalidate({ url: env.REVALIDATE_URL, secret: env.REVALIDATE_SECRET });

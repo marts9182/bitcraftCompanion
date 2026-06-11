@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, integer, bigint, jsonb, boolean, real, uniqueIndex, index, primaryKey } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, timestamp, integer, bigint, jsonb, boolean, real, serial, uniqueIndex, index, primaryKey } from "drizzle-orm/pg-core";
 
 /** Audit row written by the worker for each ingestion run. */
 export const ingestionRuns = pgTable("ingestion_runs", {
@@ -507,6 +507,29 @@ export const marketPriceHistory = pgTable(
   (t) => ({
     pk: primaryKey({ columns: [t.itemId, t.itemType, t.snapshotAt] }),
     byItem: index("market_history_item_idx").on(t.itemId, t.itemType, t.snapshotAt),
+  }),
+);
+
+/** Trades INFERRED from order-book diffs between 30-min snapshots (closed_listing_state
+ *  has NO price, so this is the only per-trade price signal). Append-only, pruned at 90 days.
+ *  kind="partial" (surviving order's qty dropped — certain trade) vs "filled" (order vanished —
+ *  traded its remaining qty OR was cancelled; ambiguous, consumers can weight "partial" higher). */
+export const marketTrades = pgTable(
+  "market_trades",
+  {
+    id: serial("id").primaryKey(),
+    itemId: integer("item_id").notNull(),
+    itemType: text("item_type").notNull(), // "item" | "cargo"
+    region: integer("region").notNull(),
+    price: bigint("price", { mode: "number" }).notNull(), // Hex Coins per unit
+    quantity: integer("quantity").notNull(),
+    side: text("side").notNull(), // "sell" | "buy" — which book the order was on
+    kind: text("kind").notNull(), // "partial" | "filled"
+    observedAt: timestamp("observed_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    byItem: index("market_trades_item_idx").on(t.itemId, t.itemType, t.observedAt),
+    byRegion: index("market_trades_region_idx").on(t.region, t.observedAt),
   }),
 );
 
