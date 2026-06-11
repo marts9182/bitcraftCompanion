@@ -7,7 +7,6 @@ import Link from "next/link";
  * or connection info. The error is logged to the console for diagnostics.
  */
 export default function Error({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
-  // eslint-disable-next-line no-console
   console.error(error);
   return (
     <main className="mx-auto max-w-3xl px-4 sm:px-6 py-24 text-center">
