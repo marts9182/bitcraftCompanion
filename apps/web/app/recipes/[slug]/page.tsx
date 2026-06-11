@@ -3,9 +3,10 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { RecipeTypeBadge } from "@/components/compendium/RecipeTypeBadge";
 import { StackList } from "@/components/compendium/CraftGraphSection";
-import { getRecipeBySlug, getRecipeStacks, listAllRecipeSlugs } from "@/lib/queries/recipes";
+import { getRecipeBySlug, getRecipePrimaryOutput, getRecipeStacks, listAllRecipeSlugs } from "@/lib/queries/recipes";
 import { breadcrumbJsonLd, thingJsonLd, jsonLdScript } from "@/lib/jsonld";
 import { SITE_URL } from "@/lib/seo";
+import { recipeVerb } from "@/lib/recipes";
 
 export const revalidate = 86400;
 export const dynamicParams = true;
@@ -19,12 +20,15 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const r = await getRecipeBySlug(slug);
   if (!r) return { title: "Recipe not found" };
-  const description = `${r.name} — a BitCraft ${r.type} recipe.`;
+  // The recipe name is a localization template ("Craft {0}") — title by output.
+  const out = await getRecipePrimaryOutput(r.id);
+  const title = out?.name ?? r.name;
+  const description = `${title} — a BitCraft ${r.type} recipe.`;
   return {
-    title: r.name,
+    title,
     description,
     alternates: { canonical: `/recipes/${r.slug}` },
-    openGraph: { title: r.name, description, url: `${SITE_URL}/recipes/${r.slug}` },
+    openGraph: { title, description, url: `${SITE_URL}/recipes/${r.slug}` },
   };
 }
 
@@ -32,16 +36,18 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ s
   const { slug } = await params;
   const r = await getRecipeBySlug(slug);
   if (!r) notFound();
-  const { inputs, outputs } = await getRecipeStacks(r.id);
+  const [{ inputs, outputs }, out] = await Promise.all([getRecipeStacks(r.id), getRecipePrimaryOutput(r.id)]);
+  const title = out?.name ?? r.name;
+  const verb = recipeVerb(r.name);
   const url = `${SITE_URL}/recipes/${r.slug}`;
-  const description = `${r.name} — a BitCraft ${r.type} recipe.`;
+  const description = `${title} — a BitCraft ${r.type} recipe.`;
   const jsonLd = [
     breadcrumbJsonLd([
       { name: "Home", url: `${SITE_URL}/` },
       { name: "Recipes", url: `${SITE_URL}/recipes` },
-      { name: r.name, url },
+      { name: title, url },
     ]),
-    thingJsonLd(r.name, description, url),
+    thingJsonLd(title, description, url),
   ];
   return (
     <main className="mx-auto max-w-3xl px-4 sm:px-6 py-12">
@@ -50,10 +56,13 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ s
         <Link href="/recipes" className="hover:underline">
           Recipes
         </Link>{" "}
-        / <span>{r.name}</span>
+        / <span>{title}</span>
       </nav>
-      <h1 className="mt-4 text-3xl font-bold tracking-tight">{r.name}</h1>
+      <h1 className="mt-4 text-3xl font-bold tracking-tight">{title}</h1>
       <div className="mt-2 flex flex-wrap items-center gap-3 text-sm">
+        <span className="inline-flex items-center rounded bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
+          {verb}
+        </span>
         <RecipeTypeBadge type={r.type} />
         {r.timeRequirement != null && <span className="text-muted-foreground">{r.timeRequirement}s</span>}
         {r.staminaRequirement != null && <span className="text-muted-foreground">{r.staminaRequirement} stamina</span>}

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { EntityTable } from "@/components/compendium/EntityTable";
+import { RecipesTable } from "@/components/compendium/RecipesTable";
 import { CompendiumFilters } from "@/components/compendium/CompendiumFilters";
 import { Pager } from "@/components/compendium/Pager";
 import { listRecipeOutputTiers, listRecipes } from "@/lib/queries/recipes";
@@ -9,7 +9,7 @@ import { SITE_URL } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "Recipes",
-  description: "Browse BitCraft Online crafting and construction recipes.",
+  description: "Browse BitCraft Online crafting recipes by what they produce, filterable by tier.",
   alternates: { canonical: "/recipes" },
 };
 
@@ -35,12 +35,12 @@ export default async function RecipesPage({ searchParams }: { searchParams: Prom
     <main className="mx-auto max-w-4xl px-4 sm:px-6 py-12">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(jsonLd) }} />
       <h1 className="text-3xl font-bold tracking-tight">Recipes</h1>
-      <p className="mt-2 text-muted-foreground">{total.toLocaleString()} recipes</p>
+      <p className="mt-2 text-muted-foreground">{total.toLocaleString()} makeable recipes</p>
       <div className="mt-6">
         <CompendiumFilters
           basePath="/recipes"
           fields={[
-            { name: "q", placeholder: "Search recipes…", className: "max-w-xs", suggestKind: "recipes" },
+            { name: "q", placeholder: "Search by output…", className: "max-w-xs", suggestKind: "recipes" },
             {
               name: "type",
               placeholder: "All types",
@@ -59,12 +59,7 @@ export default async function RecipesPage({ searchParams }: { searchParams: Prom
             },
           ]}
         />
-        <EntityTable
-          rows={rows.map((r) => ({ ...r, tier: r.outputTier }))}
-          basePath="/recipes"
-          columns={["tier", "type"]}
-          emptyLabel="No recipes match your search."
-        />
+        <RecipesTable recipes={rows} />
         <Pager page={page} total={total} pageSize={pageSize} searchParams={flat} basePath="/recipes" />
       </div>
     </main>

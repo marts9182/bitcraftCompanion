@@ -3,7 +3,7 @@ import { unstable_cache } from "next/cache";
 import { asc, eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import type { SuggestEntry, SuggestKind } from "@/lib/suggest";
-import { recipeOutputTierSql } from "./recipes";
+import { listRecipeSuggestEntries } from "./recipes";
 
 // Catalogs only change when a worker snapshot lands — same 30 min cadence as
 // the map catalogs (lib/queries/map.ts).
@@ -20,13 +20,10 @@ const fetchers: Record<SuggestKind, () => Promise<SuggestEntry[]>> = {
       .select({ name: schema.cargo.name, slug: schema.cargo.slug, tier: schema.cargo.tier })
       .from(schema.cargo)
       .orderBy(asc(schema.cargo.name)),
-  // Recipes have no own tier — reuse the derived MAX-output-tier expression
-  // so suggestions agree with the /recipes list filter.
-  recipes: () =>
-    getDb()
-      .select({ name: schema.recipes.name, slug: schema.recipes.slug, tier: recipeOutputTierSql })
-      .from(schema.recipes)
-      .orderBy(asc(schema.recipes.name)),
+  // Recipe names are localization templates ("Bake {0}") — suggest the
+  // resolved primary-output name (+ verb) instead, makeable recipes only,
+  // so suggestions agree with the /recipes list.
+  recipes: listRecipeSuggestEntries,
   resources: () =>
     getDb()
       .select({ name: schema.resources.name, slug: schema.resources.slug, tier: schema.resources.tier })

@@ -12,11 +12,17 @@ export function isSuggestKind(v: string): v is SuggestKind {
   return (SUGGEST_KINDS as readonly string[]).includes(v);
 }
 
-/** One suggestible entity. `tier` for recipes is the MAX tier across outputs. */
+/**
+ * One suggestible entity. Recipes resolve `name`/`tier` to their PRIMARY
+ * output (highest-quantity stack) and carry the template's action verb
+ * (`verb`, e.g. "Bake") so duplicate output names stay distinguishable.
+ * Filtering matches `name` only.
+ */
 export interface SuggestEntry {
   name: string;
   slug: string;
   tier: number | null;
+  verb?: string;
 }
 
 export interface SuggestPayload {

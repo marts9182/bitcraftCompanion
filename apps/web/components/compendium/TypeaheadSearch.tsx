@@ -132,7 +132,10 @@ export function TypeaheadSearch({
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => go(s.slug)}
               >
-                <span className="truncate">{s.name}</span>
+                <span className="truncate">
+                  {s.verb && <span className="text-muted-foreground">{s.verb} · </span>}
+                  {s.name}
+                </span>
                 {s.tier !== null && s.tier >= 0 && (
                   <span className="shrink-0 text-xs text-muted-foreground">T{s.tier}</span>
                 )}
