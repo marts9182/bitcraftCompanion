@@ -4,7 +4,8 @@ import { notFound } from "next/navigation";
 import { gameTimestampToMs } from "@bcc/shared";
 import { EntityIcon } from "@/components/compendium/EntityIcon";
 import { MarketPriceChart } from "@/components/market/MarketPriceChart";
-import { formatTimeAgo } from "@/lib/format";
+import { Stat } from "@/components/Stat";
+import { TimeAgo } from "@/components/TimeAgo";
 import { parseMarketKey, marketKey } from "@/lib/market/params";
 import {
   getMarketItem, getMarketOrders, getMarketLocations, getRecentSales, getRecentTrades, getMarketPriceHistory, listMarketItemKeys,
@@ -31,20 +32,6 @@ export async function generateMetadata({ params }: { params: Promise<{ key: stri
   };
 }
 
-/** Stat card: `help` renders as a native title tooltip (with a ⓘ marker); `note` is always-visible explainer text. */
-function Stat({ label, value, help, note }: { label: string; value: string | number; help?: string; note?: string }) {
-  return (
-    <div className="rounded-lg border border-border p-4" title={help}>
-      <div className="text-xs uppercase tracking-wide text-muted-foreground">
-        {label}
-        {help ? <span aria-hidden="true" className="ml-1 normal-case">ⓘ</span> : null}
-      </div>
-      <div className="mt-1 text-xl font-semibold font-mono">{typeof value === "number" ? value.toLocaleString() : value}</div>
-      {note ? <div className="mt-1 text-xs text-muted-foreground">{note}</div> : null}
-    </div>
-  );
-}
-
 export default async function MarketItemPage({ params }: { params: Promise<{ key: string }> }) {
   const { key } = await params;
   const parsed = parseMarketKey(key);
@@ -59,7 +46,6 @@ export default async function MarketItemPage({ params }: { params: Promise<{ key
     getRecentTrades(parsed.itemType, parsed.itemId),
     getMarketPriceHistory(parsed.itemType, parsed.itemId),
   ]);
-  const now = Date.now();
 
   const compendiumHref = `${item.itemType === 1 ? "/cargo" : "/items"}/${item.itemSlug}`;
   const spread = item.lowestAsk != null && item.highestBid != null ? item.lowestAsk - item.highestBid : null;
@@ -84,13 +70,13 @@ export default async function MarketItemPage({ params }: { params: Promise<{ key
         <Stat
           label="Lowest sell price"
           value={item.lowestAsk?.toLocaleString() ?? "—"}
-          help="The cheapest you can buy it right now."
+          help="Cheapest active sell order across all marketplaces. Orders are settlement-bound — you buy at the marketplace listing it (see Locations below)."
           note="the cheapest you can buy it right now"
         />
         <Stat
           label="Highest buy price"
           value={item.highestBid?.toLocaleString() ?? "—"}
-          help="The most you can sell it for right now."
+          help="Highest active buy order across all marketplaces. Orders are settlement-bound — you sell at the marketplace where the buy order was placed."
           note="the most you can sell it for right now"
         />
         <Stat
@@ -180,7 +166,7 @@ export default async function MarketItemPage({ params }: { params: Promise<{ key
       </section>
 
       <section className="mt-10">
-        <h2 className="text-xl font-semibold">Recent trades</h2>
+        <h2 className="text-xl font-semibold">Recent trades (inferred prices)</h2>
         {trades.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">No trades observed yet — trades are inferred from order-book changes between snapshots.</p>
         ) : (
@@ -196,8 +182,16 @@ export default async function MarketItemPage({ params }: { params: Promise<{ key
                   <tr key={i} className="border-t border-border">
                     <td className="py-1.5 pr-3 text-right font-mono">{t.price.toLocaleString()}</td>
                     <td className="py-1.5 pr-3 text-right font-mono">{t.quantity.toLocaleString()}</td>
-                    <td className="py-1.5 pr-3 text-muted-foreground">{t.kind === "partial" ? "part of an order" : "whole order"}</td>
-                    <td className="py-1.5 text-muted-foreground" title={new Date(t.observedAtMs).toLocaleString()}>{formatTimeAgo(t.observedAtMs, now)}</td>
+                    <td className="py-1.5 pr-3 text-muted-foreground">
+                      <span
+                        className="cursor-help"
+                        title={t.side === "sell" ? "Came off the sell-order book — someone bought at this price." : "Came off the buy-order book — someone sold at this price."}
+                      >
+                        {t.side === "sell" ? "bought" : "sold"}
+                      </span>
+                      {" · "}{t.kind === "partial" ? "part of an order" : "whole order"}
+                    </td>
+                    <td className="py-1.5 text-muted-foreground"><TimeAgo at={t.observedAt} /></td>
                   </tr>
                 ))}
               </tbody>
@@ -208,8 +202,8 @@ export default async function MarketItemPage({ params }: { params: Promise<{ key
       </section>
 
       <section className="mt-10">
-        <h2 className="text-xl font-semibold">Recent sales</h2>
-        <p className="mt-1 text-xs text-muted-foreground">Sale price is not recorded by the game — volume and timing only.</p>
+        <h2 className="text-xl font-semibold">Recent sales (game-recorded volume)</h2>
+        <p className="mt-1 text-xs text-muted-foreground">Sale price is not recorded by the game — volume and timing only. For per-trade prices, see Recent trades above.</p>
         {sales.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">No recent sales.</p>
         ) : (

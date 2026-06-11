@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { vividTerritoryColor, chunkIndexToCoord, SMALL_HEX_PER_CHUNK } from "@bcc/shared";
 import { getEmpireDetail, listEmpireIds } from "@/lib/queries/leaderboards";
 import { EmpireMembers } from "@/components/empires/EmpireMembers";
+import { Stat } from "@/components/Stat";
 import { formatGameCoords } from "@/lib/format";
 
 /** Tower position in the game's N/E convention — the center of its territory chunk. */
@@ -29,15 +30,6 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     description: `BitCraft Online empire ${data.empire.name}: members, claims, treasury, and towers.`,
     alternates: { canonical: `/empires/${id}` },
   };
-}
-
-function Stat({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="rounded-lg border border-border p-4">
-      <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
-      <div className="mt-1 text-xl font-semibold font-mono">{typeof value === "number" ? value.toLocaleString() : value}</div>
-    </div>
-  );
 }
 
 export default async function EmpirePage({ params }: { params: Promise<{ id: string }> }) {

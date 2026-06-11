@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Stat } from "@/components/Stat";
 import { SettlementTrendChart } from "@/components/settlements/SettlementTrendChart";
 import {
   getSettlement, getSettlementMembers, getSettlementHistory, listSettlementIds,
@@ -27,15 +28,6 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     description: `BitCraft Online settlement ${s.name}: supplies, treasury, tiles, members, and supply history.`,
     alternates: { canonical: `/settlements/${id}` },
   };
-}
-
-function Stat({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="rounded-lg border border-border p-4">
-      <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
-      <div className="mt-1 text-xl font-semibold font-mono">{typeof value === "number" ? value.toLocaleString() : value}</div>
-    </div>
-  );
 }
 
 function Badge({ children }: { children: React.ReactNode }) {

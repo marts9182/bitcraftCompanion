@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { CreaturesTable } from "@/components/compendium/CreaturesTable";
 import { CompendiumFilters } from "@/components/compendium/CompendiumFilters";
 import { Pager } from "@/components/compendium/Pager";
+import { Stat } from "@/components/Stat";
 import {
   getCreatureStats,
   listCreatureTiers,
@@ -20,15 +21,6 @@ export const metadata: Metadata = {
 };
 
 type SP = Record<string, string | string[] | undefined>;
-
-function Stat({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="rounded-lg border border-border p-4">
-      <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
-      <div className="mt-1 text-xl font-semibold font-mono">{value.toLocaleString()}</div>
-    </div>
-  );
-}
 
 export default async function CreaturesPage({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
