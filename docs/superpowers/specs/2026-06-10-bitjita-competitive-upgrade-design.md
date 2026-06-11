@@ -142,7 +142,7 @@ The game has **buy orders** and **sell orders**; players don't know trading-floo
 - Hexcoin circulation dashboard (needs inventory escrow snapshotting).
 - Per-item holdings leaderboard (same dependency).
 - XP calculator, settlement planner, crafting-planner-with-inventory.
-- Public API + docs (our ecosystem moat play; consider after Verified Developer token).
+- ~~Public API + docs~~ — CUT (owner decision 2026-06-10): we are not copying bitjita's public-API play. Internal app routes (e.g. the typeahead suggest endpoint) are unaffected.
 - Chat mirror, live websockets (requires always-on infra — incompatible with $0/month; revisit if hosting budget appears).
 - Claim sub-pages: inventories, construction, research, storage logs.
 
