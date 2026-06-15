@@ -47,9 +47,21 @@ export function regionBounds(r: {
   };
 }
 
-/** Convert a claim's "small hex" (x,z) to CHUNK coordinates for the map. */
+// The small-hex coordinate system sits exactly one CHUNK east of where a naive
+// x/96 places it, relative to the chunk_index grid that the terrain images and
+// all chunk-index layers (regions, territory, watchtowers) are aligned to.
+// Proven by an entity carrying BOTH systems in the live data — the Hexite Sealed
+// Vault growth entity in region 3:
+//   chunk_index 43204            -> chunk (cx=204, cz=43)
+//   small-hex   (19492, 4134)    -> x/96 = 203.04, z/96 = 43.06   (x one chunk short)
+// So add one chunk in x. This is the SINGLE source of truth for small-hex layers
+// (claims, resource spawn dots) — do NOT re-apply this offset per layer.
+export const SMALL_HEX_CHUNK_DX = 1;
+
+/** Convert a "small hex" (x,z) world position to CHUNK coordinates for the map,
+ * calibrated to align with the chunk_index grid (see SMALL_HEX_CHUNK_DX). */
 export function smallHexToChunk(x: number, z: number): { x: number; z: number } {
-  return { x: x / SMALL_HEX_PER_CHUNK, z: z / SMALL_HEX_PER_CHUNK };
+  return { x: x / SMALL_HEX_PER_CHUNK + SMALL_HEX_CHUNK_DX, z: z / SMALL_HEX_PER_CHUNK };
 }
 
 type Raw = Record<string, unknown>;

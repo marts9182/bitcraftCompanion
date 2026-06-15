@@ -37,13 +37,25 @@ describe("regionBounds", () => {
 describe("smallHexToChunk", () => {
   it("converts a small-hex claim position into chunk coords inside its region", () => {
     const c = smallHexToChunk(24594, 15592); // a region-14 small-hex position
-    expect(c.x).toBeCloseTo(256.2, 0);
+    expect(c.x).toBeCloseTo(257.2, 0); // x/96 = 256.19, calibrated +1 chunk east
     expect(c.z).toBeCloseTo(162.4, 0);
     // Must land inside region 14's chunk bounds [240,320) x [160,240).
     expect(c.x).toBeGreaterThanOrEqual(240);
     expect(c.x).toBeLessThan(320);
     expect(c.z).toBeGreaterThanOrEqual(160);
     expect(c.z).toBeLessThan(240);
+  });
+
+  it("aligns small-hex with the chunk_index grid (ground truth: one entity, both systems)", () => {
+    // The Hexite Sealed Vault growth entity in region 3 carries BOTH coordinate
+    // systems in the live data: chunk_index 43204 AND small-hex (19492, 4134).
+    // The decoded small-hex chunk MUST match the chunk_index grid (which the
+    // terrain images are aligned to). A naive x/96 lands one chunk WEST (203),
+    // so smallHexToChunk applies a +1 east calibration to reach 204.
+    const { cx, cz } = chunkIndexToCoord(43204); // { cx: 204, cz: 43 }
+    const c = smallHexToChunk(19492, 4134);
+    expect(Math.floor(c.x)).toBe(cx); // 204, not 203
+    expect(Math.floor(c.z)).toBe(cz); // 43
   });
 });
 

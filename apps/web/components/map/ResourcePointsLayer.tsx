@@ -6,16 +6,16 @@ import { decimate } from "@/lib/map/tracking";
 import { findNearestPoint, type DrawnTrack } from "@/lib/map/hit-test";
 import { formatGameCoords } from "@/lib/format";
 import { copyText } from "@/lib/clipboard";
+// Calibrated small-hex → chunk conversion, shared with the server-side map
+// queries so the offset can never drift between layers. Imported from the
+// client-safe `world/coords` subpath (the package root pulls in server-only code).
+import { smallHexToChunk } from "@bcc/shared/world/coords";
 
 export interface TrackedPoints { key: string; color: string; name: string; xz: number[] } // xz = small-hex flat pairs
 
 const MAX_DRAW_POINTS = 60_000;
 const R = 2.5; // dot radius (px)
 const HIT_RADIUS_PX = 8; // click-to-dot slop, container px
-// Mirrors @bcc/shared's SMALL_HEX_PER_CHUNK — the shared package's root index
-// drags in server-only code (env/db/spacetime), so it must stay out of client
-// bundles; keep the constant local here.
-const SMALL_HEX_PER_CHUNK = 96;
 
 /**
  * Popup body for a clicked spawn point: color dot + tracked name, the location
@@ -92,12 +92,12 @@ export function ResourcePointsLayer({ tracked }: { tracked: TrackedPoints[] }) {
       if (!ctx) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       // Pad the bounds slightly so dots straddling the view edge don't pop in/out.
-      // Bounds are CHUNK coords ([lat=z, lng=x]) — scale to small-hex once and
-      // cull in small-hex space, so the kept points stay in small-hex for the
-      // click handler (formatGameCoords takes small-hex; no lossy round-trip).
+      // Bounds are CHUNK coords ([lat=z, lng=x]); convert each point to chunk space
+      // via the calibrated decode and cull there. Kept points stay in RAW small-hex
+      // for the click handler (formatGameCoords takes small-hex; no lossy round-trip).
       const bounds = map.getBounds().pad(0.01);
-      const south = bounds.getSouth() * SMALL_HEX_PER_CHUNK, north = bounds.getNorth() * SMALL_HEX_PER_CHUNK;
-      const west = bounds.getWest() * SMALL_HEX_PER_CHUNK, east = bounds.getEast() * SMALL_HEX_PER_CHUNK;
+      const south = bounds.getSouth(), north = bounds.getNorth();
+      const west = bounds.getWest(), east = bounds.getEast();
       const budget = Math.max(2_000, Math.floor(MAX_DRAW_POINTS / Math.max(1, tracked.length)));
       const drawn: DrawnTrack[] = [];
       for (const t of tracked) {
@@ -106,7 +106,8 @@ export function ResourcePointsLayer({ tracked }: { tracked: TrackedPoints[] }) {
         const inView: number[] = [];
         for (let i = 0; i + 1 < t.xz.length; i += 2) {
           const x = t.xz[i]!, z = t.xz[i + 1]!;
-          if (z < south || z > north || x < west || x > east) continue;
+          const c = smallHexToChunk(x, z);
+          if (c.z < south || c.z > north || c.x < west || c.x > east) continue;
           inView.push(x, z);
         }
         const xz = decimate(inView, budget);
@@ -114,8 +115,9 @@ export function ResourcePointsLayer({ tracked }: { tracked: TrackedPoints[] }) {
         ctx.fillStyle = t.color;
         ctx.beginPath(); // one batched path per track, single fill below
         for (let i = 0; i < xz.length; i += 2) {
-          // [lat=z, lng=x] in chunk coords.
-          const p = map.latLngToContainerPoint([xz[i + 1]! / SMALL_HEX_PER_CHUNK, xz[i]! / SMALL_HEX_PER_CHUNK]);
+          // Calibrated small-hex → chunk, then [lat=z, lng=x] in chunk coords.
+          const c = smallHexToChunk(xz[i]!, xz[i + 1]!);
+          const p = map.latLngToContainerPoint([c.z, c.x]);
           ctx.moveTo(p.x + R, p.y); // moveTo avoids a connecting line between arcs
           ctx.arc(p.x, p.y, R, 0, Math.PI * 2);
         }
@@ -145,12 +147,16 @@ export function ResourcePointsLayer({ tracked }: { tracked: TrackedPoints[] }) {
         drawnRef.current,
         e.containerPoint.x,
         e.containerPoint.y,
-        (x, z) => map.latLngToContainerPoint([z / SMALL_HEX_PER_CHUNK, x / SMALL_HEX_PER_CHUNK]),
+        (x, z) => {
+          const c = smallHexToChunk(x, z);
+          return map.latLngToContainerPoint([c.z, c.x]);
+        },
         HIT_RADIUS_PX,
       );
       if (!hit) return;
+      const c = smallHexToChunk(hit.x, hit.z);
       popup()
-        .setLatLng([hit.z / SMALL_HEX_PER_CHUNK, hit.x / SMALL_HEX_PER_CHUNK])
+        .setLatLng([c.z, c.x])
         .setContent(buildPopupContent(hit.track, formatGameCoords(hit.x, hit.z)))
         .openOn(map);
     };

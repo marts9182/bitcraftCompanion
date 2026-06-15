@@ -20,11 +20,6 @@ export type { Watchtower };
 // back to the canonical region id (map_regions.id = the real region number).
 const GENERIC_REGION_NAME = /^Region\s+\d+$/i;
 
-// The small-hex → chunk decode (smallHexToChunk) lands one chunk WEST of the
-// empire chunk grid (empire_chunk_state, decoded via chunkIndexToBounds) that the
-// terrain is aligned to, so nudge claim positions one chunk east to match.
-const CLAIM_DX = 1;
-
 // All map fetchers are unstable_cache'd for 30 min — the worker snapshot cadence.
 // The underlying tables only change when a snapshot lands, and these queries are
 // hit by every ISR detail page (via the map embed) as well as /map itself.
@@ -35,7 +30,7 @@ export const getMapClaims = unstable_cache(async (): Promise<ClaimPoint[]> => {
   return rows.map((c) => {
     const p = smallHexToChunk(c.x, c.z);
     const { kind, label } = classifyClaim(c.name);
-    return { id: c.entityId, name: label, kind, x: p.x + CLAIM_DX, z: p.z, tiles: c.numTiles, treasury: Number(c.treasury) };
+    return { id: c.entityId, name: label, kind, x: p.x, z: p.z, tiles: c.numTiles, treasury: Number(c.treasury) };
   });
 }, ["map-claims"], MAP_CACHE);
 
@@ -85,9 +80,9 @@ export const getWatchtowers = unstable_cache(async (): Promise<Watchtower[]> => 
     .select({ chunkIndex: schema.mapChunks.chunkIndex, id: schema.mapChunks.watchtowerEntityId })
     .from(schema.mapChunks)
     .where(isNotNull(schema.mapChunks.watchtowerEntityId));
-  // Watchtowers come from the same chunk grid as claims, so they share the
-  // one-chunk-east calibration (CLAIM_DX) that aligns the decode to the terrain base.
-  return watchtowerCentroids(rows.map((c) => ({ chunkIndex: c.chunkIndex, id: String(c.id) }))).map(
-    (w) => ({ ...w, x: w.x + CLAIM_DX }),
-  );
+  // Watchtowers are derived from chunk_index (chunkIndexToBounds) — the SAME grid
+  // the terrain is aligned to — so they need NO small-hex calibration. (The old
+  // +1 nudge here was wrong: it mis-grouped them with small-hex claims and pushed
+  // towers one chunk east of their true coverage.)
+  return watchtowerCentroids(rows.map((c) => ({ chunkIndex: c.chunkIndex, id: String(c.id) })));
 }, ["map-watchtowers"], MAP_CACHE);

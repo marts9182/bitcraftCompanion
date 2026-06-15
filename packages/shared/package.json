@@ -10,6 +10,7 @@
     "./env": "./src/env.ts",
     "./db": "./src/db/client.ts",
     "./db/schema": "./src/db/schema.ts",
+    "./world/coords": "./src/world/coords.ts",
     "./spacetime": "./src/spacetime/readonly-connection.ts"
   },
   "scripts": {
