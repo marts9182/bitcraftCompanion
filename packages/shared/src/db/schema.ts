@@ -573,6 +573,25 @@ export const settlements = pgTable(
   }),
 );
 
+/** Current next world event per region+type. One upserted row per (region, event_type).
+ *  ends_at = growth_state.end_timestamp from the temp-region SpacetimeDB module (server-authoritative). */
+export const regionEvents = pgTable(
+  "region_events",
+  {
+    region: text("region").notNull(),
+    eventType: text("event_type").notNull(),
+    endsAt: timestamp("ends_at").notNull(),
+    entityId: text("entity_id").notNull(),
+    x: integer("x"),
+    z: integer("z"),
+    dimension: integer("dimension"),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.region, t.eventType] }),
+  }),
+);
+
 /** Append-only supplies/treasury trend series. One slice per settlement per snapshot. */
 export const settlementSupplyHistory = pgTable(
   "settlement_supply_history",
