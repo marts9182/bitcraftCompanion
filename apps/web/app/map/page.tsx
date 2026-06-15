@@ -14,10 +14,12 @@ export type RoadOverlay = TerrainOverlay;
 // Read the per-region terrain manifest written by scripts/render-terrain.py.
 // Returns [] when the render hasn't been run yet, so the map still works.
 // Bounds use the SAME pt(x,z)=[z,x] (north-up) convention as WorldMap.
-// TERRAIN_DX/DZ nudge the terrain overlay (in chunk units) to fine-tune its
-// alignment against the vector layers (empires/claims). Adjust if they drift.
-const TERRAIN_DX = 1;
-const TERRAIN_DZ = 0;
+// NO nudge: the manifest's minX/maxX are the region's TRUE absolute chunk bounds
+// (render-terrain.py writes minX = min_cx; chunk cx renders at image column
+// (cx-min_cx)*TILE), the same absolute chunk grid the vector layers use. The
+// ONLY coordinate offset in the whole map lives in smallHexToChunk (small-hex is
+// one chunk short of the chunk_index grid). Do NOT add per-layer nudges here —
+// that drift-chasing is exactly what this change removed.
 async function loadTerrain(): Promise<TerrainOverlay[]> {
   try {
     const raw = await readFile(path.join(process.cwd(), "public/map/terrain.json"), "utf8");
@@ -25,7 +27,7 @@ async function loadTerrain(): Promise<TerrainOverlay[]> {
     return list.map((m) => ({
       region: m.region,
       url: m.url,
-      bounds: [[m.minZ + TERRAIN_DZ, m.minX + TERRAIN_DX], [m.maxZ + TERRAIN_DZ, m.maxX + TERRAIN_DX]],
+      bounds: [[m.minZ, m.minX], [m.maxZ, m.maxX]],
     }));
   } catch {
     return [];
@@ -34,10 +36,15 @@ async function loadTerrain(): Promise<TerrainOverlay[]> {
 
 // Read the per-region roads manifest written by the worker's roads stage
 // (resource-snapshot.ts: {v:1, regions:[{region,url,minX,minZ,maxX,maxZ}]}).
-// Returns [] when the stage hasn't been run, so the map still works. Road
-// pixels come from the same raw small-hex→chunk decode as claims, which lands
-// one chunk west of the empire/terrain chunk grid — nudge east to match
-// (same calibration as CLAIM_DX in lib/queries/map.ts and TERRAIN_DX above).
+// Returns [] when the stage hasn't been run, so the map still works.
+//
+// ROADS_DX stays +1 — and this is the ONE place a raster needs it. Unlike the
+// terrain manifest (true absolute chunk bounds → no nudge), rasterizeRoads in
+// roads-png.ts derives its bounds with the NAIVE floor(smallhex/96), which lands
+// one chunk west of the chunk_index grid. +1 brings the raster onto the same
+// true grid as everything else (it mirrors the small-hex calibration that now
+// lives in smallHexToChunk). If roads-png.ts is ever changed to emit true-grid
+// bounds, drop this to 0.
 const ROADS_DX = 1;
 const ROADS_DZ = 0;
 async function loadRoads(): Promise<RoadOverlay[]> {
