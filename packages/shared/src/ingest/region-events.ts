@@ -25,20 +25,22 @@ export interface RegionEventRow {
  * `{__timestamp_micros_since_unix_epoch__: "..."}`, a raw number, or a numeric
  * string (all micros since epoch). Returns null for anything else. */
 export function spacetimeMicrosToDate(ts: unknown): Date | null {
-  let micros: bigint | null = null;
-  if (ts && typeof ts === "object" && "__timestamp_micros_since_unix_epoch__" in ts) {
-    micros = toBigInt((ts as Record<string, unknown>)["__timestamp_micros_since_unix_epoch__"]);
-  } else {
-    micros = toBigInt(ts);
-  }
+  const raw =
+    ts && typeof ts === "object" && "__timestamp_micros_since_unix_epoch__" in ts
+      ? (ts as Record<string, unknown>)["__timestamp_micros_since_unix_epoch__"]
+      : ts;
+  const micros = toMicros(raw);
   if (micros === null) return null;
-  return new Date(Number(micros / 1000n));
+  return new Date(Math.floor(micros / 1000));
 }
 
-function toBigInt(v: unknown): bigint | null {
-  if (typeof v === "number" && Number.isFinite(v)) return BigInt(Math.trunc(v));
-  if (typeof v === "bigint") return v;
-  if (typeof v === "string" && /^\d+$/.test(v)) return BigInt(v);
+// Micros since epoch as a JS number. Safe past year 2255 (< 2^53 µs), far beyond
+// any game timestamp — so no BigInt (the web app's tsconfig targets < ES2020 and
+// rejects BigInt literals when it compiles this shared source).
+function toMicros(v: unknown): number | null {
+  if (typeof v === "number" && Number.isFinite(v)) return Math.trunc(v);
+  if (typeof v === "bigint") return Number(v);
+  if (typeof v === "string" && /^\d+$/.test(v)) return Number(v);
   return null;
 }
 
