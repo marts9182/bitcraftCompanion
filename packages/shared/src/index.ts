@@ -44,6 +44,7 @@ export {
 export type { MarketOrderRow, MarketplaceRow, MarketSaleRow } from "./ingest/map-market";
 export { mapSettlements } from "./ingest/map-settlements";
 export type { SettlementRow } from "./ingest/map-settlements";
+export * from "./ingest/region-events";
 export { inferTrades } from "./market/infer-trades";
 export type { OrderLike, InferredTrade } from "./market/infer-trades";
 export {

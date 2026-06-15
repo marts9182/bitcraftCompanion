@@ -74,4 +74,6 @@ export const COLUMN_ORDERS: Record<string, string[]> = {
   buy_order_state: ["entity_id", "owner_entity_id", "claim_entity_id", "item_id", "item_type", "price_threshold", "quantity", "timestamp", "stored_coins"],
   marketplace_state: ["building_entity_id", "claim_entity_id", "location"],
   closed_listing_state: ["entity_id", "owner_entity_id", "claim_entity_id", "item_stack", "timestamp"],
+  growth_state: ["entity_id", "end_timestamp", "growth_recipe_id"],
+  location_state: ["entity_id", "chunk_index", "x", "z", "dimension"],
 };
