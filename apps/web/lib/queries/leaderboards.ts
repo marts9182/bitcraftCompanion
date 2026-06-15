@@ -70,9 +70,13 @@ export async function getTotalLeaderboard(params: LeaderboardParams): Promise<{ 
   const agg = db
     .select({
       playerEntityId: playerSkills.playerEntityId,
-      totalXp: sql<number>`sum(${playerSkills.xp})`.as("total_xp"),
-      totalLevel: sql<number>`sum(${playerSkills.level})`.as("total_level"),
-      highestLevel: sql<number>`max(${playerSkills.level})`.as("highest_level"),
+      // Prefix the aggregate aliases: drizzle emits subquery sql`…`.as() columns
+      // UNqualified in the outer SELECT/ORDER BY, and players has physical
+      // total_xp/total_level columns — bare "total_xp" would bind to both the
+      // agg subquery and the joined players row → "column reference is ambiguous".
+      totalXp: sql<number>`sum(${playerSkills.xp})`.as("agg_total_xp"),
+      totalLevel: sql<number>`sum(${playerSkills.level})`.as("agg_total_level"),
+      highestLevel: sql<number>`max(${playerSkills.level})`.as("agg_highest_level"),
     })
     .from(playerSkills)
     .where(regionWhere)
