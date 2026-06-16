@@ -21,9 +21,20 @@ export interface Bounds {
   z1: number;
 }
 
+// THE single coordinate calibration in the whole map. The game's chunk_index
+// packs chunk_x ONE HIGHER than the chunk_x grid that terrain
+// (terrain_chunk_state.chunk_x), regions (region_min_chunk_x) and small-hex (÷96)
+// all share. Proven two independent ways:
+//   1. The Hexite vault entity carries chunk_index 43204 (raw cx 204) AND
+//      small-hex 19492 (÷96 = 203) — the same entity, so true cx = 203.
+//   2. On the map, empire borders (chunk_index) rendered exactly one chunk EAST
+//      of the terrain landmasses until this -1 was applied.
+// So subtract 1 from cx to land on the true grid (cz needs no correction). With
+// this in place there are NO per-layer nudges anywhere: terrain, regions,
+// claims (÷96), resource dots (÷96) and roads are all native to the true grid.
 export function chunkIndexToCoord(chunkIndex: string | number): { cx: number; cz: number } {
   const idx = typeof chunkIndex === "string" ? Number(chunkIndex) : chunkIndex;
-  return { cx: idx % CHUNK_STRIDE, cz: Math.floor(idx / CHUNK_STRIDE) };
+  return { cx: (idx % CHUNK_STRIDE) - 1, cz: Math.floor(idx / CHUNK_STRIDE) };
 }
 
 /** Territory cell bounds in CHUNK coordinates (1 chunk = 1 unit). */
@@ -47,21 +58,12 @@ export function regionBounds(r: {
   };
 }
 
-// The small-hex coordinate system sits exactly one CHUNK east of where a naive
-// x/96 places it, relative to the chunk_index grid that the terrain images and
-// all chunk-index layers (regions, territory, watchtowers) are aligned to.
-// Proven by an entity carrying BOTH systems in the live data — the Hexite Sealed
-// Vault growth entity in region 3:
-//   chunk_index 43204            -> chunk (cx=204, cz=43)
-//   small-hex   (19492, 4134)    -> x/96 = 203.04, z/96 = 43.06   (x one chunk short)
-// So add one chunk in x. This is the SINGLE source of truth for small-hex layers
-// (claims, resource spawn dots) — do NOT re-apply this offset per layer.
-export const SMALL_HEX_CHUNK_DX = 1;
-
-/** Convert a "small hex" (x,z) world position to CHUNK coordinates for the map,
- * calibrated to align with the chunk_index grid (see SMALL_HEX_CHUNK_DX). */
+/** Convert a "small hex" (x,z) world position to CHUNK coordinates for the map.
+ * small-hex ÷ 96 IS the true chunk grid — it matches terrain_chunk_state.chunk_x
+ * and region_min_chunk_x directly, so there is no offset here. (The offset bug
+ * was in chunkIndexToCoord, which is fixed at its source above.) */
 export function smallHexToChunk(x: number, z: number): { x: number; z: number } {
-  return { x: x / SMALL_HEX_PER_CHUNK + SMALL_HEX_CHUNK_DX, z: z / SMALL_HEX_PER_CHUNK };
+  return { x: x / SMALL_HEX_PER_CHUNK, z: z / SMALL_HEX_PER_CHUNK };
 }
 
 type Raw = Record<string, unknown>;

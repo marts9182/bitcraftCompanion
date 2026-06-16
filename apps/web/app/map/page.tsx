@@ -38,14 +38,10 @@ async function loadTerrain(): Promise<TerrainOverlay[]> {
 // (resource-snapshot.ts: {v:1, regions:[{region,url,minX,minZ,maxX,maxZ}]}).
 // Returns [] when the stage hasn't been run, so the map still works.
 //
-// ROADS_DX stays +1 — and this is the ONE place a raster needs it. Unlike the
-// terrain manifest (true absolute chunk bounds → no nudge), rasterizeRoads in
-// roads-png.ts derives its bounds with the NAIVE floor(smallhex/96), which lands
-// one chunk west of the chunk_index grid. +1 brings the raster onto the same
-// true grid as everything else (it mirrors the small-hex calibration that now
-// lives in smallHexToChunk). If roads-png.ts is ever changed to emit true-grid
-// bounds, drop this to 0.
-const ROADS_DX = 1;
+// NO nudge: rasterizeRoads derives its bounds from floor(smallhex/96), which is
+// the true chunk grid (small-hex ÷96 == terrain chunk_x). The only calibration
+// in the map lives in chunkIndexToCoord; everything else is native.
+const ROADS_DX = 0;
 const ROADS_DZ = 0;
 async function loadRoads(): Promise<RoadOverlay[]> {
   try {
