@@ -98,10 +98,12 @@ export async function fetchResourcePoints(
       try {
         msg = JSON.parse(decodeFrame(Buffer.from(data as ArrayBuffer)));
       } catch {
-        return; // non-data frame (e.g. IdentityToken text); ignore
+        return; // frame decode error (bad compression tag) or malformed JSON — skip frame
       }
       if (msg && typeof msg === "object" && "SubscriptionError" in msg) {
-        finish(() => { ws.close(); reject(new Error("subscription rejected")); });
+        // Preserve the server's reason — SQL/subscription rejections are otherwise opaque.
+        const detail = JSON.stringify((msg as Record<string, unknown>).SubscriptionError).slice(0, 600);
+        finish(() => { ws.close(); reject(new Error(`subscription rejected: ${detail}`)); });
         return;
       }
       const tables = extractTableInserts(msg);
