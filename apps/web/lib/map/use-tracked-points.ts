@@ -5,9 +5,6 @@ import type { TrackedPoints } from "@/components/map/ResourcePointsLayer";
 import type { RegionRect } from "@/lib/queries/map";
 import { trackColor, MAX_TRACKED } from "./tracking";
 
-// Base URL for the static spawn-position files. NEXT_PUBLIC_ vars are inlined
-// at build time, so this must be read at module scope in a client file.
-const DATA_BASE = process.env.NEXT_PUBLIC_MAP_DATA_BASE ?? "/map-data";
 
 /**
  * Resource/creature tracking state for the world map (finder panel → canvas
@@ -60,7 +57,7 @@ export function useTrackedPoints({ resourceCatalog, creatureCatalog, regions, se
         requestedKeysRef.current.add(key);
         const store = (xz: number[]) => { if (mountedRef.current) setPointsByKey((m) => new Map(m).set(key, xz)); };
         if (t.kind === "resource") {
-          fetch(`${DATA_BASE}/resources/r${region}/${t.id}.json`)
+          fetch(`/api/map/resources/${region}/${t.id}`)
             .then((r) => (r.ok ? (r.json() as Promise<{ xz?: number[] }>) : null))
             .then((j) => { if (j) store(j.xz ?? []); })
             .catch(() => { requestedKeysRef.current.delete(key); });
