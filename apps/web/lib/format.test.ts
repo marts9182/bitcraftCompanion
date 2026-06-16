@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { formatGameCoords, formatTimeAgo } from "./format";
+import { formatCountdown } from "./format";
 
 // Expected values cross-checked against the live game via bitjita.com/claims/{id}
 // (claims in three different regions, 2026-06-10).
@@ -48,5 +49,17 @@ describe("formatTimeAgo", () => {
   it("formats whole days past 24h", () => {
     expect(formatTimeAgo(now - 24 * 3_600_000, now)).toBe("1d ago");
     expect(formatTimeAgo(now - 3 * 24 * 3_600_000 - 5 * 3_600_000, now)).toBe("3d ago");
+  });
+});
+
+describe("formatCountdown", () => {
+  it("formats H:MM:SS for sub-day durations", () => {
+    expect(formatCountdown(4 * 3600_000 + 23 * 60_000 + 17_000)).toBe("4:23:17");
+  });
+  it("includes days when >= 24h", () => {
+    expect(formatCountdown(25 * 3600_000 + 60_000 + 5_000)).toBe("1d 1:01:05");
+  });
+  it("clamps negatives to zero", () => {
+    expect(formatCountdown(-5000)).toBe("0:00:00");
   });
 });

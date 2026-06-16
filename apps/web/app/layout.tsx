@@ -6,6 +6,7 @@ import { jsonLdScript } from "@/lib/jsonld";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { EventBanner } from "@/components/EventBanner";
 
 export const metadata = defaultMetadata;
 
@@ -32,6 +33,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           dangerouslySetInnerHTML={{ __html: jsonLdScript(websiteJsonLd()) }}
         />
         <ThemeProvider>
+          <EventBanner />
           <SiteHeader />
           {children}
           <SiteFooter />

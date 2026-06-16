@@ -32,3 +32,15 @@ export function formatTimeAgo(thenMs: number, nowMs: number): string {
   }
   return `${Math.floor(hours / 24)}d ago`;
 }
+
+/** "4:23:17" or "1d 1:01:05"; clamps negative to "0:00:00". */
+export function formatCountdown(msRemaining: number): string {
+  const total = Math.max(0, Math.floor(msRemaining / 1000));
+  const days = Math.floor(total / 86400);
+  const h = Math.floor((total % 86400) / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const hms = `${h}:${pad(m)}:${pad(s)}`;
+  return days > 0 ? `${days}d ${hms}` : hms;
+}
