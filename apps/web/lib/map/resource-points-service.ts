@@ -1,8 +1,13 @@
+import "server-only";
 import { unstable_cache } from "next/cache";
 import { fetchResourcePoints } from "@/lib/spacetime/resource-points";
 import { gridBucketDownsample } from "@/lib/map/downsample";
 
-/** Max points returned per (region, resource). Mega-resources are downsampled. */
+/**
+ * Target cap on points returned per (region, resource); mega-resources are
+ * downsampled to fit. The actual ceiling is `floor(sqrt(CAP))²` (4900 for 5000),
+ * since the downsampler uses a square grid of side `floor(sqrt(cap))`.
+ */
 export const CAP = 5000;
 
 export interface ResourcePoints {
