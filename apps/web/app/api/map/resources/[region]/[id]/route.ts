@@ -18,8 +18,13 @@ export async function GET(
     return NextResponse.json(data, {
       headers: { "Cache-Control": "public, s-maxage=900, stale-while-revalidate=3600" },
     });
-  } catch {
-    // Transient game/WS failure — do NOT cache; the client simply shows no dots.
-    return NextResponse.json({ error: "upstream unavailable" }, { status: 502 });
+  } catch (err) {
+    // Log so a real bug (e.g. SpacetimeDB schema drift) is distinguishable from a
+    // transient WS blip. Send no-store so a future CDN rule can never cache the 502.
+    console.error(`[map/resources] r${parsed.region} id${parsed.id} upstream error:`, err);
+    return NextResponse.json(
+      { error: "upstream unavailable" },
+      { status: 502, headers: { "Cache-Control": "no-store" } },
+    );
   }
 }
