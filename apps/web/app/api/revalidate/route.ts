@@ -48,6 +48,8 @@ export async function POST(req: Request) {
     // Flush the deals crossed-pairs scan so /market/deals reflects the fresh
     // order book immediately instead of waiting out its 1800 s query cache.
     revalidateTag("market-deals", "max");
+    // Flush the region-events read so the banner reflects the fresh snapshot.
+    revalidateTag("region-events", "max");
     revalidatePath("/compendium");
     for (const s of SECTIONS) {
       revalidatePath(`/${s}`);
