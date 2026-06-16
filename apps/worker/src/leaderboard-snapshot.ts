@@ -11,6 +11,7 @@ import {
   mapMarketOrders, mapMarketplaces, mapClosedListings, PRICE_SENTINEL_CEILING,
   inferTrades, type OrderLike,
   mapSettlements,
+  mapRegionEvent, TEMP_REGION_MODULES, HEXITE_SEALED_VAULT_GROWTH_ID,
 } from "@bcc/shared";
 import { readSnapshot } from "./spacetime/ws-snapshot";
 import { discoverRegionModules } from "./spacetime/discover-regions";
@@ -450,6 +451,53 @@ async function main() {
     await db.execute(sql`DELETE FROM market_trades WHERE observed_at < now() - interval '90 days'`);
     await db.execute(sql`DELETE FROM settlement_supply_history WHERE snapshot_at < now() - interval '90 days'`);
     console.log("[lb-snapshot] pruned price/trade/supply history older than 90 days");
+
+    // ── Temp-region world events: read the server-authoritative next-event time ──
+    // The Hexite Sealed Vault is a growth_state entity; its end_timestamp (PUBLIC)
+    // is exactly when the event fires. Coords come from location_state. One tiny
+    // filtered read per temp module; upsert one row per region.
+    let eventsWritten = 0;
+    for (const moduleName of TEMP_REGION_MODULES) {
+      const region = moduleName.match(/(\d+)$/)?.[1] ?? moduleName;
+      try {
+        const gr = await readSnapshot(
+          { ...conn, moduleName },
+          [`SELECT * FROM growth_state WHERE growth_recipe_id = ${HEXITE_SEALED_VAULT_GROWTH_ID}`],
+          ["growth_state"],
+          20_000,
+        );
+        const growthRows = norm(gr, "growth_state");
+        const ids = growthRows.map((r) => String(r.entity_id)).filter(Boolean);
+        let locationRows: Record<string, unknown>[] = [];
+        if (ids.length) {
+          const lr = await readSnapshot(
+            { ...conn, moduleName },
+            [`SELECT * FROM location_state WHERE entity_id IN (${ids.join(",")})`],
+            ["location_state"],
+            20_000,
+          );
+          locationRows = norm(lr, "location_state");
+        }
+        const event = mapRegionEvent(growthRows, locationRows, region);
+        if (event) {
+          await db
+            .insert(schema.regionEvents)
+            .values({ ...event })
+            .onConflictDoUpdate({
+              target: [schema.regionEvents.region, schema.regionEvents.eventType],
+              set: {
+                endsAt: event.endsAt, entityId: event.entityId,
+                x: event.x, z: event.z, dimension: event.dimension, updatedAt: new Date(),
+              },
+            });
+          eventsWritten++;
+        }
+        console.log(`[lb-snapshot]   temp region ${region}: ${growthRows.length} growth row(s)${event ? ` -> ends ${event.endsAt.toISOString()}` : ""}`);
+      } catch (err) {
+        console.warn(`[lb-snapshot]   temp region ${region} (${moduleName}) event read skipped:`, String(err));
+      }
+    }
+    console.log(`[lb-snapshot] region events: ${eventsWritten}/${TEMP_REGION_MODULES.length} regions have an upcoming vault`);
 
     await db.update(schema.ingestionRuns).set({ status: "ok", finishedAt: new Date(), rowsUpserted: totalPlayers }).where(eq(schema.ingestionRuns.id, run!.id));
     await triggerRevalidate({ url: env.REVALIDATE_URL, secret: env.REVALIDATE_SECRET });
