@@ -467,17 +467,24 @@ async function main() {
           20_000,
         );
         const growthRows = norm(gr, "growth_state");
-        // Only numeric ids — these are interpolated into the SQL IN(...) below.
+        // Only numeric ids — interpolated into the per-id SQL equality below.
         const ids = growthRows.map((r) => String(r.entity_id)).filter((id) => /^\d+$/.test(id));
         let locationRows: Record<string, unknown>[] = [];
         if (ids.length) {
-          const lr = await readSnapshot(
-            { ...conn, moduleName },
-            [`SELECT * FROM location_state WHERE entity_id IN (${ids.join(",")})`],
-            ["location_state"],
-            20_000,
-          );
-          locationRows = norm(lr, "location_state");
+          // SpacetimeDB subscriptions reject `IN (...)` ("Unsupported expression");
+          // use one `entity_id = X` query per id (SubscribeMulti takes many). A
+          // location failure is non-fatal — keep the event, just without coords.
+          try {
+            const lr = await readSnapshot(
+              { ...conn, moduleName },
+              ids.map((id) => `SELECT * FROM location_state WHERE entity_id = ${id}`),
+              ["location_state"],
+              20_000,
+            );
+            locationRows = norm(lr, "location_state");
+          } catch (locErr) {
+            console.warn(`[lb-snapshot]   temp region ${region}: location read failed (event kept w/o coords):`, String(locErr));
+          }
         }
         const event = mapRegionEvent(growthRows, locationRows, region);
         if (event) {
