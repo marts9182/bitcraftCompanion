@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { pickNextEvent, type StoredEvent } from "./region-events";
 
-const base: StoredEvent = { region: "3", eventType: "hexite_sealed_vault", endsAt: new Date(0), x: 19492, z: 4134, dimension: 1 };
-const at = (iso: string, region: string): StoredEvent => ({ ...base, region, endsAt: new Date(iso) });
+const base: StoredEvent = { region: "3", eventType: "hexite_sealed_vault", endsAt: 0, x: 19492, z: 4134, dimension: 1 };
+const at = (iso: string, region: string): StoredEvent => ({ ...base, region, endsAt: Date.parse(iso) });
 const NOW = Date.parse("2026-06-15T12:00:00Z");
 
 describe("pickNextEvent", () => {

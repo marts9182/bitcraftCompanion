@@ -10,7 +10,7 @@ export async function EventBanner() {
   if (!next) return null;
   return (
     <EventCountdown
-      data={{ region: next.region, endsAtMs: next.endsAt.getTime(), state: next.state, x: next.x, z: next.z }}
+      data={{ region: next.region, endsAtMs: next.endsAt, state: next.state, x: next.x, z: next.z }}
     />
   );
 }
