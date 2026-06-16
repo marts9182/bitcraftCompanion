@@ -467,7 +467,8 @@ async function main() {
           20_000,
         );
         const growthRows = norm(gr, "growth_state");
-        const ids = growthRows.map((r) => String(r.entity_id)).filter(Boolean);
+        // Only numeric ids — these are interpolated into the SQL IN(...) below.
+        const ids = growthRows.map((r) => String(r.entity_id)).filter((id) => /^\d+$/.test(id));
         let locationRows: Record<string, unknown>[] = [];
         if (ids.length) {
           const lr = await readSnapshot(

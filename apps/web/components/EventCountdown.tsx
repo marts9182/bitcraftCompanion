@@ -20,6 +20,8 @@ export function EventCountdown({ data }: { data: EventBannerData }) {
   const [dismissedKey, setDismissedKey] = useState<string | null>(null);
 
   const key = `evt-dismiss-${data.region}-${data.endsAtMs}`;
+  // Hide if dismissed this session (dismissedKey) or in a prior one (localStorage).
+  // The localStorage read is gated on `hydrated` to avoid an SSR/client mismatch.
   const dismissed = hydrated && (dismissedKey === key || (typeof localStorage !== "undefined" && localStorage.getItem(key) === "1"));
   if (dismissed) return null;
 
