@@ -1,7 +1,7 @@
 import "server-only";
 import { gunzipSync } from "node:zlib";
 import WebSocket from "ws";
-import { extractTableInserts } from "@bcc/shared";
+import { extractTableInserts, packPositions } from "@bcc/shared";
 
 const WS_SUBPROTOCOL = "v1.json.spacetimedb";
 
@@ -32,23 +32,15 @@ function decodeFrame(data: Buffer): string {
   return data.toString("utf8");
 }
 
-/** Pure: flatten location_state rows ({x,z,…}) to a flat [x,z,x,z,…] array. */
-export function rowsToXz(rows: unknown[]): number[] {
-  const xz: number[] = [];
-  for (const r of rows) {
-    const row = r as { x?: unknown; z?: unknown };
-    if (typeof row.x === "number" && typeof row.z === "number") xz.push(row.x, row.z);
-  }
-  return xz;
-}
-
 /**
  * One-shot read-only query for a single resource's spawn positions in one
  * region module. Exchanges the token, opens a v1.json WebSocket, sends one
  * SubscribeMulti (single-resource JOIN — the attributable case), collects
  * location_state rows from the SubscribeMultiApplied frame, closes. Returns a
- * flat [x,z,…] small-hex array. Server-only (uses `ws` + node:zlib); never
- * import this from a client component.
+ * flat [x,z,…] small-hex array, OVERWORLD ONLY (packPositions drops dimension
+ * != 1) so it matches the worker's catalogued spawnCounts and the map decoder's
+ * overworld assumption. Server-only (uses `ws` + node:zlib); never import this
+ * from a client component.
  */
 export async function fetchResourcePoints(
   region: number,
@@ -110,7 +102,8 @@ export async function fetchResourcePoints(
       const ls = tables.get("location_state");
       if (ls) {
         for (const row of ls) rows.push(row); // loop, not push(...spread): can be 100k+ rows
-        finish(() => { ws.close(); resolve(rowsToXz(rows)); });
+        const xz = packPositions(rows as Array<{ x: number; z: number; dimension: number }>);
+        finish(() => { ws.close(); resolve(xz); });
       }
     });
 
