@@ -1,7 +1,9 @@
 name: snapshot
 on:
   schedule:
-    - cron: "*/30 * * * *"
+    # Every 2 hours — keeps Neon compute-hours well under the free tier
+    # (~54 hrs/mo vs ~216 at the old 30-min cadence). Data is <=2h stale.
+    - cron: "0 */2 * * *"
   workflow_dispatch: {}
 
 # Never let two snapshots run at once.
